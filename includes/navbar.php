@@ -29,7 +29,7 @@ if (is_logged_in()) {
     }
 }
 ?>
-<nav class="lt-navbar navbar navbar-expand-lg navbar-dark" aria-label="Navigasi Utama">
+<nav class="lt-navbar navbar navbar-expand-lg navbar-light" aria-label="Navigasi Utama">
     <div class="container">
         <a class="navbar-brand" href="index.php">
             <span class="brand-mark" aria-hidden="true">LT</span>
