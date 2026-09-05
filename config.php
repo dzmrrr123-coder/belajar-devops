@@ -30,9 +30,8 @@ if (file_exists(__DIR__ . '/.env')) {
     }
 }
 
-// 2. Set session save path on serverless environment (Vercel)
-if (getenv('VERCEL') && !is_dir('/tmp/sessions')) {
-    @mkdir('/tmp/sessions', 0777, true);
+// 2. Set session save path if writable /tmp/sessions exists
+if (is_dir('/tmp/sessions') && is_writable('/tmp/sessions')) {
     ini_set('session.save_path', '/tmp/sessions');
 }
 

@@ -1,7 +1,10 @@
 FROM php:8.2-apache
 
-# Install mysqli & session extensions
-RUN docker-php-ext-install mysqli session && docker-php-ext-enable mysqli
+# Install mysqli extension (session is built-in)
+RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
+
+# Setup writable session directory
+RUN mkdir -p /tmp/sessions && chmod 777 /tmp/sessions
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
