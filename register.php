@@ -78,15 +78,13 @@ require_once 'includes/navbar.php';
 <main class="auth-wrapper" role="main">
     <div class="auth-box" style="max-width: 480px;">
         <div class="text-center mb-4">
-            <div class="d-inline-flex p-3 rounded-circle mb-3" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3);">
-                <i class="fas fa-user-astronaut text-emerald" style="font-size: 2.2rem;"></i>
-            </div>
-            <h1 class="h3 fw-bold mb-1">Mulai Petualangan <span class="text-gradient">DevOps</span></h1>
-            <p class="text-secondary small mb-0">Daftar sekarang dan selesaikan 14 quest roadmap 3 bulan</p>
+            <div class="brand-mark mx-auto mb-3" style="width: 40px; height: 40px; font-size: 0.9rem;" aria-hidden="true">LT</div>
+            <h1 class="h3 fw-bold mb-1">Buat akun baru</h1>
+            <p class="text-secondary small mb-0">Daftar dan mulai roadmap DevOps 12 minggu</p>
         </div>
 
         <?php if ($error): ?>
-            <div class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 small border-0 mb-4" role="alert" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-radius: var(--radius-sm);">
+            <div class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 small mb-4" role="alert">
                 <i class="fas fa-exclamation-triangle"></i>
                 <div><?= htmlspecialchars($error) ?></div>
             </div>
@@ -98,7 +96,7 @@ require_once 'includes/navbar.php';
             <div class="mb-3">
                 <label for="reg-username" class="form-label">Username</label>
                 <div class="input-group">
-                    <span class="input-group-text border-0" style="background: rgba(15, 23, 42, 0.9); color: var(--text-muted);"><i class="fas fa-user"></i></span>
+                    <span class="input-group-text"><i class="fas fa-user"></i></span>
                     <input type="text" name="username" id="reg-username" class="form-control" placeholder="Contoh: devops_ranger" required autofocus value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
                 </div>
                 <div class="form-text text-secondary" style="font-size: 0.75rem;">Hanya huruf, angka, dan underscore (_). Min 3 karakter.</div>
@@ -107,7 +105,7 @@ require_once 'includes/navbar.php';
             <div class="mb-3">
                 <label for="reg-email" class="form-label">Alamat Email</label>
                 <div class="input-group">
-                    <span class="input-group-text border-0" style="background: rgba(15, 23, 42, 0.9); color: var(--text-muted);"><i class="fas fa-envelope"></i></span>
+                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
                     <input type="email" name="email" id="reg-email" class="form-control" placeholder="kamu@email.com" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
                 </div>
             </div>
@@ -132,7 +130,7 @@ require_once 'includes/navbar.php';
             </button>
         </form>
 
-        <div class="mt-4 pt-3 border-top text-center" style="border-color: var(--border-subtle) !important;">
+        <div class="mt-4 pt-3 border-top text-center">
             <p class="text-secondary small mb-2">Sudah punya akun sebelumnya?</p>
             <a href="login.php" class="btn btn-cyber-outline btn-sm w-100">
                 <i class="fas fa-sign-in-alt me-1"></i> Masuk ke Akun

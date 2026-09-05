@@ -108,15 +108,10 @@ require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
-    <div class="questions-hero card p-4 p-md-5 mb-4">
-        <div class="overview-kicker">Learning workspace <span class="overview-dot" aria-hidden="true"></span> Review queue</div>
-        <div class="d-flex flex-column flex-lg-row justify-content-between gap-4 mt-2">
-            <div>
-                <h1 class="h3 fw-bold mb-2">Questions</h1>
-                <p class="text-secondary mb-0">Simpan hal yang belum jelas tanpa memutus fokus belajar. Review kembali saat kamu siap.</p>
-            </div>
-            <div class="question-summary"><strong><?= count($questions) ?></strong><span>Pertanyaan ditampilkan</span></div>
-        </div>
+    <div class="page-head">
+        <div class="page-kicker"><?= count($questions) ?> pertanyaan ditampilkan</div>
+        <h1 class="page-title">Questions</h1>
+        <p class="page-desc">Simpan hal yang belum jelas tanpa memutus fokus. Review kembali saat siap.</p>
     </div>
 
     <div class="row g-4 align-items-start">

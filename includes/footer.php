@@ -23,6 +23,27 @@ $flash = get_flash();
         </div>
     </footer>
 
+    <?php if (is_logged_in()):
+        $current_page = $current_page ?? basename($_SERVER['PHP_SELF'] ?? '');
+        $tabs = [
+            ['index.php', 'fas fa-grid-2', 'Overview'],
+            ['quests.php', 'fas fa-map', 'Roadmap'],
+            ['timer.php', 'fas fa-clock', 'Fokus'],
+            ['errors.php', 'fas fa-note-sticky', 'Notes'],
+            ['questions.php', 'fas fa-circle-question', 'Tanya'],
+        ];
+    ?>
+    <nav class="mobile-tabbar" aria-label="Navigasi cepat">
+        <?php foreach ($tabs as [$href, $icon, $label]):
+            $is_active = $current_page === $href;
+        ?>
+        <a href="<?= $href ?>" class="tabbar-link <?= $is_active ? 'active' : '' ?>" <?= $is_active ? 'aria-current="page"' : '' ?>>
+            <i class="<?= $icon ?>" aria-hidden="true"></i><span><?= $label ?></span>
+        </a>
+        <?php endforeach; ?>
+    </nav>
+    <?php endif; ?>
+
     <!-- Toast container for live notifications -->
     <div class="toast-container" aria-live="polite" aria-atomic="true"></div>
 

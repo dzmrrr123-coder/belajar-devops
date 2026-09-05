@@ -115,56 +115,17 @@ require_once 'includes/navbar.php';
 ?>
 
 <main class="container py-4" role="main">
-    <!-- Header Banner -->
-    <div class="notes-hero card p-4 mb-4">
-        <div class="row align-items-center g-4">
-            <div class="col-lg-7">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <span class="badge" style="background: rgba(244, 63, 94, 0.2); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.4);">
-                        <i class="fas fa-note-sticky me-1"></i> Notes & Errors
-                    </span>
-                    <span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fde68a;">
-                        Dokumentasi pembelajaran
-                    </span>
-                </div>
-                <h1 class="h3 fw-bold mb-2">Notes & solusi belajar</h1>
-                <p class="text-secondary small mb-0">
-                    Simpan error, insight, dan solusi agar pengalaman belajar bisa kamu gunakan kembali saat dibutuhkan.
-                </p>
-            </div>
-
-            <div class="col-lg-5">
-                <div class="row g-2 text-center">
-                    <div class="col-4">
-                        <div class="p-3 rounded" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle);">
-                            <div class="text-white fw-bold fs-4"><?= $total_errors ?></div>
-                            <div class="text-secondary small">Total Error</div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-3 rounded" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle);">
-                            <div class="text-emerald fw-bold fs-4"><?= $solved_errors ?></div>
-                            <div class="text-secondary small">Terselesaikan</div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-3 rounded" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle);">
-                            <div class="text-gold fw-bold fs-4">+<?= $total_errors * 5 ?></div>
-                            <div class="text-secondary small">XP Didapat</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="page-head">
+        <div class="page-kicker"><?= $total_errors ?> catatan · <?= $solved_errors ?> ada solusi</div>
+        <h1 class="page-title">Notes & solusi</h1>
+        <p class="page-desc">Simpan error dan solusi agar bisa dipakai lagi. Setiap catatan baru +5 XP.</p>
     </div>
 
     <div class="row g-4">
         <!-- Form Add Error -->
         <div class="col-lg-4">
             <div class="card p-4 sticky-top" style="top: 80px;">
-                <h2 class="h5 fw-bold mb-1 d-flex align-items-center gap-2">
-                    <i class="fas fa-plus-circle text-primary"></i> Tambah catatan
-                </h2>
+                <h2 class="section-title mb-1">Tambah catatan</h2>
                 <p class="text-secondary small mb-3">Dokumentasikan kendala teknis dan solusi yang berhasil kamu temukan.</p>
 
                 <form method="POST" action="errors.php">
@@ -210,25 +171,27 @@ require_once 'includes/navbar.php';
         <!-- Error List & Filter -->
         <div class="col-lg-8">
             <!-- Search & Filter Bar -->
-            <div class="card p-3 mb-4">
+            <div class="mb-4">
                 <div class="row g-3 align-items-center">
                     <div class="col-md-6">
                         <div class="input-group">
-                            <span class="input-group-text border-0" style="background: rgba(15, 23, 42, 0.9); color: var(--text-muted);"><i class="fas fa-search"></i></span>
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
                             <input type="text" id="errorSearch" class="form-control" placeholder="Cari pesan error, solusi, atau tag..." oninput="filterErrors()">
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="d-flex flex-wrap align-items-center justify-content-md-end gap-2">
-                            <button type="button" class="filter-pill active" onclick="filterByCat('all', this)">Semua Tag</button>
-                            <button type="button" class="filter-pill" onclick="filterBySolved('solved', this)"><i class="fas fa-check text-emerald me-1"></i> Solved</button>
-                            <button type="button" class="filter-pill" onclick="filterBySolved('unsolved', this)"><i class="fas fa-clock text-warning me-1"></i> Pending</button>
+                        <div class="d-flex justify-content-md-end">
+                            <div class="segmented" role="group" aria-label="Filter status solusi">
+                                <button type="button" class="filter-pill active" onclick="filterByCat('all', this)">Semua</button>
+                                <button type="button" class="filter-pill" onclick="filterBySolved('solved', this)">Ada solusi</button>
+                                <button type="button" class="filter-pill" onclick="filterBySolved('unsolved', this)">Belum ada</button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Categories Quick Pills -->
-                <div class="mt-3 pt-3 border-top filter-pills" style="border-color: var(--border-subtle) !important;">
+                <div class="mt-3 pt-3 border-top filter-pills">
                     <?php 
                     $cats = ['MySQL', 'PHP', 'Laravel', 'Docker', 'Linux', 'Git', 'AWS', 'General'];
                     foreach ($cats as $c): 
@@ -250,19 +213,8 @@ require_once 'includes/navbar.php';
                     ?>
                         <div class="error-card" data-category="<?= htmlspecialchars($category_val) ?>" data-solved="<?= $has_solution ? 'solved' : 'unsolved' ?>">
                             <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge bg-dark border border-secondary text-light px-2 py-1" style="font-size: 0.75rem;">
-                                        <i class="fas fa-tag me-1 text-cyan"></i> <?= htmlspecialchars($category_val) ?>
-                                    </span>
-                                    <?php if ($has_solution): ?>
-                                        <span class="badge bg-success bg-opacity-25 text-emerald border border-success border-opacity-25 px-2 py-1" style="font-size: 0.72rem;">
-                                            <i class="fas fa-check-circle me-1"></i> Solved
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="badge bg-warning bg-opacity-25 text-gold border border-warning border-opacity-25 px-2 py-1" style="font-size: 0.72rem;">
-                                            <i class="fas fa-hourglass-half me-1"></i> Belum ada solusi
-                                        </span>
-                                    <?php endif; ?>
+                                <div class="small text-secondary">
+                                    <?= htmlspecialchars($category_val) ?> · <?= date('d M Y', strtotime($err['created_at'])) ?> · <?= $has_solution ? 'Ada solusi' : 'Belum ada solusi' ?>
                                 </div>
 
                                 <div class="d-flex align-items-center gap-1">
@@ -280,7 +232,7 @@ require_once 'includes/navbar.php';
 
                             <!-- Error Message -->
                             <div class="mb-2">
-                                <div class="text-secondary small fw-bold mb-1"><i class="fas fa-exclamation-triangle text-danger me-1"></i> Error:</div>
+                                <div class="small text-secondary mb-1">Error</div>
                                 <div class="code-snippet error-text"><?= htmlspecialchars($err['error_message']) ?></div>
                             </div>
 
@@ -288,7 +240,7 @@ require_once 'includes/navbar.php';
                             <?php if ($has_solution): ?>
                                 <div class="mb-2">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-secondary small fw-bold"><i class="fas fa-check-circle text-emerald me-1"></i> Solusi:</span>
+                                        <span class="small text-secondary">Solusi</span>
                                         <button type="button" class="btn btn-link btn-sm p-0 text-secondary text-decoration-none small copy-btn" onclick="copyToClipboard(<?= htmlspecialchars(json_encode($err['solution'])) ?>, this)">
                                             <i class="far fa-copy me-1"></i> Salin Solusi
                                         </button>
@@ -297,21 +249,11 @@ require_once 'includes/navbar.php';
                                 </div>
                             <?php endif; ?>
 
-                            <!-- Reference & Footer -->
-                            <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 pt-2 border-top" style="border-color: var(--border-subtle) !important;">
-                                <div>
-                                    <?php if (!empty($err['reference_link'])): ?>
-                                        <a href="<?= htmlspecialchars($err['reference_link']) ?>" target="_blank" rel="noopener noreferrer" class="small text-cyan text-decoration-none">
-                                            <i class="fas fa-external-link-alt me-1"></i> Referensi / Dokumentasi
-                                        </a>
-                                    <?php else: ?>
-                                        <span class="small text-muted fst-italic">Tidak ada link referensi</span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="small text-muted">
-                                    <i class="far fa-clock me-1"></i> <?= date('d M Y, H:i', strtotime($err['created_at'])) ?>
-                                </div>
+                            <?php if (!empty($err['reference_link'])): ?>
+                            <div class="mt-3 pt-2 border-top">
+                                <a href="<?= htmlspecialchars($err['reference_link']) ?>" target="_blank" rel="noopener noreferrer" class="small text-secondary text-decoration-none">Referensi <i class="fas fa-arrow-up-right-from-square ms-1" aria-hidden="true" style="font-size:.7rem"></i></a>
                             </div>
+                            <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
@@ -336,8 +278,8 @@ require_once 'includes/navbar.php';
 <!-- Edit Modal -->
 <div class="modal fade" id="editErrorModal" tabindex="-1" aria-labelledby="editErrorModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: #fff; border-radius: var(--radius-md);">
-            <div class="modal-header border-bottom" style="border-color: var(--border-subtle) !important;">
+        <div class="modal-content">
+            <div class="modal-header border-bottom">
                 <h2 class="modal-title h6 fw-bold" id="editErrorModalLabel"><i class="fas fa-pencil-alt text-primary me-2"></i> Edit Catatan Error</h2>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -376,7 +318,7 @@ require_once 'includes/navbar.php';
                         <input type="url" name="reference_link" id="modalRef" class="form-control">
                     </div>
                 </div>
-                <div class="modal-footer border-top" style="border-color: var(--border-subtle) !important;">
+                <div class="modal-footer border-top">
                     <button type="button" class="btn btn-cyber-outline btn-sm" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" name="update_error" class="btn btn-cyber btn-sm">Simpan Perubahan</button>
                 </div>
@@ -400,16 +342,30 @@ function openEditModal(err) {
     modal.show();
 }
 
+function clearSegmented(except) {
+    document.querySelectorAll('.segmented .filter-pill').forEach(b => {
+        if (b !== except) b.classList.remove('active');
+    });
+}
+
 function filterByCat(cat, btn) {
-    activeCat = cat;
-    document.querySelectorAll('.filter-pills button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    if (btn.closest('.segmented') && cat === 'all') {
+        activeCat = 'all';
+        activeSolved = 'all';
+        document.querySelectorAll('.filter-pills button').forEach(b => b.classList.remove('active'));
+        clearSegmented(btn);
+        btn.classList.add('active');
+    } else {
+        activeCat = cat;
+        document.querySelectorAll('.filter-pills button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
     applyErrorFilters();
 }
 
 function filterBySolved(solved, btn) {
     activeSolved = solved;
-    btn.parentElement.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+    clearSegmented(btn);
     btn.classList.add('active');
     applyErrorFilters();
 }

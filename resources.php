@@ -41,71 +41,34 @@ require_once 'includes/navbar.php';
 ?>
 
 <main class="container py-4" role="main">
-    <!-- Header Banner -->
-    <div class="resources-hero card p-4 mb-4">
-        <div class="row align-items-center g-4">
-            <div class="col-lg-7">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <span class="badge" style="background: rgba(6, 182, 212, 0.2); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.4);">
-                        <i class="fas fa-gem me-1"></i> Terkurasi & Berkualitas Tinggi
-                    </span>
-                    <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc;">
-                        Roadmap 12 Minggu
-                    </span>
-                </div>
-                <h1 class="h3 fw-bold mb-2">Resources <span class="text-gradient">DevOps & Backend</span></h1>
-                <p class="text-secondary small mb-0">
-                    Referensi resmi, tutorial video terbaik, dan latihan interaktif yang dirancang khusus untuk memandu kamu menyelesaikan setiap quest mingguan tanpa tersesat.
-                </p>
-            </div>
-
-            <div class="col-lg-5">
-                <div class="row g-2 text-center">
-                    <div class="col-4">
-                        <div class="p-3 rounded" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle);">
-                            <div class="text-danger fw-bold fs-4"><?= $video_count ?></div>
-                            <div class="text-secondary small">Video</div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-3 rounded" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle);">
-                            <div class="text-cyan fw-bold fs-4"><?= $docs_count ?></div>
-                            <div class="text-secondary small">Dokumentasi</div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-3 rounded" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle);">
-                            <div class="text-emerald fw-bold fs-4"><?= $practice_count ?></div>
-                            <div class="text-secondary small">Praktek / Lab</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="page-head">
+        <div class="page-kicker">Referensi terkurasi · <?= $total_count ?> materi</div>
+        <h1 class="page-title">Resources DevOps & backend</h1>
+        <p class="page-desc">Video, dokumentasi resmi, dan latihan pendamping setiap quest. <?= $video_count ?> video · <?= $docs_count ?> dokumen · <?= $practice_count ?> praktek.</p>
     </div>
 
-    <!-- Search and Filters -->
-    <div class="card p-3 mb-4">
+    <div class="mb-4">
         <div class="row g-3 align-items-center">
             <div class="col-md-6">
                 <div class="input-group">
-                    <span class="input-group-text border-0" style="background: rgba(15, 23, 42, 0.9); color: var(--text-muted);"><i class="fas fa-search"></i></span>
-                    <input type="text" id="resourceSearch" class="form-control" placeholder="Cari materi (misal: Docker, Laravel, SQL, Nginx)..." oninput="filterResources()">
+                    <span class="input-group-text"><i class="fas fa-search" aria-hidden="true"></i></span>
+                    <input type="search" id="resourceSearch" class="form-control" placeholder="Cari materi…" aria-label="Cari materi" oninput="filterResources()">
                 </div>
             </div>
             <div class="col-md-6">
-                <div class="d-flex flex-wrap align-items-center justify-content-md-end gap-2">
-                    <button type="button" class="filter-pill active" onclick="filterByType('all', this)">Semua Tipe</button>
-                    <button type="button" class="filter-pill" onclick="filterByType('video', this)"><i class="fab fa-youtube text-danger me-1"></i> Video</button>
-                    <button type="button" class="filter-pill" onclick="filterByType('dokumentasi', this)"><i class="fas fa-book text-cyan me-1"></i> Dokumen</button>
-                    <button type="button" class="filter-pill" onclick="filterByType('praktek', this)"><i class="fas fa-laptop-code text-emerald me-1"></i> Praktek</button>
+                <div class="d-flex justify-content-md-end">
+                    <div class="segmented" role="group" aria-label="Filter tipe materi">
+                        <button type="button" class="filter-pill active" onclick="filterByType('all', this)">Semua</button>
+                        <button type="button" class="filter-pill" onclick="filterByType('video', this)">Video</button>
+                        <button type="button" class="filter-pill" onclick="filterByType('dokumentasi', this)">Dokumen</button>
+                        <button type="button" class="filter-pill" onclick="filterByType('praktek', this)">Praktek</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Week pills filter -->
-        <div class="mt-3 pt-3 border-top filter-pills" style="border-color: var(--border-subtle) !important;">
-            <a href="resources.php" class="filter-pill <?= $week_filter === 0 ? 'active' : '' ?>">Semua Minggu</a>
+        <div class="mt-3 filter-pills" role="group" aria-label="Filter minggu">
+            <a href="resources.php" class="filter-pill <?= $week_filter === 0 ? 'active' : '' ?>">Semua minggu</a>
             <?php for ($w = 1; $w <= 12; $w++): ?>
                 <a href="resources.php?week=<?= $w ?>" class="filter-pill <?= $week_filter === $w ? 'active' : '' ?>">Minggu <?= $w ?></a>
             <?php endfor; ?>
@@ -116,57 +79,27 @@ require_once 'includes/navbar.php';
     <div id="resourceContainer">
         <?php if (!empty($resources_by_week)): ?>
             <?php foreach ($resources_by_week as $w_num => $w_items): ?>
-                <div class="resource-week-group mb-5" data-week="<?= $w_num ?>">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <span class="badge" style="background: var(--primary-gradient); font-size: 0.85rem; padding: 6px 14px; border-radius: 8px;">
-                            Minggu <?= $w_num ?>
-                        </span>
-                        <div class="flex-grow-1 border-bottom" style="border-color: var(--border-subtle) !important;"></div>
-                        <span class="text-secondary small fw-semibold"><?= count($w_items) ?> Materi</span>
+                <section class="week-block resource-week-group" data-week="<?= $w_num ?>" aria-label="Minggu <?= $w_num ?>">
+                    <div class="week-block-head">
+                        <span class="week-tag">Minggu <?= $w_num ?></span>
+                        <span class="week-count"><?= count($w_items) ?> materi</span>
+                        <span class="rule" aria-hidden="true"></span>
                     </div>
 
-                    <div class="row g-3">
-                        <?php foreach ($w_items as $res): 
-                            $badge_class = 'badge-dokumentasi';
-                            $type_icon = 'fas fa-book';
-                            if ($res['type'] === 'video') {
-                                $badge_class = 'badge-video';
-                                $type_icon = 'fab fa-youtube';
-                            } elseif ($res['type'] === 'praktek') {
-                                $badge_class = 'badge-praktek';
-                                $type_icon = 'fas fa-laptop-code';
-                            }
-                        ?>
-                            <div class="col-md-6 col-lg-4 resource-item" data-type="<?= htmlspecialchars($res['type']) ?>">
-                                <div class="resource-card">
-                                    <div>
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span class="resource-type-badge <?= $badge_class ?>">
-                                                <i class="<?= $type_icon ?>"></i> <?= ucfirst($res['type']) ?>
-                                            </span>
-                                            <span class="badge bg-dark border border-secondary text-secondary" style="font-size: 0.7rem;">
-                                                M-<?= $res['week'] ?>
-                                            </span>
-                                        </div>
-
-                                        <h2 class="h6 fw-bold mb-2 text-white resource-title">
-                                            <?= htmlspecialchars($res['title']) ?>
-                                        </h2>
+                    <div>
+                        <?php foreach ($w_items as $res): ?>
+                            <div class="resource-item" data-type="<?= htmlspecialchars($res['type']) ?>">
+                                <a class="list-row" href="<?= htmlspecialchars($res['url']) ?>" target="_blank" rel="noopener noreferrer">
+                                    <div class="list-main">
+                                        <p class="list-title"><?= htmlspecialchars($res['title']) ?></p>
+                                        <p class="list-meta"><?= htmlspecialchars(ucfirst($res['type'])) ?> · Minggu <?= (int)$res['week'] ?></p>
                                     </div>
-
-                                    <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top" style="border-color: var(--border-subtle) !important;">
-                                        <button type="button" class="btn btn-link btn-sm p-0 text-secondary text-decoration-none small" onclick="copyToClipboard(<?= htmlspecialchars(json_encode($res['url'])) ?>, this)">
-                                            <i class="far fa-copy me-1"></i> Salin URL
-                                        </button>
-                                        <a href="<?= htmlspecialchars($res['url']) ?>" target="_blank" rel="noopener noreferrer" class="btn btn-cyber-outline btn-sm py-1 px-2" style="font-size: 0.78rem;">
-                                            <span>Buka Sumber</span> <i class="fas fa-arrow-up-right-from-square ms-1"></i>
-                                        </a>
-                                    </div>
-                                </div>
+                                    <i class="fas fa-arrow-up-right-from-square list-chev" aria-hidden="true"></i>
+                                </a>
                             </div>
                         <?php endforeach; ?>
                     </div>
-                </div>
+                </section>
             <?php endforeach; ?>
         <?php else: ?>
             <div class="card p-5 text-center empty-state">
@@ -213,7 +146,7 @@ function applyResourceFilters() {
 
         items.forEach(item => {
             const itemType = item.getAttribute('data-type');
-            const title = (item.querySelector('.resource-title')?.textContent || '').toLowerCase();
+            const title = (item.querySelector('.list-title')?.textContent || '').toLowerCase();
 
             const matchType = (activeType === 'all' || activeType === itemType);
             const matchQuery = (!query || title.includes(query));

@@ -97,13 +97,7 @@ require_once 'includes/navbar.php';
                     </button>
                 </div>
 
-                <!-- Reward Banner -->
-                <div class="p-3 rounded mx-auto" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); max-width: 480px;">
-                    <div class="d-flex align-items-center justify-content-center gap-2 text-warning small fw-semibold">
-                        <i class="fas fa-gift"></i>
-                        <span>Selesaikan satu sesi fokus 25 menit untuk menjaga momentum belajar.</span>
-                    </div>
-                </div>
+                <p class="text-secondary small text-center mb-0 mx-auto" style="max-width: 480px;">Selesaikan satu sesi fokus 25 menit untuk +10 XP.</p>
             </div>
         </div>
 
@@ -116,19 +110,19 @@ require_once 'includes/navbar.php';
                 </h2>
                 <div class="row g-2 text-center mb-3">
                     <div class="col-6">
-                        <div class="p-3 rounded" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);">
+                        <div class="p-3 session-row">
                             <div class="fs-4 fw-bold text-emerald" id="todaySessionsCount"><?= (int)$today_stats['today_sessions'] ?></div>
                             <div class="text-secondary small">Sesi Selesai</div>
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="p-3 rounded" style="background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.25);">
+                        <div class="p-3 session-row">
                             <div class="fs-4 fw-bold text-cyan" id="todayMinutesCount"><?= (int)$today_stats['today_minutes'] ?></div>
                             <div class="text-secondary small">Menit Fokus</div>
                         </div>
                     </div>
                 </div>
-                <div class="d-flex justify-content-between text-secondary small pt-2 border-top" style="border-color: var(--border-subtle) !important;">
+                <div class="d-flex justify-content-between text-secondary small pt-2 border-top">
                     <span>Total Sepanjang Waktu:</span>
                     <strong class="text-white"><?= (int)$all_stats['total_sessions'] ?> sesi (<?= round((int)$all_stats['total_minutes'] / 60, 1) ?> jam)</strong>
                 </div>
@@ -142,7 +136,7 @@ require_once 'includes/navbar.php';
                 <div id="recentSessionsList" class="d-flex flex-column gap-2">
                     <?php if (!empty($recent_sessions)): ?>
                         <?php foreach ($recent_sessions as $sess): ?>
-                            <div class="p-2 px-3 rounded d-flex justify-content-between align-items-center" style="background: rgba(30, 41, 59, 0.5); border: 1px solid var(--border-subtle);">
+                            <div class="session-row p-2 px-3 d-flex justify-content-between align-items-center">
                                 <div class="d-flex align-items-center gap-2 small">
                                     <i class="fas fa-check-circle text-emerald"></i>
                                     <span><?= (int)$sess['duration_minutes'] ?> Menit Selesai</span>
@@ -289,9 +283,7 @@ function sessionCompleted() {
                 const now = new Date();
                 const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
                 const item = document.createElement('div');
-                item.className = 'p-2 px-3 rounded d-flex justify-content-between align-items-center';
-                item.style.background = 'rgba(30, 41, 59, 0.5)';
-                item.style.border = '1px solid var(--border-subtle)';
+                item.className = 'session-row p-2 px-3 d-flex justify-content-between align-items-center';
                 item.innerHTML = `
                     <div class="d-flex align-items-center gap-2 small">
                         <i class="fas fa-check-circle text-emerald"></i>

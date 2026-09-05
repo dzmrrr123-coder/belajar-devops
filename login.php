@@ -61,15 +61,13 @@ require_once 'includes/navbar.php';
 <main class="auth-wrapper" role="main">
     <div class="auth-box">
         <div class="text-center mb-4">
-            <div class="d-inline-flex p-3 rounded-circle mb-3" style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3);">
-                <i class="fas fa-gamepad text-primary" style="font-size: 2.2rem;"></i>
-            </div>
-            <h1 class="h3 fw-bold mb-1">Masuk ke <span class="text-gradient">Learn Tracker</span></h1>
-            <p class="text-secondary small mb-0">Lanjutkan quest dan bangun karir DevOps impianmu</p>
+            <div class="brand-mark mx-auto mb-3" style="width: 40px; height: 40px; font-size: 0.9rem;" aria-hidden="true">LT</div>
+            <h1 class="h3 fw-bold mb-1">Masuk ke Learn Tracker</h1>
+            <p class="text-secondary small mb-0">Lanjutkan quest dan streak belajarmu</p>
         </div>
 
         <?php if ($error): ?>
-            <div class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 small border-0 mb-4" role="alert" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-radius: var(--radius-sm);">
+            <div class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 small mb-4" role="alert">
                 <i class="fas fa-exclamation-triangle"></i>
                 <div><?= htmlspecialchars($error) ?></div>
             </div>
@@ -81,7 +79,7 @@ require_once 'includes/navbar.php';
             <div class="mb-3">
                 <label for="login-username" class="form-label">Username atau Email</label>
                 <div class="input-group">
-                    <span class="input-group-text border-0" style="background: rgba(15, 23, 42, 0.9); color: var(--text-muted);"><i class="fas fa-user"></i></span>
+                    <span class="input-group-text"><i class="fas fa-user"></i></span>
                     <input type="text" name="username" id="login-username" class="form-control" placeholder="Username atau email" required autofocus autocomplete="username" maxlength="255" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
                 </div>
             </div>
@@ -94,7 +92,7 @@ require_once 'includes/navbar.php';
                     </button>
                 </div>
                 <div class="input-group">
-                    <span class="input-group-text border-0" style="background: rgba(15, 23, 42, 0.9); color: var(--text-muted);"><i class="fas fa-lock"></i></span>
+                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
                     <input type="password" name="password" id="login-password" class="form-control" placeholder="Kata sandi" required autocomplete="current-password">
                 </div>
             </div>
@@ -104,7 +102,7 @@ require_once 'includes/navbar.php';
             </button>
         </form>
 
-        <div class="mt-4 pt-3 border-top text-center" style="border-color: var(--border-subtle) !important;">
+        <div class="mt-4 pt-3 border-top text-center">
             <p class="text-secondary small mb-2">Belum memiliki akun?</p>
             <a href="register.php" class="btn btn-cyber-outline btn-sm w-100">
                 <i class="fas fa-user-plus me-1"></i> Buat Akun Baru (Gratis)

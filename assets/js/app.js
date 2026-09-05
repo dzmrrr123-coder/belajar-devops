@@ -5,7 +5,8 @@
 // Audio Synthesizer via Web Audio API
 const SoundEffects = (function() {
     let audioCtx = null;
-    let isMuted = localStorage.getItem('lt_sound_muted') === 'true';
+    const _storedMute = localStorage.getItem('lt_sound_muted');
+    let isMuted = _storedMute === null ? true : _storedMute === 'true';
 
     function getContext() {
         if (!audioCtx) {
@@ -197,6 +198,7 @@ function copyToClipboard(text, btnElement) {
 document.addEventListener('DOMContentLoaded', function() {
     const main = document.querySelector('main');
     if (main && !main.id) main.id = 'main';
+    document.querySelectorAll('.lt-nav-link.active').forEach(a => a.setAttribute('aria-current', 'page'));
     // Sound Toggle Button listener
     const soundToggle = document.getElementById('ltSoundToggle');
     if (soundToggle) {
@@ -257,10 +259,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             submitBtn.innerHTML = '<i class="fas fa-check"></i>';
                             submitBtn.title = 'Batalkan selesai';
                         }
-                        SoundEffects.questComplete();
-                        triggerConfetti(data.leveled_up);
                         if (data.leveled_up) {
                             SoundEffects.levelUp();
+                            triggerConfetti(true);
+                        } else {
+                            SoundEffects.questComplete();
                         }
                     } else {
                         if (questItem) {

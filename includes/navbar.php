@@ -65,43 +65,30 @@ if (is_logged_in()) {
                     </li>
                 </ul>
 
-                <!-- HUD Status & User Profile -->
                 <div class="d-flex align-items-center flex-wrap gap-2 mt-2 mt-lg-0">
                     <div class="hud-pill streak" title="Streak belajar">
                         <i class="fas fa-fire" aria-hidden="true"></i>
                         <span id="hudStreak"><?= (int)$hud_user['streak'] ?> hari</span>
                     </div>
 
-                    <!-- Level HUD -->
-                    <div class="hud-pill level" title="Level Anda">
-                        <i class="fas fa-shield-alt text-emerald"></i>
-                        <span id="hudLevel">Lv. <?= $hud_level ?></span>
-                    </div>
-
-                    <!-- XP HUD -->
-                    <div class="hud-pill xp" title="Total Pengalaman (XP)">
-                        <i class="fas fa-bolt text-gold"></i>
-                        <span id="hudXp"><?= (int)$hud_user['xp'] ?> XP</span>
-                    </div>
-
-                    <!-- Audio Toggle Button -->
-                    <button id="ltSoundToggle" class="btn btn-cyber-outline btn-sm py-1 px-2" type="button" title="Toggle Suara">
-                        <i class="fas fa-volume-up text-cyan"></i>
+                    <button id="ltSoundToggle" class="btn btn-cyber-outline btn-sm py-1 px-2" type="button" title="Toggle Suara" aria-label="Toggle suara">
+                        <i class="fas fa-volume-up" aria-hidden="true"></i>
                     </button>
 
                     <!-- User Dropdown -->
                     <div class="dropdown">
                         <button class="btn btn-cyber-outline btn-sm dropdown-toggle py-1 px-2 d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 26px; height: 26px; font-size: 0.75rem;">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 26px; height: 26px; font-size: 0.75rem; background: var(--primary); color: #fff;">
                                 <?= strtoupper(substr($hud_user['username'], 0, 1)) ?>
                             </div>
                             <span class="d-none d-md-inline fw-semibold"><?= htmlspecialchars($hud_user['username']) ?></span>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark p-2" style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); min-width: 220px;">
+                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark p-2" style="min-width: 240px;">
                             <li class="px-3 py-2 border-bottom border-secondary mb-2">
                                 <div class="fw-bold text-white"><?= htmlspecialchars($hud_user['username']) ?></div>
-                                <div class="small text-secondary"><?= htmlspecialchars($hud_user['email']) ?></div>
-                                <div class="badge bg-primary text-white mt-1"><?= $hud_rank ?></div>
+                                <div class="small text-secondary mb-2"><?= htmlspecialchars($hud_user['email']) ?></div>
+                                <div class="hud-menu-stat"><div class="lbl">Level · <?= htmlspecialchars($hud_rank) ?></div><div class="val" id="hudLevel">Lv. <?= $hud_level ?></div></div>
+                                <div class="hud-menu-stat mb-0"><div class="lbl">Pengalaman</div><div class="val" id="hudXp"><?= (int)$hud_user['xp'] ?> XP</div></div>
                             </li>
                             <li>
                                 <a class="dropdown-item rounded py-2 small" href="index.php"><i class="fas fa-chart-simple me-2 text-primary"></i>Overview saya</a>
