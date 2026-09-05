@@ -1,6 +1,12 @@
 <?php
 require_once 'config.php';
 
+try {
+    clear_remember_token(db_connect());
+} catch (Throwable $e) {
+    clear_remember_token();
+}
+
 // Unset all session variables
 $_SESSION = [];
 

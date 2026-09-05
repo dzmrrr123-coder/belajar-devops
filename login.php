@@ -34,7 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // Update streak on login
                     update_user_streak($conn, $user['id']);
-                    
+                    touch_login_time($conn, $user['id']);
+
+                    if (isset($_POST['remember'])) {
+                        create_remember_token($conn, $user['id']);
+                    }
+
                     set_flash('success', "Selamat datang kembali, {$user['username']}!");
                     session_regenerate_id(true);
                     redirect('index.php');
@@ -95,6 +100,11 @@ require_once 'includes/navbar.php';
                     <span class="input-group-text"><i class="fas fa-lock"></i></span>
                     <input type="password" name="password" id="login-password" class="form-control" placeholder="Kata sandi" required autocomplete="current-password">
                 </div>
+            </div>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="remember" id="remember-me" checked>
+                <label class="form-check-label small text-secondary" for="remember-me">Ingat saya di perangkat ini (30 hari)</label>
             </div>
 
             <button type="submit" class="btn btn-cyber w-100 py-2 mt-2">

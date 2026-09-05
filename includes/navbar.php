@@ -11,6 +11,16 @@ if (is_logged_in()) {
     $stmt->execute();
     $hud_user = $stmt->get_result()->fetch_assoc();
     $stmt->close();
+    $hud_last = null;
+    try {
+        $ls = $nav_conn->prepare("SELECT last_login_at FROM users WHERE id = ?");
+        if ($ls) {
+            $ls->bind_param("i", $u_id);
+            $ls->execute();
+            $hud_last = $ls->get_result()->fetch_assoc()['last_login_at'] ?? null;
+            $ls->close();
+        }
+    } catch (Throwable $e) {}
     $nav_conn->close();
 
     if ($hud_user) {
@@ -86,7 +96,8 @@ if (is_logged_in()) {
                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark p-2" style="min-width: 240px;">
                             <li class="px-3 py-2 border-bottom border-secondary mb-2">
                                 <div class="fw-bold text-white"><?= htmlspecialchars($hud_user['username']) ?></div>
-                                <div class="small text-secondary mb-2"><?= htmlspecialchars($hud_user['email']) ?></div>
+                                <div class="small text-secondary"><?= htmlspecialchars($hud_user['email']) ?></div>
+                                <div class="small text-secondary mb-2"><?= isset($hud_last) && $hud_last ? 'Terakhir aktif ' . htmlspecialchars(date('d M, H:i', strtotime($hud_last))) : 'Kunjungan pertama' ?></div>
                                 <div class="hud-menu-stat"><div class="lbl">Level · <?= htmlspecialchars($hud_rank) ?></div><div class="val" id="hudLevel">Lv. <?= $hud_level ?></div></div>
                                 <div class="hud-menu-stat mb-0"><div class="lbl">Pengalaman</div><div class="val" id="hudXp"><?= (int)$hud_user['xp'] ?> XP</div></div>
                             </li>

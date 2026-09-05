@@ -230,6 +230,16 @@ function ensure_database_schema($conn) {
             CONSTRAINT `fk_questions_quest` FOREIGN KEY (`quest_id`) REFERENCES `quests`(`id`) ON DELETE SET NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        $conn->query("CREATE TABLE IF NOT EXISTS `remember_tokens` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `selector` VARCHAR(24) NOT NULL UNIQUE,
+            `validator_hash` VARCHAR(64) NOT NULL,
+            `expires_at` DATETIME NOT NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_remember_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `last_login_at` DATETIME NULL");
         @$conn->query("CREATE INDEX idx_quests_week ON `quests` (`week`)");
         @$conn->query("CREATE INDEX idx_resources_week ON `resources` (`week`)");
         @$conn->query("CREATE INDEX idx_errors_user ON `errors` (`user_id`, `created_at`)");
@@ -539,4 +549,115 @@ function verify_csrf() {
             die("Error 403: Invalid CSRF Token request.");
         }
     }
+}
+
+define('REMEMBER_COOKIE', 'lt_remember');
+define('REMEMBER_DAYS', 30);
+
+function remember_cookie_opts($expire) {
+    return [
+        'expires' => $expire,
+        'path' => '/',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ];
+}
+
+function create_remember_token($conn, $user_id) {
+    try {
+        @$conn->query("DELETE FROM remember_tokens WHERE expires_at < NOW()");
+        $selector = bin2hex(random_bytes(12));
+        $validator = bin2hex(random_bytes(32));
+        $hash = hash('sha256', $validator);
+        $expires = date('Y-m-d H:i:s', time() + REMEMBER_DAYS * 86400);
+        $stmt = $conn->prepare("INSERT INTO remember_tokens (user_id, selector, validator_hash, expires_at) VALUES (?, ?, ?, ?)");
+        if (!$stmt) return;
+        $stmt->bind_param("isss", $user_id, $selector, $hash, $expires);
+        if ($stmt->execute()) {
+            setcookie(REMEMBER_COOKIE, $selector . ':' . $validator, remember_cookie_opts(time() + REMEMBER_DAYS * 86400));
+        }
+        $stmt->close();
+    } catch (Throwable $e) {
+        error_log("remember create: " . $e->getMessage());
+    }
+}
+
+function clear_remember_token($conn = null) {
+    $cookie = $_COOKIE[REMEMBER_COOKIE] ?? '';
+    $parts = explode(':', $cookie, 2);
+    if (count($parts) === 2 && $conn) {
+        try {
+            $stmt = $conn->prepare("DELETE FROM remember_tokens WHERE selector = ?");
+            if ($stmt) {
+                $stmt->bind_param("s", $parts[0]);
+                $stmt->execute();
+                $stmt->close();
+            }
+        } catch (Throwable $e) {
+            error_log("remember clear: " . $e->getMessage());
+        }
+    }
+    setcookie(REMEMBER_COOKIE, '', remember_cookie_opts(time() - 3600));
+    unset($_COOKIE[REMEMBER_COOKIE]);
+}
+
+function touch_login_time($conn, $user_id) {
+    try {
+        $stmt = $conn->prepare("UPDATE users SET last_login_at = NOW() WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } catch (Throwable $e) {
+        error_log("last_login touch: " . $e->getMessage());
+    }
+}
+
+function try_remember_login() {
+    if (!empty($_SESSION['user_id'])) return;
+    $cookie = $_COOKIE[REMEMBER_COOKIE] ?? '';
+    $parts = explode(':', $cookie, 2);
+    if (count($parts) !== 2 || !ctype_xdigit($parts[0]) || !ctype_xdigit($parts[1])) return;
+    list($selector, $validator) = $parts;
+    $conn = db_connect();
+    try {
+        $stmt = $conn->prepare("SELECT rt.user_id, rt.validator_hash, rt.expires_at, u.username FROM remember_tokens rt JOIN users u ON u.id = rt.user_id WHERE rt.selector = ?");
+        if (!$stmt) return;
+        $stmt->bind_param("s", $selector);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$row || strtotime($row['expires_at']) < time() || !hash_equals($row['validator_hash'], hash('sha256', $validator))) {
+            $del = $conn->prepare("DELETE FROM remember_tokens WHERE selector = ?");
+            if ($del) {
+                $del->bind_param("s", $selector);
+                $del->execute();
+                $del->close();
+            }
+            clear_remember_token();
+            return;
+        }
+        $user_id = (int)$row['user_id'];
+        $del = $conn->prepare("DELETE FROM remember_tokens WHERE selector = ?");
+        if ($del) {
+            $del->bind_param("s", $selector);
+            $del->execute();
+            $del->close();
+        }
+        create_remember_token($conn, $user_id);
+        session_regenerate_id(true);
+        $_SESSION['user_id'] = $user_id;
+        $_SESSION['username'] = $row['username'];
+        update_user_streak($conn, $user_id);
+        touch_login_time($conn, $user_id);
+        set_flash('success', "Selamat datang kembali, {$row['username']}!");
+    } catch (Throwable $e) {
+        error_log("remember login: " . $e->getMessage());
+    }
+}
+
+if (session_status() === PHP_SESSION_ACTIVE && empty($_SESSION['user_id']) && PHP_SAPI !== 'cli') {
+    try_remember_login();
 }
