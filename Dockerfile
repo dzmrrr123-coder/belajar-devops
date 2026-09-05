@@ -6,6 +6,9 @@ RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
 # Setup writable session directory
 RUN mkdir -p /tmp/sessions && chmod 777 /tmp/sessions
 
+# mod_php requires prefork: disable any other MPM, enable prefork only
+RUN a2dismod mpm_event mpm_worker 2>/dev/null || true; a2enmod mpm_prefork
+
 # Enable Apache mod_rewrite and configure ServerName
 RUN a2enmod rewrite && echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
