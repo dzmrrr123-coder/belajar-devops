@@ -117,6 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
         $stmt->bind_param('ii', $question_id, $user_id);
         $stmt->execute();
         $stmt->close();
+        delete_review($conn, $user_id, 'question', $question_id);
         set_flash('info', 'Pertanyaan dihapus.');
     }
     redirect('questions.php');

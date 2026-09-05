@@ -26,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($action === 'delete_custom') {
         $qid = (int)($_POST['quest_id'] ?? 0);
+        delete_review($conn, $user_id, 'quest', $qid);
         $stmt = $conn->prepare("DELETE FROM quests WHERE id = ? AND user_id = ? AND is_custom = 1");
         $stmt->bind_param("ii", $qid, $user_id);
         $stmt->execute();

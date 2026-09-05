@@ -115,6 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         $stmt->execute();
         $stmt->close();
 
+        delete_review($conn, $user_id, 'quest', $quest_id);
         $new_xp = max(0, $u_data['xp'] - $xp_reward);
         $new_level = calculate_level($new_xp);
         $new_streak = (int)$u_data['streak'];

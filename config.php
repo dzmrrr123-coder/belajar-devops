@@ -735,6 +735,15 @@ function quest_visible_where() {
     return "(q.user_id IS NULL OR q.user_id = ?)";
 }
 
+function delete_review($conn, $user_id, $source, $source_id) {
+    try {
+        $stmt = $conn->prepare("DELETE FROM reviews WHERE user_id = ? AND source = ? AND source_id = ?");
+        $stmt->bind_param("isi", $user_id, $source, $source_id);
+        $stmt->execute();
+        $stmt->close();
+    } catch (Throwable $e) {}
+}
+
 function review_next_interval($current) {
     foreach ([1, 3, 7, 14, 30] as $step) if ($current < $step) return $step;
     return 30;

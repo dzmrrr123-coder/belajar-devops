@@ -68,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
         $stmt->bind_param("ii", $id, $user_id);
         $stmt->execute();
         $stmt->close();
+        delete_review($conn, $user_id, 'error', $id);
         set_flash('info', "Catatan dihapus.");
     }
     redirect('errors.php');
