@@ -293,7 +293,7 @@ function sessionCompleted() {
                 list.insertBefore(item, list.firstChild);
             }
         })
-        .catch(err => console.error('Pomodoro record error:', err));
+        .catch(() => showToast('Sesi selesai, tetapi gagal tercatat. Refresh halaman.', 'warning'));
 
         // Switch to Short Break automatically
         switchMode('shortBreak', 5);

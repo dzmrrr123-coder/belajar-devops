@@ -43,9 +43,7 @@ const SoundEffects = (function() {
                 osc.start();
                 osc.stop(ctx.currentTime + duration);
             }, delay * 1000);
-        } catch (e) {
-            console.warn('Audio play error:', e);
-        }
+        } catch (e) {}
     }
 
     return {
