@@ -1,0 +1,9 @@
+{
+  "name": "dzmrrr123/learn-tracker",
+  "description": "Gamified DevOps Learning Platform",
+  "type": "project",
+  "require": {
+    "php": "^8.2",
+    "ext-mysqli": "*"
+  }
+}

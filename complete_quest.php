@@ -1,0 +1,147 @@
+<?php
+require_once 'config.php';
+require_login();
+
+$conn = db_connect();
+$user_id = (int)$_SESSION['user_id'];
+$is_ajax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
+    || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
+    // Verify CSRF for security
+    $token = $_POST['csrf_token'] ?? '';
+    if (empty($token) || !hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Invalid security token. Please refresh.']);
+            exit();
+        }
+        set_flash('danger', 'Token keamanan tidak valid.');
+        redirect('quests.php');
+    }
+
+    $quest_id = (int)$_POST['quest_id'];
+
+    // Fetch quest info
+    $stmt = $conn->prepare("SELECT id, title, xp_reward FROM quests WHERE id = ?");
+    $stmt->bind_param("i", $quest_id);
+    $stmt->execute();
+    $q_res = $stmt->get_result();
+    $quest = $q_res->fetch_assoc();
+    $stmt->close();
+
+    if (!$quest) {
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Quest tidak ditemukan!']);
+            exit();
+        }
+        set_flash('danger', 'Quest tidak ditemukan.');
+        redirect('quests.php');
+    }
+
+    $xp_reward = (int)$quest['xp_reward'];
+
+    // Check if already completed
+    $stmt = $conn->prepare("SELECT id FROM user_quests WHERE user_id = ? AND quest_id = ?");
+    $stmt->bind_param("ii", $user_id, $quest_id);
+    $stmt->execute();
+    $existing = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    $action = '';
+    $leveled_up = false;
+
+    // Get current user XP
+    $u_stmt = $conn->prepare("SELECT xp, streak FROM users WHERE id = ?");
+    $u_stmt->bind_param("i", $user_id);
+    $u_stmt->execute();
+    $u_data = $u_stmt->get_result()->fetch_assoc();
+    $u_stmt->close();
+
+    $old_level = calculate_level($u_data['xp']);
+
+    if (!$existing) {
+        // Complete Quest
+        $stmt = $conn->prepare("INSERT INTO user_quests (user_id, quest_id, completed_at) VALUES (?, ?, CURDATE())");
+        $stmt->bind_param("ii", $user_id, $quest_id);
+        $stmt->execute();
+        $stmt->close();
+
+        // Add XP
+        $stmt = $conn->prepare("UPDATE users SET xp = xp + ? WHERE id = ?");
+        $stmt->bind_param("ii", $xp_reward, $user_id);
+        $stmt->execute();
+        $stmt->close();
+
+        // Update streak
+        $new_streak = update_user_streak($conn, $user_id);
+        $action = 'completed';
+
+        // Check level up
+        $new_xp = $u_data['xp'] + $xp_reward;
+        $new_level = calculate_level($new_xp);
+        if ($new_level > $old_level) {
+            $leveled_up = true;
+        }
+
+        $msg = "🎉 Quest diselesaikan! +{$xp_reward} XP didapatkan!";
+        if ($leveled_up) {
+            $msg .= " 🚀 LEVEL UP! Kamu sekarang Level {$new_level} (" . get_user_rank($new_level) . ")!";
+        }
+        set_flash('success', $msg);
+    } else {
+        // Undo Quest completion
+        $stmt = $conn->prepare("DELETE FROM user_quests WHERE id = ?");
+        $stmt->bind_param("i", $existing['id']);
+        $stmt->execute();
+        $stmt->close();
+
+        // Deduct XP (never below 0)
+        $stmt = $conn->prepare("UPDATE users SET xp = GREATEST(0, xp - ?) WHERE id = ?");
+        $stmt->bind_param("ii", $xp_reward, $user_id);
+        $stmt->execute();
+        $stmt->close();
+
+        $new_xp = max(0, $u_data['xp'] - $xp_reward);
+        $new_level = calculate_level($new_xp);
+        $new_streak = (int)$u_data['streak'];
+        $action = 'uncompleted';
+
+        $msg = "Quest ditandai belum selesai. -{$xp_reward} XP disesuaikan.";
+        set_flash('info', $msg);
+    }
+
+    // Refresh user state for response
+    $stmt = $conn->prepare("SELECT xp, streak FROM users WHERE id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $updated_user = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    $conn->close();
+
+    if ($is_ajax) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'success',
+            'action' => $action,
+            'quest_id' => $quest_id,
+            'xp_reward' => $xp_reward,
+            'xp' => (int)$updated_user['xp'],
+            'level' => calculate_level($updated_user['xp']),
+            'level_title' => get_user_rank(calculate_level($updated_user['xp'])),
+            'level_progress' => level_progress_percent($updated_user['xp']),
+            'next_level_xp' => xp_to_next_level($updated_user['xp']),
+            'streak' => (int)$updated_user['streak'],
+            'leveled_up' => $leveled_up,
+            'message' => $msg
+        ]);
+        exit();
+    }
+} else {
+    $conn->close();
+}
+
+$redirect_url = !empty($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'quests.php';
+redirect($redirect_url);
