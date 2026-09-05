@@ -33,9 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
 
     $conn->begin_transaction();
     try {
-    // Fetch quest info
-    $stmt = $conn->prepare("SELECT id, title, xp_reward FROM quests WHERE id = ?");
-    $stmt->bind_param("i", $quest_id);
+    // Fetch quest info (global atau milik sendiri saja)
+    $stmt = $conn->prepare("SELECT id, title, xp_reward FROM quests WHERE id = ? AND (user_id IS NULL OR user_id = ?)");
+    $stmt->bind_param("ii", $quest_id, $user_id);
     $stmt->execute();
     $q_res = $stmt->get_result();
     $quest = $q_res->fetch_assoc();
@@ -62,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
 
     $action = '';
     $leveled_up = false;
+    $new_badges = [];
 
     // Get current user XP
     $u_stmt = $conn->prepare("SELECT xp, streak FROM users WHERE id = ?");
@@ -79,6 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         $stmt->execute();
         $stmt->close();
 
+        $mult = mission_multiplier($conn, $user_id);
+        $xp_reward = apply_xp_multiplier($xp_reward, $mult);
         // Add XP
         $stmt = $conn->prepare("UPDATE users SET xp = xp + ? WHERE id = ?");
         $stmt->bind_param("ii", $xp_reward, $user_id);
@@ -96,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
             $leveled_up = true;
         }
 
+        schedule_review($conn, $user_id, 'quest', $quest_id, $quest['title'] ?? 'Quest', '');
         $msg = "Quest diselesaikan! +{$xp_reward} XP.";
         if ($leveled_up) {
             $msg .= " Naik ke Level {$new_level} (" . get_user_rank($new_level) . ")!";
@@ -139,12 +143,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         $quests_done = (int)($cnt->get_result()->fetch_assoc()['done'] ?? 0);
         $cnt->close();
     }
-    $tot = $conn->query("SELECT COUNT(*) AS total FROM quests");
+    $tot = $conn->prepare("SELECT COUNT(*) AS total FROM quests WHERE user_id IS NULL OR user_id = ?");
     if ($tot) {
-        $quests_total = (int)($tot->fetch_assoc()['total'] ?? 0);
-        $tot->free();
+        $tot->bind_param("i", $user_id);
+        $tot->execute();
+        $quests_total = (int)($tot->get_result()->fetch_assoc()['total'] ?? 0);
+        $tot->close();
     }
 
+    if ($action === 'completed') $new_badges = check_and_unlock_badges($conn, $user_id);
     $conn->commit();
     } catch (Throwable $e) {
         $conn->rollback();
@@ -175,7 +182,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
             'leveled_up' => $leveled_up,
             'quests_done' => $quests_done,
             'quests_total' => $quests_total,
-            'message' => $msg
+            'new_badges' => $new_badges,
+            'message' => $msg . (!empty($new_badges) ? ' Badge baru: ' . implode(', ', $new_badges) . '!' : '')
         ]);
         exit();
     }

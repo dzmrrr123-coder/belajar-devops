@@ -30,7 +30,7 @@ $flash = get_flash();
             ['quests.php', 'fas fa-map', 'Roadmap'],
             ['timer.php', 'fas fa-clock', 'Fokus'],
             ['errors.php', 'fas fa-note-sticky', 'Notes'],
-            ['questions.php', 'fas fa-circle-question', 'Tanya'],
+            ['profile.php', 'fas fa-user', 'Profil'],
         ];
     ?>
     <nav class="mobile-tabbar" aria-label="Navigasi cepat">

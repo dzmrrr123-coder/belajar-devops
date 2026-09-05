@@ -20,15 +20,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_error']) || (iss
         $stmt = $conn->prepare("INSERT INTO errors (user_id, category, error_message, solution, reference_link) VALUES (?, ?, ?, ?, ?)");
         $stmt->bind_param("issss", $user_id, $category, $error_message, $solution, $reference);
         if ($stmt->execute()) {
-            // Reward +5 XP
-            $stmt_xp = $conn->prepare("UPDATE users SET xp = xp + 5 WHERE id = ?");
-            $stmt_xp->bind_param("i", $user_id);
+            $new_error_id = $stmt->insert_id;
+            $xp_gain = apply_xp_multiplier(5, mission_multiplier($conn, $user_id));
+            $stmt_xp = $conn->prepare("UPDATE users SET xp = xp + ? WHERE id = ?");
+            $stmt_xp->bind_param("ii", $xp_gain, $user_id);
             $stmt_xp->execute();
             $stmt_xp->close();
 
             update_user_streak($conn, $user_id);
+            schedule_review($conn, $user_id, 'error', (int)$new_error_id, $error_message, $solution);
+            $nb = check_and_unlock_badges($conn, $user_id);
 
-            set_flash('success', "Catatan berhasil disimpan. Kamu mendapatkan +5 XP.");
+            set_flash('success', "Catatan berhasil disimpan. +{$xp_gain} XP." . (!empty($nb) ? ' Badge: ' . implode(', ', $nb) . '!' : ''));
         } else {
             set_flash('danger', "Gagal menyimpan error ke database.");
         }

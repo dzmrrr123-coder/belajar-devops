@@ -7,6 +7,12 @@ if ($path === '/') {
     exit;
 }
 
+if (preg_match('#^/u/([a-zA-Z0-9_]+)/?$#', $path, $m)) {
+    $_GET['u'] = $m[1];
+    require __DIR__ . '/u.php';
+    exit;
+}
+
 if (is_file($file)) {
     if (str_ends_with($file, '.php')) {
         require $file;

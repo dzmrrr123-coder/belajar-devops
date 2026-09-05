@@ -34,30 +34,40 @@ $auto_week = min(12, max(1, (int)floor($days_diff / 7) + 1));
 // Allow manual week preview if selected
 $selected_week = isset($_GET['week']) ? max(1, min(12, (int)$_GET['week'])) : $auto_week;
 
-// Quests for selected week
+// Quests for selected week (global + milik sendiri)
 $stmt = $conn->prepare("
     SELECT q.*, uq.completed_at
     FROM quests q
     LEFT JOIN user_quests uq ON q.id = uq.quest_id AND uq.user_id = ?
-    WHERE q.week = ?
+    WHERE q.week = ? AND (q.user_id IS NULL OR q.user_id = ?)
     ORDER BY q.id ASC
 ");
-$stmt->bind_param("ii", $user_id, $selected_week);
+$stmt->bind_param("iii", $user_id, $selected_week, $user_id);
 $stmt->execute();
 $quests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
 // Total completed quests count
-$stmt = $conn->prepare("SELECT COUNT(*) as total_done FROM user_quests WHERE user_id = ?");
-$stmt->bind_param("i", $user_id);
+$stmt = $conn->prepare("SELECT COUNT(*) as total_done FROM user_quests uq JOIN quests q ON q.id = uq.quest_id WHERE uq.user_id = ? AND (q.user_id IS NULL OR q.user_id = ?)");
+$stmt->bind_param("ii", $user_id, $user_id);
 $stmt->execute();
 $total_done_res = $stmt->get_result()->fetch_assoc();
 $total_completed = (int)($total_done_res['total_done'] ?? 0);
 $stmt->close();
 
-// Total quests available
-$total_quests_cnt = (int)($conn->query("SELECT COUNT(*) as cnt FROM quests")->fetch_assoc()['cnt'] ?? 14);
+// Total quests available (global + custom sendiri)
+$stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM quests WHERE user_id IS NULL OR user_id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$total_quests_cnt = (int)($stmt->get_result()->fetch_assoc()['cnt'] ?? 14);
+$stmt->close();
 $overall_quest_percent = $total_quests_cnt > 0 ? round(($total_completed / $total_quests_cnt) * 100) : 0;
+$missions = get_daily_mission_status($conn, $user_id);
+$due_reviews = 0;
+try {
+    $dq = $conn->prepare("SELECT COUNT(*) c FROM reviews WHERE user_id = ? AND next_due <= CURDATE()");
+    if ($dq) { $dq->bind_param("i", $user_id); $dq->execute(); $due_reviews = (int)($dq->get_result()->fetch_assoc()['c'] ?? 0); $dq->close(); }
+} catch (Throwable $e) {}
 
 // Recent errors
 $stmt = $conn->prepare("SELECT * FROM errors WHERE user_id = ? ORDER BY created_at DESC LIMIT 4");
@@ -109,6 +119,36 @@ require_once 'includes/navbar.php';
             <span><strong><span id="dashQuestDone"><?= $total_completed ?></span>/<?= $total_quests_cnt ?></strong> quest (<?= $overall_quest_percent ?>%)</span>
         </div>
     </section>
+
+    <section class="mission-strip" aria-label="Misi harian">
+        <div class="quest-section-head">
+            <div><h2>Misi hari ini</h2><p>Selesaikan lalu klaim, masing-masing +5 XP.<?php $all_done = count(array_filter($missions, fn($m) => !empty($m['done']))) === 3; if ($all_done): ?> <strong class="text-success">Multiplier x1.5 aktif!</strong><?php endif; ?></p></div>
+            <span class="small text-secondary"><?= count(array_filter($missions, fn($m) => !empty($m['claimed']))) ?>/3 diklaim</span>
+        </div>
+        <div class="mission-row">
+            <?php foreach ($missions as $mkey => $m): ?>
+            <div class="mission-card <?= !empty($m['claimed']) ? 'claimed' : (!empty($m['done']) ? 'ready' : '') ?>">
+                <i class="fas <?= htmlspecialchars($m['icon']) ?>" aria-hidden="true"></i>
+                <div class="mission-main"><strong><?= htmlspecialchars($m['label']) ?></strong><span>+<?= (int)$m['xp'] ?> XP</span></div>
+                <?php if (!empty($m['claimed'])): ?>
+                    <span class="quest-done"><i class="fas fa-check" aria-hidden="true"></i>Diklaim</span>
+                <?php elseif (!empty($m['done'])): ?>
+                    <form method="POST" action="claim_mission.php" class="mission-claim-form m-0">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="mission_key" value="<?= htmlspecialchars($mkey) ?>">
+                        <button type="submit" class="btn btn-cyber btn-sm">Klaim</button>
+                    </form>
+                <?php else: ?>
+                    <span class="small text-muted">Belum</span>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+
+    <?php if ($due_reviews > 0): ?>
+    <a class="review-banner" href="review.php"><i class="fas fa-rotate-right" aria-hidden="true"></i><span><strong><?= $due_reviews ?> review</strong> jatuh tempo hari ini — 2 menit saja.</span><i class="fas fa-chevron-right" aria-hidden="true"></i></a>
+    <?php endif; ?>
 
     <!-- Main Content Area -->
     <div class="row g-4">

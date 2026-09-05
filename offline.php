@@ -15,7 +15,7 @@
 <body>
     <div class="box">
         <h1>Kamu sedang offline</h1>
-        <p>Progres belajarmu aman di server. Sambungkan internet lalu muat ulang.</p>
+        <p>Progres belajarmu aman. Quest, sesi fokus, dan catatan yang dibuat offline masuk antrean dan terkirim otomatis saat online.</p>
         <button type="button" onclick="location.reload()">Muat ulang</button>
     </div>
 </body>

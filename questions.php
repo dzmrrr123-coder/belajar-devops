@@ -66,7 +66,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param('sssii', $status, $answer, $status, $question_id, $user_id);
         $stmt->execute();
         $stmt->close();
+        if ($status === 'answered' && $answer !== '') {
+            $qq = $conn->prepare("SELECT title, description, topic, reference_link, linked_error_id FROM questions WHERE id = ? AND user_id = ?");
+            $qq->bind_param("ii", $question_id, $user_id);
+            $qq->execute();
+            $qr = $qq->get_result()->fetch_assoc();
+            $qq->close();
+            if ($qr && empty($qr['linked_error_id'])) schedule_review($conn, $user_id, 'question', $question_id, $qr['title'], $answer);
+        }
         set_flash('success', 'Status pertanyaan diperbarui.');
+        redirect('questions.php');
+    }
+
+    if ($action === 'to_error' && $question_id > 0) {
+        $qq = $conn->prepare("SELECT * FROM questions WHERE id = ? AND user_id = ?");
+        $qq->bind_param("ii", $question_id, $user_id);
+        $qq->execute();
+        $qr = $qq->get_result()->fetch_assoc();
+        $qq->close();
+        if (!$qr) set_flash('danger', 'Pertanyaan tidak ditemukan.');
+        elseif (!empty($qr['linked_error_id'])) set_flash('info', 'Sudah terhubung ke Error Log.');
+        else {
+            $cat = in_array($qr['topic'] ?? '', ['MySQL','PHP','Laravel','Docker','Linux','Git','AWS'], true) ? $qr['topic'] : 'General';
+            $emsg = mb_substr(trim(($qr['title'] ?? '') . "\n" . ($qr['description'] ?? '')), 0, 2000);
+            $sol = mb_substr($qr['answer'] ?? '', 0, 2000);
+            $ref = valid_url($qr['reference_link'] ?? '');
+            $ins = $conn->prepare("INSERT INTO errors (user_id, category, error_message, solution, reference_link) VALUES (?, ?, ?, ?, ?)");
+            $ins->bind_param("issss", $user_id, $cat, $emsg, $sol, $ref);
+            if ($ins->execute()) {
+                $eid = $ins->insert_id;
+                $up = $conn->prepare("UPDATE questions SET linked_error_id = ?, status = 'answered', answered_at = IF(answered_at IS NULL, NOW(), answered_at) WHERE id = ? AND user_id = ?");
+                $up->bind_param("iii", $eid, $question_id, $user_id);
+                $up->execute(); $up->close();
+                $xp = $conn->prepare("UPDATE users SET xp = xp + 5 WHERE id = ?");
+                $xp->bind_param("i", $user_id); $xp->execute(); $xp->close();
+                update_user_streak($conn, $user_id);
+                schedule_review($conn, $user_id, 'error', (int)$eid, $emsg, $sol);
+                set_flash('success', 'Dipindah ke Error Log! +5 XP.');
+            } else set_flash('danger', 'Gagal memindah.');
+            $ins->close();
+        }
         redirect('questions.php');
     }
 }
@@ -142,7 +181,7 @@ require_once 'includes/navbar.php';
             </div>
             <?php if (!$questions): ?><div class="card p-5 text-center"><div class="empty-state-icon"><i class="fas fa-circle-question"></i></div><h2 class="h5 fw-bold mt-3">Belum ada pertanyaan</h2><p class="text-secondary mb-0">Catat hal yang belum jelas agar tidak hilang saat kamu belajar.</p></div><?php endif; ?>
             <div class="d-flex flex-column gap-3">
-                <?php foreach ($questions as $question): ?><article class="question-card card p-4"><div class="d-flex justify-content-between gap-3"><div><div class="d-flex flex-wrap gap-2 mb-2"><span class="question-status status-<?= htmlspecialchars($question['status']) ?>"><?= htmlspecialchars(str_replace('_', ' ', ucfirst($question['status']))) ?></span><span class="question-priority priority-<?= htmlspecialchars($question['priority']) ?>"><?= htmlspecialchars(ucfirst($question['priority'])) ?></span><?php if ($question['topic']): ?><span class="text-secondary small">#<?= htmlspecialchars($question['topic']) ?></span><?php endif; ?></div><h2 class="h5 mb-2"><?= htmlspecialchars($question['title']) ?></h2><?php if ($question['description']): ?><p class="text-secondary mb-2"><?= nl2br(htmlspecialchars($question['description'])) ?></p><?php endif; ?><div class="small text-muted"><?php if ($question['quest_title']): ?>Quest: <?= htmlspecialchars($question['quest_title']) ?> · <?php endif; ?><?= htmlspecialchars(date('d M Y', strtotime($question['created_at']))) ?></div></div><div class="dropdown"><button class="btn btn-cyber-outline btn-sm" data-bs-toggle="dropdown" aria-label="Aksi pertanyaan"><i class="fas fa-ellipsis"></i></button><ul class="dropdown-menu dropdown-menu-end"><li><button type="button" class="dropdown-item" onclick="openEditQuestion(<?= htmlspecialchars(json_encode($question)) ?>)">Ubah detail</button></li><li><hr class="dropdown-divider"></li><li><form method="post" action="questions.php" class="px-3 py-2"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>"><input type="hidden" name="action" value="status"><input type="hidden" name="question_id" value="<?= (int)$question['id'] ?>"><select name="status" class="form-select form-select-sm mb-2" aria-label="Status pertanyaan"><option value="open"<?= $question['status'] === 'open' ? ' selected' : '' ?>>Open</option><option value="in_review"<?= $question['status'] === 'in_review' ? ' selected' : '' ?>>In review</option><option value="answered"<?= $question['status'] === 'answered' ? ' selected' : '' ?>>Answered</option><option value="archived"<?= $question['status'] === 'archived' ? ' selected' : '' ?>>Archived</option></select><textarea name="answer" class="form-control form-control-sm mb-2" rows="2" placeholder="Jawaban atau catatan review..." aria-label="Jawaban atau catatan review"><?= htmlspecialchars($question['answer'] ?? '') ?></textarea><button class="btn btn-cyber btn-sm w-100" type="submit">Simpan status</button></form></li><li><hr class="dropdown-divider"></li><li><form method="post" action="questions.php" onsubmit="return confirm('Hapus pertanyaan ini?')"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="question_id" value="<?= (int)$question['id'] ?>"><button type="submit" class="dropdown-item text-danger">Hapus pertanyaan</button></form></li></ul></div></div><?php if ($question['status'] === 'answered' && $question['answer']): ?><div class="question-answer mt-3"><strong>Jawaban</strong><p class="mb-0 mt-1"><?= nl2br(htmlspecialchars($question['answer'])) ?></p></div><?php endif; ?></article><?php endforeach; ?>
+                <?php foreach ($questions as $question): ?><article class="question-card card p-4"><div class="d-flex justify-content-between gap-3"><div><div class="d-flex flex-wrap gap-2 mb-2"><span class="question-status status-<?= htmlspecialchars($question['status']) ?>"><?= htmlspecialchars(str_replace('_', ' ', ucfirst($question['status']))) ?></span><span class="question-priority priority-<?= htmlspecialchars($question['priority']) ?>"><?= htmlspecialchars(ucfirst($question['priority'])) ?></span><?php if ($question['topic']): ?><span class="text-secondary small">#<?= htmlspecialchars($question['topic']) ?></span><?php endif; ?></div><h2 class="h5 mb-2"><?= htmlspecialchars($question['title']) ?></h2><?php if ($question['description']): ?><p class="text-secondary mb-2"><?= nl2br(htmlspecialchars($question['description'])) ?></p><?php endif; ?><div class="small text-muted"><?php if ($question['quest_title']): ?>Quest: <?= htmlspecialchars($question['quest_title']) ?> · <?php endif; ?><?= htmlspecialchars(date('d M Y', strtotime($question['created_at']))) ?></div></div><div class="dropdown"><button class="btn btn-cyber-outline btn-sm" data-bs-toggle="dropdown" aria-label="Aksi pertanyaan"><i class="fas fa-ellipsis"></i></button><ul class="dropdown-menu dropdown-menu-end"><li><button type="button" class="dropdown-item" onclick="openEditQuestion(<?= htmlspecialchars(json_encode($question)) ?>)">Ubah detail</button></li><li><form method="post" action="questions.php" class="m-0"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>"><input type="hidden" name="action" value="to_error"><input type="hidden" name="question_id" value="<?= (int)$question['id'] ?>"><button type="submit" class="dropdown-item">Jadikan Error Log (+5 XP)</button></form></li><li><hr class="dropdown-divider"></li><li><form method="post" action="questions.php" class="px-3 py-2"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>"><input type="hidden" name="action" value="status"><input type="hidden" name="question_id" value="<?= (int)$question['id'] ?>"><select name="status" class="form-select form-select-sm mb-2" aria-label="Status pertanyaan"><option value="open"<?= $question['status'] === 'open' ? ' selected' : '' ?>>Open</option><option value="in_review"<?= $question['status'] === 'in_review' ? ' selected' : '' ?>>In review</option><option value="answered"<?= $question['status'] === 'answered' ? ' selected' : '' ?>>Answered</option><option value="archived"<?= $question['status'] === 'archived' ? ' selected' : '' ?>>Archived</option></select><textarea name="answer" class="form-control form-control-sm mb-2" rows="2" placeholder="Jawaban atau catatan review..." aria-label="Jawaban atau catatan review"><?= htmlspecialchars($question['answer'] ?? '') ?></textarea><button class="btn btn-cyber btn-sm w-100" type="submit">Simpan status</button></form></li><li><hr class="dropdown-divider"></li><li><form method="post" action="questions.php" onsubmit="return confirm('Hapus pertanyaan ini?')"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="question_id" value="<?= (int)$question['id'] ?>"><button type="submit" class="dropdown-item text-danger">Hapus pertanyaan</button></form></li></ul></div></div><?php if ($question['status'] === 'answered' && $question['answer']): ?><div class="question-answer mt-3"><strong>Jawaban</strong><p class="mb-0 mt-1"><?= nl2br(htmlspecialchars($question['answer'])) ?></p></div><?php endif; ?></article><?php endforeach; ?>
             </div>
         </div>
     </div>

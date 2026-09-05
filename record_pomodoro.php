@@ -17,7 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!in_array($duration, [5, 15, 25], true)) {
         $duration = 25;
     }
-    $xp_reward = $duration >= 25 ? 10 : 0;
+    $mode = in_array($_POST['mode'] ?? 'focus', ['focus', 'shortBreak', 'longBreak'], true) ? $_POST['mode'] : 'focus';
+    $note = mb_substr(clean($_POST['focus_note'] ?? ''), 0, 255);
+    $xp_reward = ($duration >= 25 && $mode === 'focus') ? 10 : 0;
 
     $chk = $conn->prepare("SELECT completed_at FROM pomodoro_sessions WHERE user_id = ? ORDER BY completed_at DESC LIMIT 1");
     $chk->bind_param("i", $user_id);
@@ -32,11 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $conn->begin_transaction();
     try {
-    $stmt = $conn->prepare("INSERT INTO pomodoro_sessions (user_id, duration_minutes, completed_at) VALUES (?, ?, NOW())");
-    $stmt->bind_param("ii", $user_id, $duration);
+    $stmt = $conn->prepare("INSERT INTO pomodoro_sessions (user_id, duration_minutes, mode, focus_note, completed_at) VALUES (?, ?, ?, ?, NOW())");
+    $stmt->bind_param("iiss", $user_id, $duration, $mode, $note);
     $stmt->execute();
     $stmt->close();
 
+    $xp_reward = apply_xp_multiplier($xp_reward, mission_multiplier($conn, $user_id));
     // Reward XP
     $stmt = $conn->prepare("UPDATE users SET xp = xp + ? WHERE id = ?");
     $stmt->bind_param("ii", $xp_reward, $user_id);
@@ -60,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stats = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
+    $new_badges = check_and_unlock_badges($conn, $user_id);
     $conn->commit();
     } catch (Throwable $e) {
         $conn->rollback();
@@ -80,7 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'level_progress' => level_progress_percent($user['xp']),
         'streak' => (int)$user['streak'],
         'today_sessions' => (int)($stats['today_sessions'] ?? 0),
-        'today_minutes' => (int)($stats['today_minutes'] ?? 0)
+        'today_minutes' => (int)($stats['today_minutes'] ?? 0),
+        'new_badges' => $new_badges ?? []
     ]);
     exit();
 }

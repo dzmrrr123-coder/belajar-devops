@@ -6,21 +6,12 @@ $hud_level = 1;
 if (is_logged_in()) {
     $nav_conn = db_connect();
     $u_id = (int)$_SESSION['user_id'];
-    $stmt = $nav_conn->prepare("SELECT id, username, email, xp, streak FROM users WHERE id = ?");
+    $stmt = $nav_conn->prepare("SELECT id, username, email, xp, streak, last_login_at FROM users WHERE id = ?");
     $stmt->bind_param("i", $u_id);
     $stmt->execute();
     $hud_user = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    $hud_last = null;
-    try {
-        $ls = $nav_conn->prepare("SELECT last_login_at FROM users WHERE id = ?");
-        if ($ls) {
-            $ls->bind_param("i", $u_id);
-            $ls->execute();
-            $hud_last = $ls->get_result()->fetch_assoc()['last_login_at'] ?? null;
-            $ls->close();
-        }
-    } catch (Throwable $e) {}
+    $hud_last = $hud_user['last_login_at'] ?? null;
     $nav_conn->close();
 
     if ($hud_user) {
@@ -75,8 +66,24 @@ if (is_logged_in()) {
                             <i class="fas fa-note-sticky"></i> Notes
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="lt-nav-link <?= $current_script === 'profile.php' ? 'active' : '' ?>" href="profile.php">
+                            <i class="fas fa-user"></i> Profil
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="lt-nav-link <?= $current_script === 'review.php' ? 'active' : '' ?>" href="review.php">
+                            <i class="fas fa-rotate-right"></i> Review
+                        </a>
+                    </li>
                 </ul>
+                <form method="GET" action="search.php" class="d-none d-lg-flex ms-2" role="search" style="max-width:220px">
+                    <input name="q" class="form-control form-control-sm" placeholder="Cari…" maxlength="100" aria-label="Cari">
+                </form>
 
+                <form method="GET" action="search.php" class="d-lg-none w-100 mb-2" role="search">
+                    <input name="q" class="form-control" placeholder="Cari quest, materi, catatan…" maxlength="100" aria-label="Cari">
+                </form>
                 <div class="d-flex align-items-center flex-wrap gap-2 mt-2 mt-lg-0">
                     <div class="hud-pill streak" title="Streak belajar">
                         <i class="fas fa-fire" aria-hidden="true"></i>
@@ -108,6 +115,15 @@ if (is_logged_in()) {
                             </li>
                             <li>
                                 <a class="dropdown-item rounded py-2 small" href="quests.php"><i class="fas fa-map me-2 text-emerald"></i>Roadmap saya</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item rounded py-2 small" href="profile.php"><i class="fas fa-user me-2"></i>Profil & badge</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item rounded py-2 small" href="leaderboard.php"><i class="fas fa-trophy me-2"></i>Leaderboard</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item rounded py-2 small" href="export.php"><i class="fas fa-file-export me-2"></i>Export CV</a>
                             </li>
                             <li><hr class="dropdown-divider border-secondary"></li>
                             <li>

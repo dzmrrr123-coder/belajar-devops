@@ -22,6 +22,9 @@ try {
         }
     }
     echo "Tables Found: " . (empty($tables) ? 'NONE' : implode(', ', $tables)) . "\n";
+    $expected = ['users','quests','user_quests','errors','resources','pomodoro_sessions','questions','remember_tokens','daily_missions','quest_subtasks','reviews','user_badges'];
+    $missing = array_diff($expected, $tables);
+    echo "Missing Tables: " . (empty($missing) ? 'NONE' : implode(', ', $missing)) . "\n";
     $conn->close();
 } catch (Throwable $e) {
     echo "DB Connection: FAILED (" . $e->getMessage() . ")\n";

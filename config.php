@@ -240,7 +240,65 @@ function ensure_database_schema($conn) {
             CONSTRAINT `fk_remember_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         @$conn->query("ALTER TABLE `users` ADD COLUMN `last_login_at` DATETIME NULL");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `freeze_tokens` INT NOT NULL DEFAULT 1");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `show_on_board` TINYINT NOT NULL DEFAULT 0");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `public_profile` TINYINT NOT NULL DEFAULT 0");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `user_badges` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `slug` VARCHAR(64) NOT NULL,
+            `unlocked_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `uq_user_badge` UNIQUE (`user_id`, `slug`),
+            CONSTRAINT `fk_user_badges_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("CREATE INDEX idx_user_badges_user ON `user_badges` (`user_id`)");
+        @$conn->query("ALTER TABLE `quests` ADD COLUMN `user_id` INT NULL");
+        @$conn->query("ALTER TABLE `quests` ADD COLUMN `is_custom` TINYINT NOT NULL DEFAULT 0");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `daily_missions` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `mission_date` DATE NOT NULL,
+            `mission_key` VARCHAR(32) NOT NULL,
+            `claimed_at` DATETIME NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `uq_daily_mission` UNIQUE (`user_id`, `mission_date`, `mission_key`),
+            CONSTRAINT `fk_daily_missions_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `quest_subtasks` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `quest_id` INT NOT NULL,
+            `title` VARCHAR(255) NOT NULL,
+            `done_at` DATETIME NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_subtasks_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_subtasks_quest` FOREIGN KEY (`quest_id`) REFERENCES `quests`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("ALTER TABLE `pomodoro_sessions` ADD COLUMN `mode` VARCHAR(16) NOT NULL DEFAULT 'focus'");
+        @$conn->query("ALTER TABLE `pomodoro_sessions` ADD COLUMN `focus_note` VARCHAR(255) NULL");
+        @$conn->query("ALTER TABLE `questions` ADD COLUMN `linked_error_id` INT NULL");
+        @$conn->query("ALTER TABLE `questions` ADD CONSTRAINT `fk_questions_error` FOREIGN KEY (`linked_error_id`) REFERENCES `errors` (`id`) ON DELETE SET NULL");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `reviews` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `source` VARCHAR(16) NOT NULL DEFAULT 'quest',
+            `source_id` INT NOT NULL DEFAULT 0,
+            `title` VARCHAR(255) NOT NULL,
+            `detail` TEXT NULL,
+            `next_due` DATE NOT NULL,
+            `interval_day` INT NOT NULL DEFAULT 1,
+            `done_count` INT NOT NULL DEFAULT 0,
+            `lapses` INT NOT NULL DEFAULT 0,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            CONSTRAINT `uq_review` UNIQUE (`user_id`, `source`, `source_id`),
+            CONSTRAINT `fk_reviews_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("CREATE INDEX idx_reviews_due ON `reviews` (`user_id`, `next_due`)");
         @$conn->query("CREATE INDEX idx_quests_week ON `quests` (`week`)");
+        @$conn->query("CREATE INDEX idx_quests_user ON `quests` (`user_id`)");
+        @$conn->query("CREATE INDEX idx_daily_missions_user ON `daily_missions` (`user_id`, `mission_date`)");
+        @$conn->query("CREATE INDEX idx_subtasks_quest ON `quest_subtasks` (`user_id`, `quest_id`)");
         @$conn->query("CREATE INDEX idx_resources_week ON `resources` (`week`)");
         @$conn->query("CREATE INDEX idx_errors_user ON `errors` (`user_id`, `created_at`)");
         @$conn->query("CREATE INDEX idx_pomodoro_user ON `pomodoro_sessions` (`user_id`, `completed_at`)");
@@ -270,7 +328,7 @@ function ensure_database_schema($conn) {
     }
 
     $missing = [];
-    foreach (['users','quests','user_quests','errors','resources','pomodoro_sessions','questions'] as $t) {
+    foreach (['users','quests','user_quests','errors','resources','pomodoro_sessions','questions','daily_missions','quest_subtasks','reviews','user_badges'] as $t) {
         try {
             $chk = $conn->query("SHOW TABLES LIKE '" . $conn->real_escape_string($t) . "'");
             if (!$chk || $chk->num_rows === 0) $missing[] = $t;
@@ -477,39 +535,184 @@ function require_login() {
     }
 }
 
-// Daily streak updater
+// Daily streak updater (dengan freeze token: absen 1 hari tidak reset jika token tersedia)
 function update_user_streak($conn, $user_id) {
     $today = date('Y-m-d');
     $yesterday = date('Y-m-d', strtotime('-1 day'));
+    $two_ago = date('Y-m-d', strtotime('-2 days'));
 
-    $stmt = $conn->prepare("SELECT streak, last_active_date FROM users WHERE id = ?");
+    $stmt = $conn->prepare("SELECT streak, last_active_date, freeze_tokens FROM users WHERE id = ?");
     if (!$stmt) return 0;
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $res = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-
     if (!$res) return 0;
 
     $last_active = $res['last_active_date'];
     $streak = (int)$res['streak'];
+    $tokens = (int)($res['freeze_tokens'] ?? 1);
+    if ($last_active === $today) return $streak;
 
-    if ($last_active === $today) {
-        return $streak;
-    } elseif ($last_active === $yesterday) {
+    $used_freeze = false;
+    if ($last_active === $yesterday) {
         $streak++;
+    } elseif ($last_active === $two_ago && $tokens > 0) {
+        $streak++;
+        $tokens--;
+        $used_freeze = true;
     } else {
         $streak = 1;
     }
+    if (date('W') !== date('W', strtotime($last_active ?: $today))) $tokens = min(2, $tokens + 1);
 
-    $stmt = $conn->prepare("UPDATE users SET streak = ?, last_active_date = ? WHERE id = ?");
+    $stmt = $conn->prepare("UPDATE users SET streak = ?, last_active_date = ?, freeze_tokens = ? WHERE id = ?");
     if ($stmt) {
-        $stmt->bind_param("isi", $streak, $today, $user_id);
+        $stmt->bind_param("isii", $streak, $today, $tokens, $user_id);
         $stmt->execute();
         $stmt->close();
     }
-
+    if ($used_freeze) set_flash('info', 'Streak Freeze dipakai! Streak-mu terselamatkan.');
     return $streak;
+}
+
+function badge_defs() {
+    return [
+        'first-quest' => ['name' => 'Langkah Pertama', 'desc' => 'Selesaikan 1 quest', 'icon' => 'fa-flag'],
+        'quest-5' => ['name' => 'Quest Hunter 5', 'desc' => 'Selesaikan 5 quest', 'icon' => 'fa-map'],
+        'quest-10' => ['name' => 'Quest Hunter 10', 'desc' => 'Selesaikan 10 quest', 'icon' => 'fa-map-location-dot'],
+        'quest-all' => ['name' => 'Roadmap Tuntas', 'desc' => 'Selesaikan 14 quest', 'icon' => 'fa-crown'],
+        'focus-1' => ['name' => 'Fokus Perdana', 'desc' => '1 sesi fokus', 'icon' => 'fa-clock'],
+        'focus-25' => ['name' => 'Deep Worker', 'desc' => '25 sesi fokus', 'icon' => 'fa-brain'],
+        'note-1' => ['name' => 'Bug Reporter', 'desc' => 'Tulis 1 catatan', 'icon' => 'fa-note-sticky'],
+        'note-25' => ['name' => 'Bug Hunter', 'desc' => '25 catatan error/tanya', 'icon' => 'fa-bug'],
+        'streak-7' => ['name' => 'Konsisten 7 Hari', 'desc' => 'Streak 7 hari', 'icon' => 'fa-fire'],
+        'streak-30' => ['name' => 'Unstoppable 30', 'desc' => 'Streak 30 hari', 'icon' => 'fa-volcano'],
+        'review-10' => ['name' => 'Reviewer', 'desc' => '10 review Tahu', 'icon' => 'fa-rotate-right'],
+        'custom-1' => ['name' => 'Inisiatif', 'desc' => 'Buat 1 quest custom', 'icon' => 'fa-plus'],
+    ];
+}
+
+function user_badges($conn, $user_id) {
+    $out = [];
+    try {
+        $q = $conn->prepare("SELECT slug, unlocked_at FROM user_badges WHERE user_id = ? ORDER BY unlocked_at ASC");
+        $q->bind_param("i", $user_id); $q->execute();
+        foreach ($q->get_result()->fetch_all(MYSQLI_ASSOC) as $r) $out[$r['slug']] = $r;
+        $q->close();
+    } catch (Throwable $e) {}
+    return $out;
+}
+
+function check_and_unlock_badges($conn, $user_id) {
+    $defs = badge_defs();
+    $owned = user_badges($conn, $user_id);
+    $c = ['quest' => 0, 'focus' => 0, 'note' => 0, 'streak' => 0, 'review' => 0, 'custom' => 0];
+    try {
+        $q = $conn->prepare("SELECT COUNT(*) n FROM user_quests WHERE user_id = ?");
+        $q->bind_param("i", $user_id); $q->execute(); $c['quest'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        $q = $conn->prepare("SELECT COUNT(*) n FROM pomodoro_sessions WHERE user_id = ? AND mode = 'focus'");
+        $q->bind_param("i", $user_id); $q->execute(); $c['focus'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM errors WHERE user_id = ?) + (SELECT COUNT(*) FROM questions WHERE user_id = ?) n");
+        $q->bind_param("ii", $user_id, $user_id); $q->execute(); $c['note'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        $q = $conn->prepare("SELECT streak, freeze_tokens FROM users WHERE id = ?");
+        $q->bind_param("i", $user_id); $q->execute();
+        $u = $q->get_result()->fetch_assoc(); $q->close();
+        $c['streak'] = (int)($u['streak'] ?? 0);
+        $rev_done = 0;
+        try {
+            $q = $conn->prepare("SELECT COALESCE(SUM(done_count),0) n FROM reviews WHERE user_id = ?");
+            $q->bind_param("i", $user_id); $q->execute(); $rev_done = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        } catch (Throwable $e) {}
+        $c['review'] = $rev_done;
+        $q = $conn->prepare("SELECT COUNT(*) n FROM quests WHERE user_id = ? AND is_custom = 1");
+        $q->bind_param("i", $user_id); $q->execute(); $c['custom'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+    } catch (Throwable $e) { return []; }
+    $rules = [
+        'first-quest' => $c['quest'] >= 1, 'quest-5' => $c['quest'] >= 5, 'quest-10' => $c['quest'] >= 10, 'quest-all' => $c['quest'] >= 14,
+        'focus-1' => $c['focus'] >= 1, 'focus-25' => $c['focus'] >= 25,
+        'note-1' => $c['note'] >= 1, 'note-25' => $c['note'] >= 25,
+        'streak-7' => $c['streak'] >= 7, 'streak-30' => $c['streak'] >= 30,
+        'review-10' => $c['review'] >= 10, 'custom-1' => $c['custom'] >= 1,
+    ];
+    $new = [];
+    foreach ($rules as $slug => $ok) {
+        if ($ok && !isset($owned[$slug]) && isset($defs[$slug])) {
+            try {
+                $ins = $conn->prepare("INSERT IGNORE INTO user_badges (user_id, slug) VALUES (?, ?)");
+                $ins->bind_param("is", $user_id, $slug);
+                if ($ins->execute() && $ins->affected_rows > 0) $new[] = $slug;
+                $ins->close();
+            } catch (Throwable $e) {}
+        }
+    }
+    return $new;
+}
+
+function mission_multiplier($conn, $user_id) {
+    try {
+        $s = get_daily_mission_status($conn, $user_id);
+        foreach ($s as $m) if (empty($m['done'])) return 1.0;
+        return 1.5;
+    } catch (Throwable $e) { return 1.0; }
+}
+
+function apply_xp_multiplier($base, $mult) {
+    return (int)ceil($base * $mult);
+}
+
+function daily_mission_defs() {
+    return [
+        'quest1' => ['label' => 'Selesaikan 1 quest', 'xp' => 5, 'icon' => 'fa-map'],
+        'focus1' => ['label' => '1 sesi fokus', 'xp' => 5, 'icon' => 'fa-clock'],
+        'note1' => ['label' => 'Tulis 1 catatan', 'xp' => 5, 'icon' => 'fa-note-sticky'],
+    ];
+}
+
+function get_daily_mission_status($conn, $user_id) {
+    $defs = daily_mission_defs();
+    $out = [];
+    foreach ($defs as $k => $d) $out[$k] = ['done' => false, 'claimed' => false] + $d;
+    try {
+        $q = $conn->prepare("SELECT COUNT(*) c FROM user_quests WHERE user_id=? AND DATE(completed_at)=CURDATE()");
+        $q->bind_param("i", $user_id); $q->execute();
+        $out['quest1']['done'] = ((int)($q->get_result()->fetch_assoc()['c'] ?? 0)) > 0;
+        $q->close();
+        $q = $conn->prepare("SELECT COUNT(*) c FROM pomodoro_sessions WHERE user_id=? AND DATE(completed_at)=CURDATE()");
+        $q->bind_param("i", $user_id); $q->execute();
+        $out['focus1']['done'] = ((int)($q->get_result()->fetch_assoc()['c'] ?? 0)) > 0;
+        $q->close();
+        $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM errors WHERE user_id=? AND DATE(created_at)=CURDATE()) + (SELECT COUNT(*) FROM questions WHERE user_id=? AND DATE(created_at)=CURDATE()) AS c");
+        $q->bind_param("ii", $user_id, $user_id); $q->execute();
+        $out['note1']['done'] = ((int)($q->get_result()->fetch_assoc()['c'] ?? 0)) > 0;
+        $q->close();
+        $q = $conn->prepare("SELECT mission_key FROM daily_missions WHERE user_id=? AND mission_date=CURDATE() AND claimed_at IS NOT NULL");
+        $q->bind_param("i", $user_id); $q->execute();
+        $rows = $q->get_result()->fetch_all(MYSQLI_ASSOC);
+        $q->close();
+        foreach ($rows as $r) if (isset($out[$r['mission_key']])) $out[$r['mission_key']]['claimed'] = true;
+    } catch (Throwable $e) {}
+    return $out;
+}
+
+function quest_visible_where() {
+    return "(q.user_id IS NULL OR q.user_id = ?)";
+}
+
+function review_next_interval($current) {
+    foreach ([1, 3, 7, 14, 30] as $step) if ($current < $step) return $step;
+    return 30;
+}
+
+function schedule_review($conn, $user_id, $source, $source_id, $title, $detail = '') {
+    try {
+        $title = mb_substr(trim((string)$title) ?: 'Review', 0, 255);
+        $detail = mb_substr((string)$detail, 0, 2000);
+        $stmt = $conn->prepare("INSERT INTO reviews (user_id, source, source_id, title, detail, next_due, interval_day) VALUES (?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL 1 DAY), 1) ON DUPLICATE KEY UPDATE title=VALUES(title), detail=VALUES(detail)");
+        $stmt->bind_param("isiss", $user_id, $source, $source_id, $title, $detail);
+        $stmt->execute();
+        $stmt->close();
+    } catch (Throwable $e) {}
 }
 
 // Flash messages

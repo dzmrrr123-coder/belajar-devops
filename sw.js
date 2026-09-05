@@ -1,5 +1,5 @@
-const CACHE = 'lt-static-v1';
-const PRECACHE = ['assets/css/app.css', 'assets/js/app.js', 'offline.php'];
+const CACHE = 'lt-static-v2';
+const PRECACHE = ['assets/css/app.css', 'assets/js/app.js', 'assets/js/sync.js', 'offline.php'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

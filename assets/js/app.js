@@ -297,6 +297,14 @@ function applyQuestResponse(data, form) {
     }
 
     showToast(data.message, data.action === 'completed' ? 'success' : 'info');
+    if (data.action === 'completed' && Array.isArray(data.new_badges) && data.new_badges.length) {
+        triggerConfetti(true);
+        SoundEffects.levelUp();
+        setTimeout(() => showToast('Badge baru: ' + data.new_badges.join(', ') + '!', 'success'), 600);
+    }
+    if (data.new_badges && data.new_badges.length && data.action !== 'completed') {
+        setTimeout(() => showToast('Badge baru: ' + data.new_badges.join(', ') + '!', 'success'), 600);
+    }
 }
 
 document.addEventListener('lt:quest-synced', function(e) {
@@ -308,6 +316,18 @@ document.addEventListener('lt:quest-synced', function(e) {
     });
     if (form) applyQuestResponse(e.detail.data, form);
 });
+
+let ltInstallEvent = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    ltInstallEvent = e;
+    document.querySelectorAll('.pwa-install-btn').forEach(b => { b.hidden = false; });
+});
+function installPWA() {
+    if (ltInstallEvent) ltInstallEvent.prompt();
+    else showToast('Buka menu browser > Install / Tambah ke Layar Utama.', 'info');
+}
+window.installPWA = installPWA;
 
 document.addEventListener('DOMContentLoaded', function() {
     const main = document.querySelector('main');
@@ -341,6 +361,44 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast(SoundEffects.isMuted() ? 'Suara dinonaktifkan' : 'Suara diaktifkan', 'info');
         });
     }
+
+    document.querySelectorAll('.mission-claim-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = this.querySelector('button[type="submit"]');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>'; }
+            fetch('claim_mission.php', { method: 'POST', body: new FormData(this), headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(r => r.json()).then(d => {
+                showToast(d.message || 'Misi diproses.', d.status === 'success' ? 'success' : 'danger');
+                if (d.status === 'success') setTimeout(() => location.reload(), 600);
+                else if (btn) { btn.disabled = false; btn.textContent = 'Klaim'; }
+            }).catch(() => { showToast('Gagal klaim misi.', 'danger'); if (btn) { btn.disabled = false; btn.textContent = 'Klaim'; } });
+        });
+    });
+
+    try {
+        if ('Notification' in window && location.pathname.endsWith('index.php')) {
+            const done = document.querySelectorAll('.mission-card.claimed').length;
+            const key = 'lt_remind_' + new Date().toISOString().slice(0, 10);
+            if (done < 3 && new Date().getHours() >= 20 && !localStorage.getItem(key)) {
+                if (Notification.permission === 'granted') {
+                    new Notification('Misi harian belum selesai', { body: 'Selesaikan 1 quest / fokus / catatan sebelum tidur.' });
+                    localStorage.setItem(key, '1');
+                } else if (Notification.permission === 'default') Notification.requestPermission();
+            }
+        }
+    } catch (e) {}
+
+    document.querySelectorAll('.subtask-toggle-form, .subtask-add-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            fetch('subtask.php', { method: 'POST', body: new FormData(this), headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(r => r.json()).then(d => {
+                if (d.status !== 'success') showToast(d.message || 'Gagal.', 'danger');
+                else setTimeout(() => location.reload(), 400);
+            }).catch(() => showToast('Jaringan bermasalah.', 'danger'));
+        });
+    });
 
     // Quest Check Form Interceptor
     document.querySelectorAll('.quest-toggle-form').forEach(form => {

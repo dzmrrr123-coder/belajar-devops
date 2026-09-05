@@ -10,6 +10,11 @@ $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
+    $_SESSION['login_attempts'] = $_SESSION['login_attempts'] ?? ['count' => 0, 'first' => time()];
+    if (time() - $_SESSION['login_attempts']['first'] > 300) $_SESSION['login_attempts'] = ['count' => 0, 'first' => time()];
+    if ($_SESSION['login_attempts']['count'] >= 5) {
+        $error = 'Terlalu banyak percobaan. Tunggu 5 menit.';
+    } else {
     $username = clean($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
@@ -41,12 +46,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     set_flash('success', "Selamat datang kembali, {$user['username']}!");
+                    $_SESSION['login_attempts'] = ['count' => 0, 'first' => time()];
                     session_regenerate_id(true);
                     redirect('index.php');
                 } else {
+                    $_SESSION['login_attempts']['count']++;
                     $error = 'Kata sandi salah. Silakan coba lagi!';
                 }
             } else {
+                $_SESSION['login_attempts']['count']++;
                 $error = 'Akun dengan username/email tersebut tidak ditemukan!';
             }
             $stmt->close();
@@ -55,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("Login error: " . $e->getMessage());
             $error = 'Terjadi kesalahan sistem. Silakan coba lagi.';
         }
+    }
     }
 }
 

@@ -29,15 +29,37 @@ $stmt->close();
 
 // Get recent 5 sessions
 $stmt = $conn->prepare("
-    SELECT * FROM pomodoro_sessions 
-    WHERE user_id = ? 
-    ORDER BY completed_at DESC 
+    SELECT * FROM pomodoro_sessions
+    WHERE user_id = ?
+    ORDER BY completed_at DESC
     LIMIT 5
 ");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $recent_sessions = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
+
+$daily_target = 2;
+$target_done = 0;
+$weekly = [];
+try {
+    $q = $conn->prepare("SELECT COUNT(*) c FROM pomodoro_sessions WHERE user_id = ? AND DATE(completed_at) = CURDATE() AND duration_minutes >= 25 AND mode = 'focus'");
+    $q->bind_param("i", $user_id); $q->execute();
+    $target_done = (int)($q->get_result()->fetch_assoc()['c'] ?? 0);
+    $q->close();
+    $q = $conn->prepare("SELECT DATE(completed_at) d, COUNT(*) c, COALESCE(SUM(duration_minutes),0) m FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY DATE(completed_at)");
+    $q->bind_param("i", $user_id); $q->execute();
+    $rows = $q->get_result()->fetch_all(MYSQLI_ASSOC);
+    $q->close();
+    $map = [];
+    foreach ($rows as $r) $map[$r['d']] = $r;
+    for ($i = 6; $i >= 0; $i--) {
+        $d = date('Y-m-d', strtotime("-$i days"));
+        $weekly[] = ['date' => $d, 'label' => date('D', strtotime($d)), 'count' => (int)($map[$d]['c'] ?? 0), 'minutes' => (int)($map[$d]['m'] ?? 0)];
+    }
+} catch (Throwable $e) {}
+$weekly_max = max(1, max(array_column($weekly, 'count') ?: [0]));
+$target_pct = min(100, round(($target_done / $daily_target) * 100));
 
 
 
@@ -97,7 +119,11 @@ require_once 'includes/navbar.php';
                     </button>
                 </div>
 
-                <p class="text-secondary small text-center mb-0 mx-auto" style="max-width: 480px;">Selesaikan satu sesi fokus 25 menit untuk +10 XP.</p>
+                <p class="text-secondary small text-center mb-3 mx-auto" style="max-width: 480px;">Selesaikan satu sesi fokus 25 menit untuk +10 XP.</p>
+                <div class="mx-auto" style="max-width: 480px;">
+                    <label class="form-label" for="focusNote">Fokus saat ini (opsional)</label>
+                    <input id="focusNote" class="form-control" maxlength="255" placeholder="Contoh: CRUD produk + prepared statement">
+                </div>
             </div>
         </div>
 
@@ -128,6 +154,25 @@ require_once 'includes/navbar.php';
                 </div>
             </div>
 
+            <div class="card p-4">
+                <h2 class="h6 fw-bold mb-1">Target harian</h2>
+                <p class="text-secondary small mb-2"><?= $target_done ?>/<?= $daily_target ?> sesi fokus 25m</p>
+                <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= $target_pct ?>" aria-valuemin="0" aria-valuemax="100"><div class="xp-progress-fill" style="width:<?= $target_pct ?>%"></div></div>
+            </div>
+
+            <div class="card p-4">
+                <h2 class="h6 fw-bold mb-3">7 hari terakhir</h2>
+                <div class="chart-bars" role="img" aria-label="Grafik sesi fokus mingguan">
+                    <?php foreach ($weekly as $w): $h = max(6, round(($w['count'] / $weekly_max) * 72)); ?>
+                    <div class="chart-col" title="<?= $w['date'] ?> · <?= $w['count'] ?> sesi · <?= $w['minutes'] ?> mnt">
+                        <span class="chart-val"><?= $w['count'] ?></span>
+                        <span class="chart-bar" style="height:<?= $h ?>px"></span>
+                        <span class="chart-lbl"><?= htmlspecialchars($w['label']) ?></span>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
             <!-- Recent Sessions List -->
             <div class="card p-4">
                 <h2 class="h6 fw-bold mb-3 d-flex align-items-center gap-2">
@@ -139,7 +184,7 @@ require_once 'includes/navbar.php';
                             <div class="session-row p-2 px-3 d-flex justify-content-between align-items-center">
                                 <div class="d-flex align-items-center gap-2 small">
                                     <i class="fas fa-check-circle text-emerald"></i>
-                                    <span><?= (int)$sess['duration_minutes'] ?> Menit Selesai</span>
+                                    <span><?= (int)$sess['duration_minutes'] ?> Menit Selesai<?= !empty($sess['focus_note']) ? ' · ' . htmlspecialchars(mb_strimwidth($sess['focus_note'], 0, 40, '...')) : '' ?></span>
                                 </div>
                                 <span class="text-muted small"><?= date('H:i, d M', strtotime($sess['completed_at'])) ?></span>
                             </div>
@@ -238,6 +283,7 @@ function skipTimer() {
 
 function applyPomodoroResult(data, minutes) {
     showToast(data.message, 'success');
+    if (Array.isArray(data.new_badges) && data.new_badges.length) setTimeout(() => showToast('Badge baru: ' + data.new_badges.join(', ') + '!', 'success'), 700);
     const hudXp = document.getElementById('hudXp');
     if (hudXp) hudXp.textContent = data.xp + ' XP';
     const hudLevel = document.getElementById('hudLevel');
@@ -292,6 +338,9 @@ function sessionCompleted() {
         const formData = new FormData();
         formData.append('csrf_token', CSRF_TOKEN);
         formData.append('duration', Math.round(totalSeconds / 60));
+        formData.append('mode', timerMode);
+        const noteEl = document.getElementById('focusNote');
+        formData.append('focus_note', noteEl ? noteEl.value.slice(0, 255) : '');
 
         fetch('record_pomodoro.php', {
             method: 'POST',

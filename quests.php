@@ -5,17 +5,55 @@ require_login();
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
 
-// Get all quests with user completion status
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
+    $action = $_POST['action'] ?? '';
+    if ($action === 'create_custom') {
+        $title = mb_substr(clean($_POST['title'] ?? ''), 0, 255);
+        $desc = mb_substr(clean($_POST['description'] ?? ''), 0, 2000);
+        $week = max(1, min(12, (int)($_POST['week'] ?? 1)));
+        $xp = max(5, min(20, (int)($_POST['xp_reward'] ?? 10)));
+        if ($title === '') set_flash('warning', 'Judul quest wajib diisi.');
+        else {
+            $stmt = $conn->prepare("INSERT INTO quests (user_id, is_custom, week, title, description, xp_reward) VALUES (?, 1, ?, ?, ?, ?)");
+            $stmt->bind_param("iissi", $user_id, $week, $title, $desc, $xp);
+            $ok = $stmt->execute();
+            $stmt->close();
+            $nb = $ok ? check_and_unlock_badges($conn, $user_id) : [];
+            set_flash($ok ? 'success' : 'danger', $ok ? 'Quest custom dibuat.' . (!empty($nb) ? ' Badge: ' . implode(', ', $nb) . '!' : '') : 'Gagal membuat quest.');
+        }
+        redirect('quests.php');
+    }
+    if ($action === 'delete_custom') {
+        $qid = (int)($_POST['quest_id'] ?? 0);
+        $stmt = $conn->prepare("DELETE FROM quests WHERE id = ? AND user_id = ? AND is_custom = 1");
+        $stmt->bind_param("ii", $qid, $user_id);
+        $stmt->execute();
+        $stmt->close();
+        set_flash('info', 'Quest custom dihapus.');
+        redirect('quests.php');
+    }
+}
+
+// Get all quests with user completion status (global + milik sendiri)
 $stmt = $conn->prepare("
     SELECT q.*, uq.completed_at
     FROM quests q
     LEFT JOIN user_quests uq ON q.id = uq.quest_id AND uq.user_id = ?
+    WHERE (q.user_id IS NULL OR q.user_id = ?)
     ORDER BY q.week ASC, q.id ASC
 ");
-$stmt->bind_param("i", $user_id);
+$stmt->bind_param("ii", $user_id, $user_id);
 $stmt->execute();
 $all_quests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
+
+$subtasks_by_quest = [];
+$st = $conn->prepare("SELECT * FROM quest_subtasks WHERE user_id = ? ORDER BY id ASC");
+$st->bind_param("i", $user_id);
+$st->execute();
+foreach ($st->get_result()->fetch_all(MYSQLI_ASSOC) as $s) $subtasks_by_quest[(int)$s['quest_id']][] = $s;
+$st->close();
 
 // Compute stats
 $total_quests = count($all_quests);
@@ -103,21 +141,53 @@ require_once 'includes/navbar.php';
                                     </form>
 
                                     <!-- Quest Info -->
-                                    <div class="flex-grow-1">
+                                    <div class="flex-grow-1 min-w-0">
                                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-                                            <h2 class="h6 fw-bold mb-0 quest-title"><?= htmlspecialchars($q['title']) ?></h2>
+                                            <h2 class="h6 fw-bold mb-0 quest-title"><?= htmlspecialchars($q['title']) ?> <?php if (!empty($q['is_custom'])): ?><span class="quest-pending">Custom</span><?php endif; ?></h2>
                                             <span class="quest-badge-xp">
                                                 <i class="fas fa-bolt"></i> +<?= (int)$q['xp_reward'] ?> XP
                                             </span>
                                         </div>
                                         <p class="text-secondary small mb-2"><?= htmlspecialchars($q['description']) ?></p>
-                                        <div class="d-flex align-items-center gap-2 quest-status-badge">
+                                        <?php $subs = $subtasks_by_quest[(int)$q['id']] ?? []; $sdone = count(array_filter($subs, fn($s) => !empty($s['done_at']))); ?>
+                                        <div class="d-flex align-items-center flex-wrap gap-2 quest-status-badge mb-1">
                                             <?php if ($is_done): ?>
                                                 <span class="quest-done">
                                                     <i class="fas fa-check" aria-hidden="true"></i>Selesai <?= date('d M Y', strtotime($q['completed_at'])) ?>
                                                 </span>
                                             <?php endif; ?>
+                                            <?php if ($subs): ?><span class="small text-muted"><?= $sdone ?>/<?= count($subs) ?> langkah</span><?php endif; ?>
+                                            <?php if (!empty($q['is_custom']) && (int)$q['user_id'] === $user_id): ?>
+                                            <form method="POST" action="quests.php" class="m-0 ms-auto" onsubmit="return confirm('Hapus quest custom ini?')">
+                                                <?= csrf_field() ?>
+                                                <input type="hidden" name="action" value="delete_custom">
+                                                <input type="hidden" name="quest_id" value="<?= (int)$q['id'] ?>">
+                                                <button type="submit" class="btn btn-cyber-danger btn-sm py-1" aria-label="Hapus quest custom"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                                            </form>
+                                            <?php endif; ?>
                                         </div>
+                                        <details class="subtask-box">
+                                            <summary class="small text-secondary">Langkah kecil (<?= $sdone ?>/<?= count($subs) ?>)</summary>
+                                            <div class="subtask-list mt-2">
+                                                <?php foreach ($subs as $s): ?>
+                                                <form method="POST" action="subtask.php" class="subtask-toggle-form d-flex align-items-center gap-2">
+                                                    <?= csrf_field() ?>
+                                                    <input type="hidden" name="action" value="toggle">
+                                                    <input type="hidden" name="quest_id" value="<?= (int)$q['id'] ?>">
+                                                    <input type="hidden" name="subtask_id" value="<?= (int)$s['id'] ?>">
+                                                    <button type="submit" class="subtask-check <?= !empty($s['done_at']) ? 'done' : '' ?>" aria-label="Toggle subtask"><i class="fas <?= !empty($s['done_at']) ? 'fa-check' : 'fa-circle' ?>"></i></button>
+                                                    <span class="flex-grow-1 <?= !empty($s['done_at']) ? 'text-decoration-line-through text-muted' : '' ?>"><?= htmlspecialchars($s['title']) ?></span>
+                                                </form>
+                                                <?php endforeach; ?>
+                                                <form method="POST" action="subtask.php" class="subtask-add-form d-flex gap-2 mt-2">
+                                                    <?= csrf_field() ?>
+                                                    <input type="hidden" name="action" value="create">
+                                                    <input type="hidden" name="quest_id" value="<?= (int)$q['id'] ?>">
+                                                    <input name="title" class="form-control form-control-sm" maxlength="255" placeholder="+ Tambah langkah…" aria-label="Tambah langkah">
+                                                    <button type="submit" class="btn btn-cyber-outline btn-sm flex-shrink-0">Tambah</button>
+                                                </form>
+                                            </div>
+                                        </details>
                                     </div>
                                 </div>
                             </div>
@@ -125,6 +195,32 @@ require_once 'includes/navbar.php';
                     </div>
             </section>
         <?php endforeach; ?>
+    </div>
+
+    <button type="button" class="fab-add" data-bs-toggle="modal" data-bs-target="#customQuestModal" aria-label="Tambah quest custom"><i class="fas fa-plus" aria-hidden="true"></i></button>
+
+    <div class="modal fade" id="customQuestModal" tabindex="-1" aria-labelledby="customQuestLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-bottom">
+            <div class="modal-content">
+                <div class="modal-header border-bottom">
+                    <h2 class="modal-title h6 fw-bold mb-0" id="customQuestLabel">Quest custom</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <form method="POST" action="quests.php">
+                    <div class="modal-body">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="create_custom">
+                        <div class="mb-3"><label class="form-label" for="cq-title">Judul</label><input id="cq-title" name="title" class="form-control" required maxlength="255" placeholder="Contoh: Latihan JOIN 30 menit"></div>
+                        <div class="mb-3"><label class="form-label" for="cq-desc">Deskripsi</label><textarea id="cq-desc" name="description" class="form-control" rows="3" placeholder="Target kecil yang jelas…"></textarea></div>
+                        <div class="row g-3"><div class="col-6"><label class="form-label" for="cq-week">Minggu</label><select id="cq-week" name="week" class="form-select"><?php for ($w = 1; $w <= 12; $w++): ?><option value="<?= $w ?>">Minggu <?= $w ?></option><?php endfor; ?></select></div><div class="col-6"><label class="form-label" for="cq-xp">Reward (5–20 XP)</label><input id="cq-xp" name="xp_reward" type="number" min="5" max="20" value="10" class="form-control"></div></div>
+                    </div>
+                    <div class="modal-footer border-top sticky-bottom-bar">
+                        <button type="button" class="btn btn-cyber-outline" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-cyber">Simpan quest</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <!-- Empty state for search filter -->
