@@ -121,8 +121,10 @@ require_once 'includes/navbar.php';
 
                 <p class="text-secondary small text-center mb-3 mx-auto" style="max-width: 480px;">Selesaikan satu sesi fokus 25 menit untuk +10 XP.</p>
                 <div class="mx-auto" style="max-width: 480px;">
-                    <label class="form-label" for="focusNote">Fokus saat ini (opsional)</label>
-                    <input id="focusNote" class="form-control" maxlength="255" placeholder="Contoh: CRUD produk + prepared statement">
+                    <div class="row g-2 mb-3">
+                        <div class="col-7"><label class="form-label" for="focusNote">Fokus saat ini (opsional)</label><input id="focusNote" class="form-control" maxlength="255" placeholder="Contoh: CRUD produk + prepared statement"></div>
+                        <div class="col-5"><label class="form-label" for="customMinutes">Fokus custom (mnt)</label><div class="d-flex gap-2"><input id="customMinutes" type="number" min="5" max="120" value="25" class="form-control"><button type="button" class="btn btn-cyber-outline flex-shrink-0" onclick="setCustomFocus()" title="Pakai durasi custom" aria-label="Pakai durasi custom"><i class="fas fa-check"></i></button></div></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -366,6 +368,13 @@ function sessionCompleted() {
         showToast('Waktu istirahat selesai. Waktunya kembali fokus.', 'info');
         switchMode('focus', 25);
     }
+}
+
+function setCustomFocus() {
+    const v = Math.max(5, Math.min(120, parseInt(document.getElementById('customMinutes').value, 10) || 25));
+    document.getElementById('customMinutes').value = v;
+    switchMode('focus', v);
+    showToast('Fokus custom ' + v + ' menit siap.', 'info');
 }
 
 function switchMode(mode, minutes) {

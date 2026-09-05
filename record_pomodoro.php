@@ -14,9 +14,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn = db_connect();
     $user_id = (int)$_SESSION['user_id'];
     $duration = isset($_POST['duration']) ? max(1, min(120, (int)$_POST['duration'])) : 25;
-    if (!in_array($duration, [5, 15, 25], true)) {
-        $duration = 25;
-    }
     $mode = in_array($_POST['mode'] ?? 'focus', ['focus', 'shortBreak', 'longBreak'], true) ? $_POST['mode'] : 'focus';
     $note = mb_substr(clean($_POST['focus_note'] ?? ''), 0, 255);
     $xp_reward = ($duration >= 25 && $mode === 'focus') ? 10 : 0;
