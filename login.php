@@ -87,7 +87,7 @@ require_once 'includes/navbar.php';
             <div class="mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <label for="login-password" class="form-label mb-0">Kata Sandi</label>
-                    <button type="button" class="btn btn-link btn-sm p-0 text-secondary text-decoration-none small" id="togglePasswordBtn" onclick="togglePasswordVisibility('login-password')">
+                    <button type="button" class="btn btn-link btn-sm p-0 text-secondary text-decoration-none small" id="togglePasswordBtn" onclick="togglePasswordVisibility('login-password', this)" aria-label="Tampilkan kata sandi">
                         <i class="far fa-eye me-1"></i>Lihat
                     </button>
                 </div>
@@ -98,7 +98,7 @@ require_once 'includes/navbar.php';
             </div>
 
             <button type="submit" class="btn btn-cyber w-100 py-2 mt-2">
-                <i class="fas fa-sign-in-alt me-2"></i> Masuk Sekarang
+                <i class="fas fa-sign-in-alt me-2" aria-hidden="true"></i> Masuk
             </button>
         </form>
 
@@ -110,19 +110,5 @@ require_once 'includes/navbar.php';
         </div>
     </div>
 </main>
-
-<script>
-function togglePasswordVisibility(id) {
-    const input = document.getElementById(id);
-    const btn = document.getElementById('togglePasswordBtn');
-    if (input.type === 'password') {
-        input.type = 'text';
-        btn.innerHTML = '<i class="far fa-eye-slash me-1"></i>Sembunyikan';
-    } else {
-        input.type = 'password';
-        btn.innerHTML = '<i class="far fa-eye me-1"></i>Lihat';
-    }
-}
-</script>
 
 <?php require_once 'includes/footer.php'; ?>

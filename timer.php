@@ -89,11 +89,11 @@ require_once 'includes/navbar.php';
                     <button type="button" class="btn btn-cyber px-4 py-2 fs-5" id="startBtn" onclick="toggleTimer()">
                         <i class="fas fa-play me-2"></i> <span id="startBtnText">Mulai</span>
                     </button>
-                    <button type="button" class="btn btn-cyber-outline px-3 py-2" id="resetBtn" onclick="resetTimer()" title="Reset Timer">
-                        <i class="fas fa-redo"></i>
+                    <button type="button" class="btn btn-cyber-outline px-3 py-2" id="resetBtn" onclick="resetTimer()" title="Atur ulang timer" aria-label="Atur ulang timer">
+                        <i class="fas fa-redo" aria-hidden="true"></i>
                     </button>
-                    <button type="button" class="btn btn-cyber-outline px-3 py-2" id="skipBtn" onclick="skipTimer()" title="Lewati Sesi">
-                        <i class="fas fa-forward"></i>
+                    <button type="button" class="btn btn-cyber-outline px-3 py-2" id="skipBtn" onclick="skipTimer()" title="Lewati sesi ini" aria-label="Lewati sesi ini">
+                        <i class="fas fa-forward" aria-hidden="true"></i>
                     </button>
                 </div>
 

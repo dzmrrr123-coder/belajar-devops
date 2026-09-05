@@ -112,21 +112,23 @@ require_once 'includes/navbar.php';
 
             <div class="row g-2 mb-3">
                 <div class="col-sm-6">
-                    <label for="reg-password" class="form-label">Kata Sandi</label>
+                    <label for="reg-password" class="form-label">Kata sandi</label>
                     <div class="input-group">
-                        <input type="password" name="password" id="reg-password" class="form-control" placeholder="Min 6 karakter" required minlength="6">
+                        <input type="password" name="password" id="reg-password" class="form-control" placeholder="Min 6 karakter" required minlength="6" autocomplete="new-password">
+                        <button type="button" class="btn btn-cyber-outline" onclick="togglePasswordVisibility('reg-password', this)" aria-label="Tampilkan kata sandi"><i class="far fa-eye" aria-hidden="true"></i></button>
                     </div>
                 </div>
                 <div class="col-sm-6">
-                    <label for="reg-confirm" class="form-label">Konfirmasi Sandi</label>
+                    <label for="reg-confirm" class="form-label">Konfirmasi kata sandi</label>
                     <div class="input-group">
-                        <input type="password" name="confirm_password" id="reg-confirm" class="form-control" placeholder="Ulangi sandi" required>
+                        <input type="password" name="confirm_password" id="reg-confirm" class="form-control" placeholder="Ulangi sandi" required autocomplete="new-password">
+                        <button type="button" class="btn btn-cyber-outline" onclick="togglePasswordVisibility('reg-confirm', this)" aria-label="Tampilkan konfirmasi kata sandi"><i class="far fa-eye" aria-hidden="true"></i></button>
                     </div>
                 </div>
             </div>
 
             <button type="submit" class="btn btn-cyber w-100 py-2 mt-2">
-                <i class="fas fa-rocket me-2"></i> Buat Akun & Mulai Belajar
+                <i class="fas fa-rocket me-2" aria-hidden="true"></i> Buat akun
             </button>
         </form>
 

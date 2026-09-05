@@ -71,9 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if (isset($_GET['delete'])) {
-    $question_id = (int)$_GET['delete'];
-    if (hash_equals($_SESSION['csrf_token'] ?? '', $_GET['token'] ?? '')) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
+    verify_csrf();
+    $question_id = (int)($_POST['question_id'] ?? 0);
+    if ($question_id > 0) {
         $stmt = $conn->prepare('DELETE FROM questions WHERE id = ? AND user_id = ?');
         $stmt->bind_param('ii', $question_id, $user_id);
         $stmt->execute();
@@ -141,9 +142,51 @@ require_once 'includes/navbar.php';
             </div>
             <?php if (!$questions): ?><div class="card p-5 text-center"><div class="empty-state-icon"><i class="fas fa-circle-question"></i></div><h2 class="h5 fw-bold mt-3">Belum ada pertanyaan</h2><p class="text-secondary mb-0">Catat hal yang belum jelas agar tidak hilang saat kamu belajar.</p></div><?php endif; ?>
             <div class="d-flex flex-column gap-3">
-                <?php foreach ($questions as $question): ?><article class="question-card card p-4"><div class="d-flex justify-content-between gap-3"><div><div class="d-flex flex-wrap gap-2 mb-2"><span class="question-status status-<?= htmlspecialchars($question['status']) ?>"><?= htmlspecialchars(str_replace('_', ' ', ucfirst($question['status']))) ?></span><span class="question-priority priority-<?= htmlspecialchars($question['priority']) ?>"><?= htmlspecialchars(ucfirst($question['priority'])) ?></span><?php if ($question['topic']): ?><span class="text-secondary small">#<?= htmlspecialchars($question['topic']) ?></span><?php endif; ?></div><h2 class="h5 mb-2"><?= htmlspecialchars($question['title']) ?></h2><?php if ($question['description']): ?><p class="text-secondary mb-2"><?= nl2br(htmlspecialchars($question['description'])) ?></p><?php endif; ?><div class="small text-muted"><?php if ($question['quest_title']): ?>Quest: <?= htmlspecialchars($question['quest_title']) ?> · <?php endif; ?><?= htmlspecialchars(date('d M Y', strtotime($question['created_at']))) ?></div></div><div class="dropdown"><button class="btn btn-cyber-outline btn-sm" data-bs-toggle="dropdown" aria-label="Aksi pertanyaan"><i class="fas fa-ellipsis"></i></button><ul class="dropdown-menu dropdown-menu-end"><li><form method="post" action="questions.php" class="px-3 py-2"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>"><input type="hidden" name="action" value="status"><input type="hidden" name="question_id" value="<?= (int)$question['id'] ?>"><select name="status" class="form-select form-select-sm mb-2" aria-label="Status pertanyaan"><option value="open"<?= $question['status'] === 'open' ? ' selected' : '' ?>>Open</option><option value="in_review"<?= $question['status'] === 'in_review' ? ' selected' : '' ?>>In review</option><option value="answered"<?= $question['status'] === 'answered' ? ' selected' : '' ?>>Answered</option><option value="archived"<?= $question['status'] === 'archived' ? ' selected' : '' ?>>Archived</option></select><textarea name="answer" class="form-control form-control-sm mb-2" rows="2" placeholder="Jawaban atau catatan review..." aria-label="Jawaban atau catatan review"><?= htmlspecialchars($question['answer'] ?? '') ?></textarea><button class="btn btn-cyber btn-sm w-100" type="submit">Simpan status</button></form></li><li><hr class="dropdown-divider"></li><li><a class="dropdown-item text-danger" href="questions.php?delete=<?= (int)$question['id'] ?>&token=<?= urlencode(csrf_token()) ?>" onclick="return confirm('Hapus pertanyaan ini?')">Hapus pertanyaan</a></li></ul></div></div><?php if ($question['status'] === 'answered' && $question['answer']): ?><div class="question-answer mt-3"><strong>Jawaban</strong><p class="mb-0 mt-1"><?= nl2br(htmlspecialchars($question['answer'])) ?></p></div><?php endif; ?></article><?php endforeach; ?>
+                <?php foreach ($questions as $question): ?><article class="question-card card p-4"><div class="d-flex justify-content-between gap-3"><div><div class="d-flex flex-wrap gap-2 mb-2"><span class="question-status status-<?= htmlspecialchars($question['status']) ?>"><?= htmlspecialchars(str_replace('_', ' ', ucfirst($question['status']))) ?></span><span class="question-priority priority-<?= htmlspecialchars($question['priority']) ?>"><?= htmlspecialchars(ucfirst($question['priority'])) ?></span><?php if ($question['topic']): ?><span class="text-secondary small">#<?= htmlspecialchars($question['topic']) ?></span><?php endif; ?></div><h2 class="h5 mb-2"><?= htmlspecialchars($question['title']) ?></h2><?php if ($question['description']): ?><p class="text-secondary mb-2"><?= nl2br(htmlspecialchars($question['description'])) ?></p><?php endif; ?><div class="small text-muted"><?php if ($question['quest_title']): ?>Quest: <?= htmlspecialchars($question['quest_title']) ?> · <?php endif; ?><?= htmlspecialchars(date('d M Y', strtotime($question['created_at']))) ?></div></div><div class="dropdown"><button class="btn btn-cyber-outline btn-sm" data-bs-toggle="dropdown" aria-label="Aksi pertanyaan"><i class="fas fa-ellipsis"></i></button><ul class="dropdown-menu dropdown-menu-end"><li><button type="button" class="dropdown-item" onclick="openEditQuestion(<?= htmlspecialchars(json_encode($question)) ?>)">Ubah detail</button></li><li><hr class="dropdown-divider"></li><li><form method="post" action="questions.php" class="px-3 py-2"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>"><input type="hidden" name="action" value="status"><input type="hidden" name="question_id" value="<?= (int)$question['id'] ?>"><select name="status" class="form-select form-select-sm mb-2" aria-label="Status pertanyaan"><option value="open"<?= $question['status'] === 'open' ? ' selected' : '' ?>>Open</option><option value="in_review"<?= $question['status'] === 'in_review' ? ' selected' : '' ?>>In review</option><option value="answered"<?= $question['status'] === 'answered' ? ' selected' : '' ?>>Answered</option><option value="archived"<?= $question['status'] === 'archived' ? ' selected' : '' ?>>Archived</option></select><textarea name="answer" class="form-control form-control-sm mb-2" rows="2" placeholder="Jawaban atau catatan review..." aria-label="Jawaban atau catatan review"><?= htmlspecialchars($question['answer'] ?? '') ?></textarea><button class="btn btn-cyber btn-sm w-100" type="submit">Simpan status</button></form></li><li><hr class="dropdown-divider"></li><li><form method="post" action="questions.php" onsubmit="return confirm('Hapus pertanyaan ini?')"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="question_id" value="<?= (int)$question['id'] ?>"><button type="submit" class="dropdown-item text-danger">Hapus pertanyaan</button></form></li></ul></div></div><?php if ($question['status'] === 'answered' && $question['answer']): ?><div class="question-answer mt-3"><strong>Jawaban</strong><p class="mb-0 mt-1"><?= nl2br(htmlspecialchars($question['answer'])) ?></p></div><?php endif; ?></article><?php endforeach; ?>
             </div>
         </div>
     </div>
 </main>
+
+<div class="modal fade" id="editQuestionModal" tabindex="-1" aria-labelledby="editQuestionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h6 fw-bold mb-0" id="editQuestionModalLabel">Ubah pertanyaan</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <form method="post" action="questions.php">
+                <div class="modal-body">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="question_id" id="editQuestionId">
+                    <div class="mb-3"><label class="form-label" for="editQuestionTitle">Pertanyaan</label><input id="editQuestionTitle" name="title" class="form-control" required maxlength="255"></div>
+                    <div class="mb-3"><label class="form-label" for="editQuestionDescription">Konteks <span class="text-muted">(opsional)</span></label><textarea id="editQuestionDescription" name="description" class="form-control" rows="3"></textarea></div>
+                    <div class="row g-3 mb-3"><div class="col-6"><label class="form-label" for="editQuestionTopic">Topik</label><input id="editQuestionTopic" name="topic" class="form-control" maxlength="100"></div><div class="col-6"><label class="form-label" for="editQuestionPriority">Prioritas</label><select id="editQuestionPriority" name="priority" class="form-select"><option value="low">Rendah</option><option value="medium">Sedang</option><option value="high">Tinggi</option></select></div></div>
+                    <div class="mb-3"><label class="form-label" for="editQuestionQuest">Quest terkait</label><select id="editQuestionQuest" name="quest_id" class="form-select"><option value="0">Tanpa quest</option><?php foreach ($quests as $quest): ?><option value="<?= (int)$quest['id'] ?>">M<?= (int)$quest['week'] ?> · <?= htmlspecialchars($quest['title']) ?></option><?php endforeach; ?></select></div>
+                    <div class="mb-1"><label class="form-label" for="editQuestionReference">Referensi <span class="text-muted">(opsional)</span></label><input id="editQuestionReference" type="url" name="reference_link" class="form-control" placeholder="https://..."></div>
+                    <p class="form-text mb-0">Status dan jawaban diubah lewat menu aksi di kartu pertanyaan.</p>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-cyber-outline btn-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-cyber btn-sm">Simpan perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openEditQuestion(q) {
+    document.getElementById('editQuestionId').value = q.id || '';
+    document.getElementById('editQuestionTitle').value = q.title || '';
+    document.getElementById('editQuestionDescription').value = q.description || '';
+    document.getElementById('editQuestionTopic').value = q.topic || '';
+    document.getElementById('editQuestionPriority').value = q.priority || 'medium';
+    document.getElementById('editQuestionQuest').value = q.quest_id || '0';
+    document.getElementById('editQuestionReference').value = q.reference_link || '';
+    new bootstrap.Modal(document.getElementById('editQuestionModal')).show();
+}
+</script>
+
 <?php require_once 'includes/footer.php'; ?>

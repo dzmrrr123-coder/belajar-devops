@@ -202,6 +202,21 @@ function copyToClipboard(text, btnElement) {
     }
 }
 
+function togglePasswordVisibility(id, btn) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    const b = btn || document.getElementById('togglePasswordBtn');
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    if (b) {
+        const iconOnly = !b.classList.contains('btn-link');
+        b.innerHTML = show
+            ? '<i class="far fa-eye-slash' + (iconOnly ? '' : ' me-1') + '" aria-hidden="true"></i>' + (iconOnly ? '' : 'Sembunyikan')
+            : '<i class="far fa-eye' + (iconOnly ? '' : ' me-1') + '" aria-hidden="true"></i>' + (iconOnly ? '' : 'Lihat');
+        b.setAttribute('aria-label', show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const main = document.querySelector('main');
     if (main && !main.id) main.id = 'main';

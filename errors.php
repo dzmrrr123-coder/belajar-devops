@@ -72,20 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     }
     redirect('errors.php');
 }
-if (isset($_GET['delete'])) {
-    $id = (int)$_GET['delete'];
-    $token = $_GET['token'] ?? '';
-    if ($id > 0 && hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
-        $stmt = $conn->prepare("DELETE FROM errors WHERE id = ? AND user_id = ?");
-        $stmt->bind_param("ii", $id, $user_id);
-        $stmt->execute();
-        $stmt->close();
-        set_flash('info', "Catatan dihapus.");
-    } else {
-        set_flash('danger', "Token keamanan tidak valid.");
-    }
-    redirect('errors.php');
-}
+
 
 // Fetch all errors
 $stmt = $conn->prepare("SELECT * FROM errors WHERE user_id = ? ORDER BY created_at DESC");
@@ -223,10 +210,14 @@ require_once 'includes/navbar.php';
                                         <i class="fas fa-pencil-alt"></i>
                                     </button>
 
-                                    <!-- Delete Link -->
-                                    <a href="errors.php?delete=<?= (int)$err['id'] ?>&token=<?= urlencode(csrf_token()) ?>" class="btn btn-cyber-danger btn-sm py-1 px-2" title="Hapus Error" onclick="return confirm('Hapus catatan error ini?')">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </a>
+                                    <form method="POST" action="errors.php" class="m-0" onsubmit="return confirm('Hapus catatan ini?')">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="action" value="delete_error">
+                                        <input type="hidden" name="error_id" value="<?= (int)$err['id'] ?>">
+                                        <button type="submit" class="btn btn-cyber-danger btn-sm py-1 px-2" title="Hapus catatan" aria-label="Hapus catatan">
+                                            <i class="fas fa-trash-alt" aria-hidden="true"></i>
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
 

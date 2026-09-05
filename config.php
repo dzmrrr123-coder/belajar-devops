@@ -26,7 +26,7 @@ set_exception_handler(function(Throwable $e) {
         <div class="container" style="max-width: 680px;">
             <div class="card p-4 p-md-5">
                 <div class="d-flex align-items-center mb-4">
-                    <span class="fs-1 me-3">⚠️</span>
+                    <span class="me-3 d-inline-flex align-items-center justify-content-center fw-bold text-white bg-danger rounded-circle flex-shrink-0" style="width:44px;height:44px;font-size:1.3rem;" aria-hidden="true">!</span>
                     <div>
                         <h2 class="h4 text-danger mb-1 fw-bold">Terjadi Kesalahan Aplikasi</h2>
                         <p class="text-secondary small mb-0">Learn Tracker &bull; Error Diagnostic</p>
@@ -288,7 +288,7 @@ function render_db_error_page($error_msg, $host, $port, $user, $db) {
         <div class="container" style="max-width: 680px;">
             <div class="card p-4 p-md-5">
                 <div class="d-flex align-items-center mb-4">
-                    <span class="fs-1 me-3">⚠️</span>
+                    <span class="me-3 d-inline-flex align-items-center justify-content-center fw-bold text-white bg-danger rounded-circle flex-shrink-0" style="width:44px;height:44px;font-size:1.3rem;" aria-hidden="true">!</span>
                     <div>
                         <h2 class="h4 text-danger mb-1 fw-bold">Koneksi Database Belum Terhubung</h2>
                         <p class="text-secondary small mb-0">Learn Tracker &bull; Railway DevOps Diagnostic</p>
@@ -310,7 +310,7 @@ function render_db_error_page($error_msg, $host, $port, $user, $db) {
 
                 <?php if ($host === 'localhost'): ?>
                 <div class="p-3 rounded-3 border border-warning bg-warning bg-opacity-10 mb-3">
-                    <h6 class="text-warning fw-bold mb-2">💡 Cara Mengatasi di Railway:</h6>
+                    <h6 class="text-warning fw-bold mb-2">Cara Mengatasi di Railway:</h6>
                     <p class="small mb-2 text-white">Nilai <code>DB_HOST</code> masih <code>localhost</code> karena variabel environment belum dimasukkan ke <strong>Web Service</strong>.</p>
                     <ol class="small mb-0 ps-3 text-secondary">
                         <li>Buka dashboard Railway &gt; klik service web <strong>belajar-devops</strong>.</li>
@@ -321,7 +321,7 @@ function render_db_error_page($error_msg, $host, $port, $user, $db) {
                 </div>
                 <?php else: ?>
                 <div class="p-3 rounded-3 border border-info bg-info bg-opacity-10 mb-3">
-                    <h6 class="text-info fw-bold mb-2">💡 Cara Mengatasi:</h6>
+                    <h6 class="text-info fw-bold mb-2">Cara Mengatasi:</h6>
                     <p class="small mb-2 text-white">Aplikasi mencoba terhubung ke <code><?= htmlspecialchars($host) ?>:<?= htmlspecialchars((string)$port) ?></code> namun tidak merespons.</p>
                     <ul class="small mb-0 ps-3 text-secondary">
                         <li>Pastikan service Web dan MySQL berada di <strong>Project & Environment yang sama</strong> di Railway.</li>
