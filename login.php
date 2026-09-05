@@ -6,11 +6,11 @@ if (is_logged_in()) {
     redirect('index.php');
 }
 
-$conn = db_connect();
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
+    $conn = db_connect();
     $username = clean($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
@@ -41,8 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt->close();
     }
+    $conn->close();
 }
-$conn->close();
 
 $page_title = 'Login - Masuk ke Akun Belajar';
 require_once 'includes/header.php';
