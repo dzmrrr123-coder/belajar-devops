@@ -20,8 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reference_link = valid_url($_POST['reference_link'] ?? '');
 
         if ($quest_id !== null) {
-            $qc = $conn->prepare('SELECT id FROM quests WHERE id = ?');
-            $qc->bind_param('i', $quest_id);
+            $qc = $conn->prepare('SELECT id FROM quests WHERE id = ? AND (user_id IS NULL OR user_id = ?)');
+            $qc->bind_param('ii', $quest_id, $user_id);
             $qc->execute();
             if (!$qc->get_result()->fetch_assoc()) $quest_id = null;
             $qc->close();
@@ -137,7 +137,8 @@ $stmt->execute();
 $questions = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-$quests_stmt = $conn->prepare('SELECT id, title, week FROM quests ORDER BY week, id');
+$quests_stmt = $conn->prepare('SELECT id, title, week FROM quests WHERE user_id IS NULL OR user_id = ? ORDER BY week, id');
+$quests_stmt->bind_param('i', $user_id);
 $quests_stmt->execute();
 $quests = $quests_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $quests_stmt->close();
