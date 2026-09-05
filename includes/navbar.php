@@ -85,8 +85,8 @@ if (is_logged_in()) {
                         <i class="fas fa-volume-up" aria-hidden="true"></i>
                     </button>
 
-                    <!-- User Dropdown -->
-                    <div class="dropdown">
+                    <!-- User Dropdown (desktop) -->
+                    <div class="dropdown d-none d-lg-block">
                         <button class="btn btn-cyber-outline btn-sm dropdown-toggle py-1 px-2 d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 26px; height: 26px; font-size: 0.75rem; background: var(--primary); color: #fff;">
                                 <?= strtoupper(substr($hud_user['username'], 0, 1)) ?>
@@ -114,6 +114,26 @@ if (is_logged_in()) {
                                 </a>
                             </li>
                         </ul>
+                    </div>
+
+                    <!-- User Block (mobile): static, no floating menu -->
+                    <div class="d-lg-none w-100 mt-2 pt-3 border-top">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width: 34px; height: 34px; font-size: 0.85rem; background: var(--primary); color: #fff;" aria-hidden="true">
+                                <?= strtoupper(substr($hud_user['username'], 0, 1)) ?>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="fw-bold"><?= htmlspecialchars($hud_user['username']) ?></div>
+                                <div class="small text-secondary"><?= htmlspecialchars($hud_user['email']) ?></div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 mb-3">
+                            <div class="hud-menu-stat flex-fill mb-0"><div class="lbl">Level</div><div class="val">Lv. <?= $hud_level ?> · <?= htmlspecialchars($hud_rank) ?></div></div>
+                            <div class="hud-menu-stat flex-fill mb-0"><div class="lbl">XP</div><div class="val"><?= (int)$hud_user['xp'] ?> XP</div></div>
+                        </div>
+                        <a href="logout.php" class="btn btn-cyber-danger btn-logout w-100">
+                            <i class="fas fa-sign-out-alt me-2" aria-hidden="true"></i>Keluar
+                        </a>
                     </div>
                 </div>
             <?php else: ?>

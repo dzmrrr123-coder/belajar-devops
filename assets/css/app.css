@@ -147,6 +147,9 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding:18px 0;backgroun
 .hud-menu-stat .val{font-weight:700;font-size:.9rem}
 .hud-rank{display:inline-block;background:var(--primary-soft);color:var(--primary);border:1px solid var(--line);border-radius:6px;font-size:.72rem;font-weight:700;padding:2px 8px;margin-top:6px}
 .navbar .dropdown-toggle span.fw-semibold{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.navbar .min-w-0{min-width:0;overflow:hidden}
+.navbar .min-w-0 .fw-bold,.navbar .min-w-0 .text-secondary{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn-logout{min-height:48px;font-size:.95rem}
 .dropdown .btn{min-height:40px}
 .session-row{background:var(--surface-2);border:1px solid var(--line);border-radius:8px}
 .mobile-tabbar{display:none}
