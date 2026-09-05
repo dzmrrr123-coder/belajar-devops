@@ -1,5 +1,15 @@
 <?php
 // Learn Tracker Configuration & Core Helpers
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
+register_shutdown_function(function() {
+    $err = error_get_last();
+    if ($err && ($err['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
+        echo "<pre style='color:red;background:#111;padding:20px;font-family:monospace;'>FATAL ERROR: " . htmlspecialchars(print_r($err, true)) . "</pre>";
+    }
+});
 
 // 1. Native .env loader if .env file exists
 if (file_exists(__DIR__ . '/.env')) {
