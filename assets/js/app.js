@@ -121,63 +121,82 @@ function triggerConfetti(levelUp = false) {
     }
 }
 
-// Universal Toast Notifications
 function showToast(message, type = 'success') {
     let container = document.querySelector('.toast-container');
     if (!container) {
         container = document.createElement('div');
         container.className = 'toast-container';
+        container.setAttribute('role', 'status');
         document.body.appendChild(container);
     }
-
     const toast = document.createElement('div');
-    toast.className = 'lt-toast p-3 mb-2 d-flex align-items-center justify-content-between';
-    
-    let icon = 'fas fa-check-circle text-emerald';
-    if (type === 'danger') icon = 'fas fa-exclamation-circle text-danger';
-    if (type === 'warning') icon = 'fas fa-exclamation-triangle text-gold';
-    if (type === 'info') icon = 'fas fa-info-circle text-cyan';
-
-    toast.innerHTML = `
-        <div class="d-flex align-items-center gap-3">
-            <i class="${icon} fs-5"></i>
-            <span class="small font-weight-medium">${message}</span>
-        </div>
-        <button type="button" class="btn-close btn-close-white ms-2 small" onclick="this.parentElement.remove()"></button>
-    `;
-
+    toast.className = 'lt-toast p-3 d-flex align-items-center justify-content-between gap-2';
+    toast.setAttribute('role', type === 'danger' ? 'alert' : 'status');
+    let icon = 'fas fa-check-circle';
+    if (type === 'danger') icon = 'fas fa-exclamation-circle';
+    if (type === 'warning') icon = 'fas fa-exclamation-triangle';
+    if (type === 'info') icon = 'fas fa-info-circle';
+    const wrap = document.createElement('div');
+    wrap.className = 'd-flex align-items-center gap-2';
+    const ic = document.createElement('i');
+    ic.className = icon;
+    ic.setAttribute('aria-hidden', 'true');
+    const txt = document.createElement('span');
+    txt.className = 'small';
+    txt.textContent = String(message ?? '');
+    wrap.appendChild(ic);
+    wrap.appendChild(txt);
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'btn-close btn-close-white ms-2 small';
+    close.setAttribute('aria-label', 'Tutup notifikasi');
+    close.addEventListener('click', () => toast.remove());
+    toast.appendChild(wrap);
+    toast.appendChild(close);
     container.appendChild(toast);
-
     setTimeout(() => {
-        toast.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+        toast.style.transition = 'opacity .4s ease';
         toast.style.opacity = '0';
-        toast.style.transform = 'translateY(10px)';
-        setTimeout(() => toast.remove(), 500);
-    }, 4500);
+        setTimeout(() => toast.remove(), 400);
+    }, 4200);
 }
 
-// Copy to Clipboard Utility
 function copyToClipboard(text, btnElement) {
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(text).then(() => {
-            if (btnElement) {
-                const originalHtml = btnElement.innerHTML;
-                btnElement.innerHTML = '<i class="fas fa-check me-1"></i> Tersalin!';
-                btnElement.classList.add('text-success');
-                setTimeout(() => {
-                    btnElement.innerHTML = originalHtml;
-                    btnElement.classList.remove('text-success');
-                }, 2000);
-            }
-            showToast('Teks berhasil disalin ke clipboard!', 'info');
-        }).catch(err => {
-            console.error('Clipboard error:', err);
-        });
+    const done = () => {
+        if (btnElement) {
+            const orig = btnElement.innerHTML;
+            btnElement.disabled = true;
+            btnElement.innerHTML = '<i class="fas fa-check me-1" aria-hidden="true"></i> Tersalin';
+            setTimeout(() => { btnElement.innerHTML = orig; btnElement.disabled = false; }, 1600);
+        }
+        showToast('Disalin ke clipboard.', 'info');
+    };
+    const fallback = () => {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = String(text ?? '');
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+            done();
+        } catch (e) {
+            showToast('Gagal menyalin.', 'danger');
+        }
+    };
+    if (navigator.clipboard && window.isSecureContext !== false) {
+        navigator.clipboard.writeText(String(text ?? '')).then(done).catch(fallback);
+    } else {
+        fallback();
     }
 }
 
-// AJAX Quest Toggle Handler
 document.addEventListener('DOMContentLoaded', function() {
+    const main = document.querySelector('main');
+    if (main && !main.id) main.id = 'main';
     // Sound Toggle Button listener
     const soundToggle = document.getElementById('ltSoundToggle');
     if (soundToggle) {
@@ -205,7 +224,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const questItem = this.closest('.quest-item');
             const formData = new FormData(this);
 
-            if (submitBtn) submitBtn.disabled = true;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.setAttribute('aria-busy', 'true');
+                submitBtn.dataset.orig = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<span class="spinner" aria-hidden="true"></span>';
+            }
 
             fetch('complete_quest.php', {
                 method: 'POST',
@@ -215,7 +239,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Accept': 'application/json'
                 }
             })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
             .then(data => {
                 if (data.status === 'success') {
                     if (data.action === 'completed') {
@@ -272,19 +299,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (progressBar) progressBar.style.width = data.level_progress + '%';
 
                     const nextLevelXpText = document.getElementById('nextLevelXpText');
-                    if (nextLevelXpText) nextLevelXpText.textContent = data.next_level_xp + ' XP';
+                    if (nextLevelXpText) {
+                        const need = Math.max(0, (data.next_level_xp ?? data.xp) - data.xp);
+                        nextLevelXpText.textContent = need + ' XP lagi';
+                    }
 
                     showToast(data.message, data.action === 'completed' ? 'success' : 'info');
                 } else {
                     showToast(data.message || 'Gagal memproses quest', 'danger');
                 }
             })
-            .catch(err => {
-                console.error('Quest request failed:', err);
-                form.submit(); // fallback to regular form submit
+            .catch(() => {
+                showToast('Jaringan bermasalah. Mengirim ulang...', 'warning');
+                form.submit();
             })
             .finally(() => {
-                if (submitBtn) submitBtn.disabled = false;
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.removeAttribute('aria-busy');
+                    if (submitBtn.dataset.orig && submitBtn.innerHTML.includes('spinner')) {
+                        submitBtn.innerHTML = submitBtn.dataset.orig;
+                    }
+                }
             });
         });
     });

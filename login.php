@@ -10,38 +10,47 @@ $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
-    $conn = db_connect();
     $username = clean($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
     if (empty($username) || empty($password)) {
         $error = 'Harap isi username dan password!';
     } else {
-        $stmt = $conn->prepare("SELECT id, username, password FROM users WHERE username = ? OR email = ?");
-        $stmt->bind_param("ss", $username, $username);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($result->num_rows === 1) {
-            $user = $result->fetch_assoc();
-            if (password_verify($password, $user['password'])) {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                
-                // Update streak on login
-                update_user_streak($conn, $user['id']);
-                
-                set_flash('success', "Selamat datang kembali, {$user['username']}! Siap untuk quest hari ini? 🔥");
-                redirect('index.php');
-            } else {
-                $error = 'Kata sandi salah. Silakan coba lagi!';
+        try {
+            $conn = db_connect();
+            $stmt = $conn->prepare("SELECT id, username, password FROM users WHERE username = ? OR email = ?");
+            if (!$stmt) {
+                throw new Exception("Gagal mempersiapkan query login: " . $conn->error);
             }
-        } else {
-            $error = 'Akun dengan username/email tersebut tidak ditemukan!';
+            $stmt->bind_param("ss", $username, $username);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($result->num_rows === 1) {
+                $user = $result->fetch_assoc();
+                if (password_verify($password, $user['password'])) {
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['username'] = $user['username'];
+                    
+                    // Update streak on login
+                    update_user_streak($conn, $user['id']);
+                    
+                    set_flash('success', "Selamat datang kembali, {$user['username']}!");
+                    session_regenerate_id(true);
+                    redirect('index.php');
+                } else {
+                    $error = 'Kata sandi salah. Silakan coba lagi!';
+                }
+            } else {
+                $error = 'Akun dengan username/email tersebut tidak ditemukan!';
+            }
+            $stmt->close();
+            $conn->close();
+        } catch (Throwable $e) {
+            error_log("Login error: " . $e->getMessage());
+            $error = 'Terjadi kesalahan sistem. Silakan coba lagi.';
         }
-        $stmt->close();
     }
-    $conn->close();
 }
 
 $page_title = 'Login - Masuk ke Akun Belajar';
@@ -73,7 +82,7 @@ require_once 'includes/navbar.php';
                 <label for="login-username" class="form-label">Username atau Email</label>
                 <div class="input-group">
                     <span class="input-group-text border-0" style="background: rgba(15, 23, 42, 0.9); color: var(--text-muted);"><i class="fas fa-user"></i></span>
-                    <input type="text" name="username" id="login-username" class="form-control" placeholder="Contoh: devops_hero" required autofocus value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
+                    <input type="text" name="username" id="login-username" class="form-control" placeholder="Username atau email" required autofocus autocomplete="username" maxlength="255" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
                 </div>
             </div>
 
@@ -86,7 +95,7 @@ require_once 'includes/navbar.php';
                 </div>
                 <div class="input-group">
                     <span class="input-group-text border-0" style="background: rgba(15, 23, 42, 0.9); color: var(--text-muted);"><i class="fas fa-lock"></i></span>
-                    <input type="password" name="password" id="login-password" class="form-control" placeholder="••••••••" required>
+                    <input type="password" name="password" id="login-password" class="form-control" placeholder="Kata sandi" required autocomplete="current-password">
                 </div>
             </div>
 

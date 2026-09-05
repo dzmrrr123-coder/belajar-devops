@@ -14,9 +14,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn = db_connect();
     $user_id = (int)$_SESSION['user_id'];
     $duration = isset($_POST['duration']) ? max(1, min(120, (int)$_POST['duration'])) : 25;
-    $xp_reward = 10; // 10 XP per completed focus session
+    if (!in_array($duration, [5, 15, 25], true)) {
+        $duration = 25;
+    }
+    $xp_reward = $duration >= 25 ? 10 : 0;
 
-    // Record session
+    $chk = $conn->prepare("SELECT completed_at FROM pomodoro_sessions WHERE user_id = ? ORDER BY completed_at DESC LIMIT 1");
+    $chk->bind_param("i", $user_id);
+    $chk->execute();
+    $last = $chk->get_result()->fetch_assoc();
+    $chk->close();
+    if ($last && (time() - strtotime($last['completed_at'])) < 60) {
+        $conn->close();
+        echo json_encode(['status' => 'error', 'message' => 'Terlalu cepat. Tunggu sebentar sebelum mencatat sesi lagi.']);
+        exit();
+    }
+
+    $conn->begin_transaction();
+    try {
     $stmt = $conn->prepare("INSERT INTO pomodoro_sessions (user_id, duration_minutes, completed_at) VALUES (?, ?, NOW())");
     $stmt->bind_param("ii", $user_id, $duration);
     $stmt->execute();
@@ -45,13 +60,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stats = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
+    $conn->commit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        error_log("pomodoro error: " . $e->getMessage());
+        echo json_encode(['status' => 'error', 'message' => 'Gagal mencatat sesi. Coba lagi.']);
+        exit();
+    }
     $conn->close();
 
     $new_level = calculate_level($user['xp']);
 
     echo json_encode([
         'status' => 'success',
-        'message' => "🍅 Sesi Fokus Selesai! Kamu mendapatkan +{$xp_reward} XP!",
+        'message' => $xp_reward > 0 ? "Sesi fokus selesai! +{$xp_reward} XP." : "Sesi selesai. Sesi fokus 25 menit memberi +10 XP.",
         'xp' => (int)$user['xp'],
         'level' => $new_level,
         'level_title' => get_user_rank($new_level),

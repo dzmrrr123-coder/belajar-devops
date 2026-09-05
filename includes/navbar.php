@@ -67,10 +67,9 @@ if (is_logged_in()) {
 
                 <!-- HUD Status & User Profile -->
                 <div class="d-flex align-items-center flex-wrap gap-2 mt-2 mt-lg-0">
-                    <!-- Streak HUD -->
-                    <div class="hud-pill streak" title="Streak Belajar Berkelanjutan">
-                        <span class="flame-icon">🔥</span>
-                        <span id="hudStreak"><?= (int)$hud_user['streak'] ?> Hari</span>
+                    <div class="hud-pill streak" title="Streak belajar">
+                        <i class="fas fa-fire" aria-hidden="true"></i>
+                        <span id="hudStreak"><?= (int)$hud_user['streak'] ?> hari</span>
                     </div>
 
                     <!-- Level HUD -->

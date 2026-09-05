@@ -5,15 +5,18 @@ require_login();
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
 
-// Add new error
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_error']) || (isset($_POST['action']) && $_POST['action'] === 'add_error'))) {
     verify_csrf();
+    $allowed_cats = ['General','MySQL','PHP','Laravel','Docker','Linux','Git','AWS'];
     $category = clean($_POST['category'] ?? 'General');
-    $error_message = clean($_POST['error_message'] ?? '');
-    $solution = clean($_POST['solution'] ?? '');
-    $reference = clean($_POST['reference_link'] ?? '');
+    if (!in_array($category, $allowed_cats, true)) $category = 'General';
+    $error_message = mb_substr(clean($_POST['error_message'] ?? ''), 0, 2000);
+    $solution = mb_substr(clean($_POST['solution'] ?? ''), 0, 2000);
+    $reference = valid_url($_POST['reference_link'] ?? '');
 
-    if (!empty($error_message)) {
+    if ($error_message === '') {
+        set_flash('warning', "Pesan error tidak boleh kosong!");
+    } else {
         $stmt = $conn->prepare("INSERT INTO errors (user_id, category, error_message, solution, reference_link) VALUES (?, ?, ?, ?, ?)");
         $stmt->bind_param("issss", $user_id, $category, $error_message, $solution, $reference);
         if ($stmt->execute()) {
@@ -30,22 +33,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_error']) || (iss
             set_flash('danger', "Gagal menyimpan error ke database.");
         }
         $stmt->close();
-    } else {
-        set_flash('warning', "Pesan error tidak boleh kosong!");
     }
     redirect('errors.php');
 }
 
-// Update existing error
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['update_error']) || (isset($_POST['action']) && $_POST['action'] === 'update_error'))) {
     verify_csrf();
-    $error_id = (int)$_POST['error_id'];
+    $error_id = (int)($_POST['error_id'] ?? 0);
+    $allowed_cats = ['General','MySQL','PHP','Laravel','Docker','Linux','Git','AWS'];
     $category = clean($_POST['category'] ?? 'General');
-    $error_message = clean($_POST['error_message'] ?? '');
-    $solution = clean($_POST['solution'] ?? '');
-    $reference = clean($_POST['reference_link'] ?? '');
+    if (!in_array($category, $allowed_cats, true)) $category = 'General';
+    $error_message = mb_substr(clean($_POST['error_message'] ?? ''), 0, 2000);
+    $solution = mb_substr(clean($_POST['solution'] ?? ''), 0, 2000);
+    $reference = valid_url($_POST['reference_link'] ?? '');
 
-    if (!empty($error_message)) {
+    if ($error_message !== '' && $error_id > 0) {
         $stmt = $conn->prepare("UPDATE errors SET category = ?, error_message = ?, solution = ?, reference_link = ? WHERE id = ? AND user_id = ?");
         $stmt->bind_param("ssssii", $category, $error_message, $solution, $reference, $error_id, $user_id);
         if ($stmt->execute()) {
@@ -58,18 +60,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['update_error']) || (
     redirect('errors.php');
 }
 
-// Delete error
-if (isset($_GET['delete'])) {
-    $id = (int)$_GET['delete'];
-    $token = $_GET['token'] ?? '';
-    if (hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_error') {
+    verify_csrf();
+    $id = (int)($_POST['error_id'] ?? 0);
+    if ($id > 0) {
         $stmt = $conn->prepare("DELETE FROM errors WHERE id = ? AND user_id = ?");
         $stmt->bind_param("ii", $id, $user_id);
         $stmt->execute();
         $stmt->close();
-        set_flash('info', "Catatan error telah dihapus.");
+        set_flash('info', "Catatan dihapus.");
+    }
+    redirect('errors.php');
+}
+if (isset($_GET['delete'])) {
+    $id = (int)$_GET['delete'];
+    $token = $_GET['token'] ?? '';
+    if ($id > 0 && hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+        $stmt = $conn->prepare("DELETE FROM errors WHERE id = ? AND user_id = ?");
+        $stmt->bind_param("ii", $id, $user_id);
+        $stmt->execute();
+        $stmt->close();
+        set_flash('info', "Catatan dihapus.");
     } else {
-        set_flash('danger', "Token keamanan tidak valid untuk penghapusan.");
+        set_flash('danger', "Token keamanan tidak valid.");
     }
     redirect('errors.php');
 }

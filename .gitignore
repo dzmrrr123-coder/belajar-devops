@@ -6,6 +6,6 @@ Thumbs.db
 
 # Local cache & logs
 *.log
-cookies.txt
+cookies*.txt
 scratch/
 .env

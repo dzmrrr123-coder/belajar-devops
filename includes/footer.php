@@ -14,11 +14,11 @@ $flash = get_flash();
         <div class="container text-center">
             <p class="mb-2 text-secondary fst-italic small"><?= htmlspecialchars($random_quote) ?></p>
             <div class="d-flex justify-content-center align-items-center flex-wrap gap-3 small text-muted">
-                <span>🎮 <strong>Learn Tracker DevOps</strong></span>
-                <span>•</span>
-                <span>Roadmap PKL 3 Bulan</span>
-                <span>•</span>
-                <span>Level Up Everyday</span>
+                <span><strong>Learn Tracker</strong></span>
+                <span aria-hidden="true">•</span>
+                <span>Roadmap 12 minggu</span>
+                <span aria-hidden="true">•</span>
+                <span>Level up setiap hari</span>
             </div>
         </div>
     </footer>
@@ -32,8 +32,7 @@ $flash = get_flash();
     <!-- Bootstrap 5.3 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- App Engine JS -->
-    <script src="assets/js/app.js?v=<?= time() ?>"></script>
+    <script src="assets/js/app.js?v=<?= filemtime(__DIR__ . '/../assets/js/app.js') ?>"></script>
 
     <?php if ($flash): ?>
     <script>

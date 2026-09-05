@@ -11,28 +11,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $question_id = (int)($_POST['question_id'] ?? 0);
 
     if ($action === 'create' || $action === 'update') {
-        $title = clean($_POST['title'] ?? '');
-        $description = clean($_POST['description'] ?? '');
-        $topic = clean($_POST['topic'] ?? '');
+        $title = mb_substr(clean($_POST['title'] ?? ''), 0, 255);
+        $description = mb_substr(clean($_POST['description'] ?? ''), 0, 2000);
+        $topic = mb_substr(clean($_POST['topic'] ?? ''), 0, 100);
         $priority = in_array($_POST['priority'] ?? 'medium', ['low', 'medium', 'high'], true) ? $_POST['priority'] : 'medium';
-        $quest_id = (int)($_POST['quest_id'] ?? 0);
-        $quest_id = $quest_id > 0 ? $quest_id : null;
-        $reference_link = clean($_POST['reference_link'] ?? '');
+        $quest_raw = (int)($_POST['quest_id'] ?? 0);
+        $quest_id = $quest_raw > 0 ? $quest_raw : null;
+        $reference_link = valid_url($_POST['reference_link'] ?? '');
+
+        if ($quest_id !== null) {
+            $qc = $conn->prepare('SELECT id FROM quests WHERE id = ?');
+            $qc->bind_param('i', $quest_id);
+            $qc->execute();
+            if (!$qc->get_result()->fetch_assoc()) $quest_id = null;
+            $qc->close();
+        }
 
         if ($title === '') {
             set_flash('warning', 'Pertanyaan wajib memiliki judul.');
         } elseif ($action === 'create') {
-            $stmt = $conn->prepare('INSERT INTO questions (user_id, quest_id, title, description, topic, priority, reference_link) VALUES (?, ?, ?, ?, ?, ?, ?)');
-            $stmt->bind_param('iisssss', $user_id, $quest_id, $title, $description, $topic, $priority, $reference_link);
+            if ($quest_id === null) {
+                $stmt = $conn->prepare('INSERT INTO questions (user_id, quest_id, title, description, topic, priority, reference_link) VALUES (?, NULL, ?, ?, ?, ?, ?)');
+                $stmt->bind_param('isssss', $user_id, $title, $description, $topic, $priority, $reference_link);
+            } else {
+                $stmt = $conn->prepare('INSERT INTO questions (user_id, quest_id, title, description, topic, priority, reference_link) VALUES (?, ?, ?, ?, ?, ?, ?)');
+                $stmt->bind_param('iisssss', $user_id, $quest_id, $title, $description, $topic, $priority, $reference_link);
+            }
             $saved = $stmt->execute();
-            set_flash($saved ? 'success' : 'danger', $saved ? 'Pertanyaan berhasil disimpan.' : 'Pertanyaan gagal disimpan.');
+            set_flash($saved ? 'success' : 'danger', $saved ? 'Pertanyaan disimpan.' : 'Gagal menyimpan.');
             $stmt->close();
         } else {
-            $stmt = $conn->prepare('UPDATE questions SET quest_id = ?, title = ?, description = ?, topic = ?, priority = ?, reference_link = ? WHERE id = ? AND user_id = ?');
-            $stmt->bind_param('isssssii', $quest_id, $title, $description, $topic, $priority, $reference_link, $question_id, $user_id);
-            $saved = $stmt->execute();
-            set_flash($saved ? 'success' : 'danger', $saved ? 'Pertanyaan berhasil diperbarui.' : 'Pertanyaan gagal diperbarui.');
-            $stmt->close();
+            if ($question_id <= 0) {
+                set_flash('warning', 'ID pertanyaan tidak valid.');
+            } else {
+                if ($quest_id === null) {
+                    $stmt = $conn->prepare('UPDATE questions SET quest_id = NULL, title = ?, description = ?, topic = ?, priority = ?, reference_link = ? WHERE id = ? AND user_id = ?');
+                    $stmt->bind_param('sssssii', $title, $description, $topic, $priority, $reference_link, $question_id, $user_id);
+                } else {
+                    $stmt = $conn->prepare('UPDATE questions SET quest_id = ?, title = ?, description = ?, topic = ?, priority = ?, reference_link = ? WHERE id = ? AND user_id = ?');
+                    $stmt->bind_param('isssssii', $quest_id, $title, $description, $topic, $priority, $reference_link, $question_id, $user_id);
+                }
+                $saved = $stmt->execute();
+                set_flash($saved ? 'success' : 'danger', $saved ? 'Pertanyaan diperbarui.' : 'Gagal memperbarui.');
+                $stmt->close();
+            }
         }
         redirect('questions.php');
     }

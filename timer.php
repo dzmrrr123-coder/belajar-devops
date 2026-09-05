@@ -247,9 +247,8 @@ function sessionCompleted() {
     triggerConfetti(false);
 
     if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('🍅 Pomodoro Selesai!', {
-            body: timerMode === 'focus' ? 'Hebat! Waktu fokus selesai. Istirahat sejenak!' : 'Waktu istirahat selesai. Siap fokus kembali?',
-            icon: 'assets/css/app.css'
+        new Notification('Pomodoro selesai', {
+            body: timerMode === 'focus' ? 'Waktu fokus selesai. Istirahat sejenak.' : 'Istirahat selesai. Siap fokus kembali?'
         });
     }
 

@@ -1,13 +1,61 @@
 <?php
-// Learn Tracker Configuration & Core Helpers
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
 error_reporting(E_ALL);
+
+set_exception_handler(function(Throwable $e) {
+    error_log("Uncaught Exception: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+    if (!headers_sent()) {
+        http_response_code(500);
+    }
+    ?>
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Application Error - Learn Tracker</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+            body { background-color: #0b0f19; color: #cbd5e1; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+            .card { background-color: #131b2e; border: 1px solid #1e293b; border-radius: 14px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+            .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+        </style>
+    </head>
+    <body class="p-3">
+        <div class="container" style="max-width: 680px;">
+            <div class="card p-4 p-md-5">
+                <div class="d-flex align-items-center mb-4">
+                    <span class="fs-1 me-3">⚠️</span>
+                    <div>
+                        <h2 class="h4 text-danger mb-1 fw-bold">Terjadi Kesalahan Aplikasi</h2>
+                        <p class="text-secondary small mb-0">Learn Tracker &bull; Error Diagnostic</p>
+                    </div>
+                </div>
+                <div class="alert alert-danger bg-danger bg-opacity-10 border-danger border-opacity-25 text-danger-emphasis mb-4">
+                    <strong>Pesan Error:</strong><br>
+                    <span class="font-mono small"><?= htmlspecialchars($e->getMessage()) ?></span>
+                </div>
+                <p class="small text-secondary mb-3">File: <code><?= htmlspecialchars(basename($e->getFile())) ?>:<?= $e->getLine() ?></code></p>
+                <div class="text-center">
+                    <a href="login.php" class="btn btn-outline-light btn-sm">Refresh Halaman</a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit();
+});
 
 register_shutdown_function(function() {
     $err = error_get_last();
     if ($err && ($err['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR))) {
-        echo "<pre style='color:red;background:#111;padding:20px;font-family:monospace;'>FATAL ERROR: " . htmlspecialchars(print_r($err, true)) . "</pre>";
+        error_log("Fatal Error: " . print_r($err, true));
+        if (!headers_sent()) {
+            http_response_code(500);
+        }
+        echo "<pre style='color:#f87171;background:#0f172a;padding:20px;border-radius:8px;font-family:monospace;'>FATAL ERROR: " . htmlspecialchars($err['message'] ?? '') . " in " . htmlspecialchars(basename($err['file'] ?? '')) . ":" . ($err['line'] ?? '') . "</pre>";
     }
 });
 
@@ -21,7 +69,7 @@ if (file_exists(__DIR__ . '/.env')) {
             list($env_key, $env_val) = explode('=', $line, 2);
             $env_key = trim($env_key);
             $env_val = trim($env_val, " \t\n\r\0\x0B\"'");
-            if (!getenv($env_key)) {
+            if (getenv($env_key) === false) {
                 putenv("$env_key=$env_val");
                 $_ENV[$env_key] = $env_val;
                 $_SERVER[$env_key] = $env_val;
@@ -36,69 +84,180 @@ if (is_dir('/tmp/sessions') && is_writable('/tmp/sessions')) {
 }
 
 if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     session_start();
 }
 
-// 3. Support Railway MYSQL_URL, MYSQL_PRIVATE_URL, or DATABASE_URL if provided
+// 3. Resolve Database configuration (Supports standard, Railway native, and URL connection strings)
+$db_host = getenv('DB_HOST') ?: (getenv('MYSQLHOST') ?: '');
+$db_port = (int)(getenv('DB_PORT') ?: (getenv('MYSQLPORT') ?: 0));
+$db_user = getenv('DB_USER') ?: (getenv('MYSQLUSER') ?: '');
+$db_pass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : (getenv('MYSQLPASSWORD') !== false ? getenv('MYSQLPASSWORD') : (getenv('MYSQL_ROOT_PASSWORD') !== false ? getenv('MYSQL_ROOT_PASSWORD') : null));
+$db_name = getenv('DB_NAME') ?: (getenv('MYSQLDATABASE') ?: (getenv('MYSQL_DATABASE') ?: ''));
+
 $db_url = getenv('MYSQL_URL') ?: (getenv('MYSQL_PRIVATE_URL') ?: getenv('DATABASE_URL'));
-if ($db_url && !getenv('DB_HOST') && !getenv('MYSQLHOST')) {
+if ($db_url) {
     $parsed_url = parse_url($db_url);
     if ($parsed_url) {
-        if (isset($parsed_url['host'])) putenv("DB_HOST=" . $parsed_url['host']);
-        if (isset($parsed_url['port'])) putenv("DB_PORT=" . $parsed_url['port']);
-        if (isset($parsed_url['user'])) putenv("DB_USER=" . $parsed_url['user']);
-        if (isset($parsed_url['pass'])) putenv("DB_PASS=" . $parsed_url['pass']);
-        if (isset($parsed_url['path'])) putenv("DB_NAME=" . ltrim($parsed_url['path'], '/'));
+        if (empty($db_host) && !empty($parsed_url['host'])) $db_host = $parsed_url['host'];
+        if (empty($db_port) && !empty($parsed_url['port'])) $db_port = (int)$parsed_url['port'];
+        if (empty($db_user) && !empty($parsed_url['user'])) $db_user = $parsed_url['user'];
+        if ($db_pass === null && isset($parsed_url['pass'])) $db_pass = $parsed_url['pass'];
+        if (empty($db_name) && !empty($parsed_url['path'])) $db_name = ltrim($parsed_url['path'], '/');
     }
 }
 
-// 4. Resolve Database configuration (Supports standard and Railway native variables)
-$resolved_host = getenv('DB_HOST') ?: (getenv('MYSQLHOST') ?: (getenv('RAILWAY_TCP_PROXY_DOMAIN') ?: 'localhost'));
-$resolved_port = (int)(getenv('DB_PORT') ?: (getenv('MYSQLPORT') ?: (getenv('RAILWAY_TCP_PROXY_PORT') ?: 3306)));
-$resolved_user = getenv('DB_USER') ?: (getenv('MYSQLUSER') ?: 'root');
-$resolved_pass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : (getenv('MYSQLPASSWORD') !== false ? getenv('MYSQLPASSWORD') : (getenv('MYSQL_ROOT_PASSWORD') !== false ? getenv('MYSQL_ROOT_PASSWORD') : ''));
-$resolved_name = getenv('DB_NAME') ?: (getenv('MYSQLDATABASE') ?: (getenv('MYSQL_DATABASE') ?: 'railway'));
+// Fallback defaults
+$db_host = $db_host ?: (getenv('RAILWAY_TCP_PROXY_DOMAIN') ?: 'localhost');
+$db_port = $db_port ?: (int)(getenv('RAILWAY_TCP_PROXY_PORT') ?: 3306);
+$db_user = $db_user ?: 'root';
+$db_pass = $db_pass !== null ? $db_pass : '';
+$db_name = $db_name ?: 'railway';
 
-define('DB_HOST', $resolved_host);
-define('DB_PORT', $resolved_port);
-define('DB_USER', $resolved_user);
-define('DB_PASS', $resolved_pass);
-define('DB_NAME', $resolved_name);
+define('DB_HOST', $db_host);
+define('DB_PORT', $db_port);
+define('DB_USER', $db_user);
+define('DB_PASS', $db_pass);
+define('DB_NAME', $db_name);
 
-// Auto-initialize schema & seed data if tables do not exist
+// Auto-initialize schema & seed data safely without multi_query
 function ensure_database_schema($conn) {
     static $initialized = false;
     if ($initialized) return;
     $initialized = true;
 
     try {
-        $check = $conn->query("SHOW TABLES LIKE 'users'");
-        if ($check && $check->num_rows === 0) {
-            $schemaFile = __DIR__ . '/schema.sql';
-            if (file_exists($schemaFile)) {
-                $schemaSql = file_get_contents($schemaFile);
-                if ($conn->multi_query($schemaSql)) {
-                    do {
-                        if ($res = $conn->store_result()) {
-                            $res->free();
-                        }
-                    } while ($conn->more_results() && $conn->next_result());
-                }
-            }
+        mysqli_report(MYSQLI_REPORT_OFF);
+        // 1. Create users table
+        $conn->query("CREATE TABLE IF NOT EXISTS `users` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `username` VARCHAR(100) NOT NULL UNIQUE,
+            `email` VARCHAR(255) NOT NULL UNIQUE,
+            `password` VARCHAR(255) NOT NULL,
+            `xp` INT NOT NULL DEFAULT 0,
+            `streak` INT NOT NULL DEFAULT 0,
+            `last_active_date` DATE NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-            $seedFile = __DIR__ . '/database.sql';
-            if (file_exists($seedFile)) {
-                $seedSql = file_get_contents($seedFile);
-                if (preg_match('/(INSERT INTO `quests`[\s\S]+?;)/i', $seedSql, $mQuests)) {
-                    @$conn->query($mQuests[1]);
-                }
-                if (preg_match('/(INSERT INTO `resources`[\s\S]+?;)/i', $seedSql, $mRes)) {
-                    @$conn->query($mRes[1]);
+        // 2. Create quests table
+        $conn->query("CREATE TABLE IF NOT EXISTS `quests` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `week` INT NOT NULL,
+            `title` VARCHAR(255) NOT NULL,
+            `description` TEXT NOT NULL,
+            `xp_reward` INT NOT NULL DEFAULT 10,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // 3. Create user_quests table
+        $conn->query("CREATE TABLE IF NOT EXISTS `user_quests` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `quest_id` INT NOT NULL,
+            `completed_at` DATE NOT NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `uq_user_quest` UNIQUE (`user_id`, `quest_id`),
+            CONSTRAINT `fk_user_quests_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_user_quests_quest` FOREIGN KEY (`quest_id`) REFERENCES `quests`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // 4. Create errors table
+        $conn->query("CREATE TABLE IF NOT EXISTS `errors` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `category` VARCHAR(50) NOT NULL DEFAULT 'General',
+            `error_message` TEXT NOT NULL,
+            `solution` TEXT NULL,
+            `reference_link` VARCHAR(500) NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_errors_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // 5. Create resources table
+        $conn->query("CREATE TABLE IF NOT EXISTS `resources` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `week` INT NOT NULL,
+            `title` VARCHAR(255) NOT NULL,
+            `type` VARCHAR(50) NOT NULL,
+            `url` VARCHAR(500) NOT NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // 6. Create pomodoro_sessions table
+        $conn->query("CREATE TABLE IF NOT EXISTS `pomodoro_sessions` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `duration_minutes` INT NOT NULL DEFAULT 25,
+            `completed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_pomodoro_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // 7. Create questions table
+        $conn->query("CREATE TABLE IF NOT EXISTS `questions` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `quest_id` INT NULL,
+            `title` VARCHAR(255) NOT NULL,
+            `description` TEXT NULL,
+            `topic` VARCHAR(100) NULL,
+            `status` ENUM('open', 'in_review', 'answered', 'archived') NOT NULL DEFAULT 'open',
+            `priority` ENUM('low', 'medium', 'high') NOT NULL DEFAULT 'medium',
+            `answer` TEXT NULL,
+            `reference_link` VARCHAR(500) NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            `answered_at` DATETIME NULL,
+            CONSTRAINT `fk_questions_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_questions_quest` FOREIGN KEY (`quest_id`) REFERENCES `quests`(`id`) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        @$conn->query("CREATE INDEX idx_quests_week ON `quests` (`week`)");
+        @$conn->query("CREATE INDEX idx_resources_week ON `resources` (`week`)");
+        @$conn->query("CREATE INDEX idx_errors_user ON `errors` (`user_id`, `created_at`)");
+        @$conn->query("CREATE INDEX idx_pomodoro_user ON `pomodoro_sessions` (`user_id`, `completed_at`)");
+        @$conn->query("CREATE INDEX idx_questions_user ON `questions` (`user_id`, `status`, `created_at`)");
+
+        // 8. Seed default quests and resources if quests table is empty
+        $checkQuests = $conn->query("SELECT COUNT(*) AS total FROM `quests`");
+        if ($checkQuests) {
+            $row = $checkQuests->fetch_assoc();
+            if ((int)($row['total'] ?? 0) === 0) {
+                $seedFile = __DIR__ . '/database.sql';
+                if (file_exists($seedFile)) {
+                    $seedSql = file_get_contents($seedFile);
+                    if (preg_match('/(INSERT INTO `quests`[\s\S]+?;)/i', $seedSql, $mQuests)) {
+                        @$conn->query($mQuests[1]);
+                    }
+                    if (preg_match('/(INSERT INTO `resources`[\s\S]+?;)/i', $seedSql, $mRes)) {
+                        @$conn->query($mRes[1]);
+                    }
                 }
             }
         }
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
     } catch (Throwable $e) {
-        error_log("Schema auto-init notice: " . $e->getMessage());
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        error_log("Schema auto-init: " . $e->getMessage() . " | DB error: " . ($conn->error ?? ''));
+    }
+
+    $missing = [];
+    foreach (['users','quests','user_quests','errors','resources','pomodoro_sessions','questions'] as $t) {
+        try {
+            $chk = $conn->query("SHOW TABLES LIKE '" . $conn->real_escape_string($t) . "'");
+            if (!$chk || $chk->num_rows === 0) $missing[] = $t;
+            if ($chk) $chk->free();
+        } catch (Throwable $t2) {
+            $missing[] = $t;
+        }
+    }
+    if ($missing) {
+        throw new Exception("Inisialisasi database gagal, tabel belum ada: " . implode(', ', $missing) . ". Info DB: " . ($conn->error ?: 'user DB mungkin tanpa hak CREATE, atau versi server menolak sintaks') . ". Solusi cepat: import schema.sql manual via tab Query di dashboard MySQL Railway.");
     }
 }
 
@@ -178,7 +337,7 @@ function render_db_error_page($error_msg, $host, $port, $user, $db) {
 function db_connect() {
     $conn = mysqli_init();
     if (!$conn) {
-        die("Gagal menginisialisasi mysqli");
+        throw new Exception("Gagal menginisialisasi MySQLi driver.");
     }
 
     // Set 5 detik connection timeout agar tidak hanging
@@ -205,10 +364,24 @@ function redirect($url) {
     exit();
 }
 
-// Helper: sanitize input
 function clean($data) {
     if ($data === null) return '';
-    return htmlspecialchars(stripslashes(trim($data)), ENT_QUOTES, 'UTF-8');
+    if (is_array($data)) return '';
+    $data = trim((string)$data);
+    $data = stripslashes($data);
+    return mb_substr($data, 0, 5000);
+}
+
+function esc($data) {
+    return htmlspecialchars((string)($data ?? ''), ENT_QUOTES, 'UTF-8');
+}
+
+function valid_url($url) {
+    $url = trim((string)$url);
+    if ($url === '') return '';
+    if (!preg_match('#^https?://#i', $url)) return '';
+    if (strlen($url) > 500) return '';
+    return filter_var($url, FILTER_VALIDATE_URL) ? $url : '';
 }
 
 // Level calculation: level = floor(sqrt(xp / 100)) + 1
@@ -279,6 +452,7 @@ function update_user_streak($conn, $user_id) {
     $yesterday = date('Y-m-d', strtotime('-1 day'));
 
     $stmt = $conn->prepare("SELECT streak, last_active_date FROM users WHERE id = ?");
+    if (!$stmt) return 0;
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $res = $stmt->get_result()->fetch_assoc();
@@ -298,9 +472,11 @@ function update_user_streak($conn, $user_id) {
     }
 
     $stmt = $conn->prepare("UPDATE users SET streak = ?, last_active_date = ? WHERE id = ?");
-    $stmt->bind_param("isi", $streak, $today, $user_id);
-    $stmt->execute();
-    $stmt->close();
+    if ($stmt) {
+        $stmt->bind_param("isi", $streak, $today, $user_id);
+        $stmt->execute();
+        $stmt->close();
+    }
 
     return $streak;
 }

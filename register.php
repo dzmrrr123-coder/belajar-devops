@@ -10,7 +10,6 @@ $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
-    $conn = db_connect();
     $username = clean($_POST['username'] ?? '');
     $email = clean($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -29,30 +28,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($password !== $confirm) {
         $error = 'Konfirmasi kata sandi tidak cocok!';
     } else {
-        // Check uniqueness
-        $stmt = $conn->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
-        $stmt->bind_param("ss", $username, $email);
-        $stmt->execute();
-        if ($stmt->get_result()->num_rows > 0) {
-            $error = 'Username atau email sudah digunakan oleh akun lain!';
-        } else {
-            $stmt->close();
-            $hashed = password_hash($password, PASSWORD_BCRYPT);
-            $stmt = $conn->prepare("INSERT INTO users (username, email, password, xp, streak, last_active_date) VALUES (?, ?, ?, 0, 1, CURDATE())");
-            $stmt->bind_param("sss", $username, $email, $hashed);
-
-            if ($stmt->execute()) {
-                $_SESSION['user_id'] = $stmt->insert_id;
-                $_SESSION['username'] = $username;
-                set_flash('success', "Akun berhasil dibuat! Selamat datang di petualangan DevOps, {$username}! 🚀");
-                redirect('index.php');
-            } else {
-                $error = 'Terjadi kesalahan sistem saat mendaftar. Silakan coba lagi.';
+        try {
+            $conn = db_connect();
+            // Check uniqueness
+            $stmt = $conn->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
+            if (!$stmt) {
+                throw new Exception("Gagal mempersiapkan verifikasi akun: " . $conn->error);
             }
+            $stmt->bind_param("ss", $username, $email);
+            $stmt->execute();
+            if ($stmt->get_result()->num_rows > 0) {
+                $error = 'Username atau email sudah digunakan oleh akun lain!';
+                $stmt->close();
+            } else {
+                $stmt->close();
+                $hashed = password_hash($password, PASSWORD_BCRYPT);
+                $stmt = $conn->prepare("INSERT INTO users (username, email, password, xp, streak, last_active_date) VALUES (?, ?, ?, 0, 1, CURDATE())");
+                if (!$stmt) {
+                    throw new Exception("Gagal mempersiapkan query pendaftaran: " . $conn->error);
+                }
+                $stmt->bind_param("sss", $username, $email, $hashed);
+
+                if ($stmt->execute()) {
+                    $_SESSION['user_id'] = $stmt->insert_id;
+                    $_SESSION['username'] = $username;
+                    $stmt->close();
+                    $conn->close();
+                    set_flash('success', "Akun berhasil dibuat. Selamat datang, {$username}!");
+                    session_regenerate_id(true);
+                    redirect('index.php');
+                } else {
+                    $error = 'Terjadi kesalahan sistem saat mendaftar. Silakan coba lagi.';
+                    $stmt->close();
+                }
+            }
+            $conn->close();
+        } catch (Throwable $e) {
+            error_log("Register error: " . $e->getMessage());
+            $error = 'Terjadi kesalahan sistem. Silakan coba lagi.';
         }
-        $stmt->close();
     }
-    $conn->close();
 }
 
 $page_title = 'Daftar Akun Baru - Learn Tracker';

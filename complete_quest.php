@@ -21,7 +21,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
     }
 
     $quest_id = (int)$_POST['quest_id'];
+    if ($quest_id <= 0) {
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Quest tidak valid.']);
+            exit();
+        }
+        set_flash('danger', 'Quest tidak valid.');
+        redirect('quests.php');
+    }
 
+    $conn->begin_transaction();
+    try {
     // Fetch quest info
     $stmt = $conn->prepare("SELECT id, title, xp_reward FROM quests WHERE id = ?");
     $stmt->bind_param("i", $quest_id);
@@ -85,9 +96,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
             $leveled_up = true;
         }
 
-        $msg = "🎉 Quest diselesaikan! +{$xp_reward} XP didapatkan!";
+        $msg = "Quest diselesaikan! +{$xp_reward} XP.";
         if ($leveled_up) {
-            $msg .= " 🚀 LEVEL UP! Kamu sekarang Level {$new_level} (" . get_user_rank($new_level) . ")!";
+            $msg .= " Naik ke Level {$new_level} (" . get_user_rank($new_level) . ")!";
         }
         set_flash('success', $msg);
     } else {
@@ -119,6 +130,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
     $updated_user = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
+    $conn->commit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        error_log("complete_quest error: " . $e->getMessage());
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Gagal memproses quest. Coba lagi.']);
+            exit();
+        }
+        set_flash('danger', 'Gagal memproses quest. Coba lagi.');
+        redirect('quests.php');
+    }
     $conn->close();
 
     if ($is_ajax) {

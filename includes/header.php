@@ -12,18 +12,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($page_title) ?> - Learn Tracker DevOps</title>
     
-    <!-- Calm, readable type system for the learning workspace -->
+    <meta name="description" content="Learn Tracker - platform belajar DevOps terstruktur 12 minggu.">
+    <meta name="theme-color" content="#f7f8f6">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-    
-    <!-- Bootstrap 5.3 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Font Awesome 6 -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    
-    <!-- App Gamified Design CSS -->
-    <link href="assets/css/app.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="assets/css/app.css?v=<?= filemtime(__DIR__ . '/../assets/css/app.css') ?>" rel="stylesheet">
 </head>
 <body>
+<a class="skip-link" href="#main">Lewati ke konten utama</a>
