@@ -372,8 +372,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 showToast(d.message || 'Misi diproses.', d.status === 'success' ? 'success' : 'danger');
                 if (d.status === 'success') setTimeout(() => location.reload(), 600);
                 else if (btn) { btn.disabled = false; btn.textContent = 'Klaim'; }
-            }).catch(() => { showToast('Gagal klaim misi.', 'danger'); if (btn) { btn.disabled = false; btn.textContent = 'Klaim'; } });
+            }).catch(() => {
+                const fd = new FormData(form);
+                if (!navigator.onLine && window.LTOutbox) {
+                    window.LTOutbox.enqueue({ type: 'mission_claim', mission_key: String(fd.get('mission_key') || ''), csrf: String(fd.get('csrf_token') || '') });
+                    showToast('Offline. Klaim misi masuk antrean.', 'warning');
+                    if (btn) { btn.disabled = false; btn.textContent = 'Klaim'; }
+                } else {
+                    showToast('Gagal klaim misi.', 'danger');
+                    if (btn) { btn.disabled = false; btn.textContent = 'Klaim'; }
+                }
+            });
         });
+    });
+
+    document.querySelectorAll('.review-actions').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            if (navigator.onLine) return;
+            e.preventDefault();
+            const fd = new FormData(form);
+            const btn = e.submitter && e.submitter.value ? e.submitter : null;
+            const result = btn ? btn.value : 'know';
+            if (window.LTOutbox) {
+                window.LTOutbox.enqueue({ type: 'review_answer', review_id: String(fd.get('review_id') || ''), result: result, csrf: String(fd.get('csrf_token') || '') });
+                showToast('Offline. Jawaban review masuk antrean.', 'warning');
+            }
+        }, true);
+    });
+
+    ['lt:mission-synced', 'lt:subtask-synced', 'lt:review-synced'].forEach(ev => {
+        document.addEventListener(ev, () => setTimeout(() => location.reload(), 800));
     });
 
     try {
@@ -392,11 +420,29 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.subtask-toggle-form, .subtask-add-form').forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
-            fetch('subtask.php', { method: 'POST', body: new FormData(this), headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            const fd = new FormData(form);
+            const isAdd = form.classList.contains('subtask-add-form');
+            fetch('subtask.php', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
             .then(r => r.json()).then(d => {
                 if (d.status !== 'success') showToast(d.message || 'Gagal.', 'danger');
                 else setTimeout(() => location.reload(), 400);
-            }).catch(() => showToast('Jaringan bermasalah.', 'danger'));
+            }).catch(() => {
+                if (!navigator.onLine && window.LTOutbox) {
+                    const csrf = String(fd.get('csrf_token') || '');
+                    const questId = String(fd.get('quest_id') || '');
+                    if (isAdd) {
+                        window.LTOutbox.enqueue({ type: 'subtask_create', quest_id: questId, title: String(fd.get('title') || ''), csrf: csrf });
+                    } else {
+                        const btn = form.querySelector('.subtask-check');
+                        const wantDone = btn ? !btn.classList.contains('done') : true;
+                        window.LTOutbox.enqueue({ type: 'subtask_set', quest_id: questId, subtask_id: String(fd.get('subtask_id') || ''), done: wantDone, csrf: csrf });
+                        if (btn) btn.classList.toggle('done', wantDone);
+                    }
+                    showToast('Offline. Subtask masuk antrean.', 'warning');
+                } else {
+                    showToast('Jaringan bermasalah.', 'danger');
+                }
+            });
         });
     });
 

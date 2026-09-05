@@ -43,6 +43,14 @@ if ($action === 'toggle') {
     $stmt->close(); $conn->close();
     $respond(['status' => 'success', 'id' => $sub_id, 'quest_id' => $quest_id, 'done' => !empty($row['done_at']), 'message' => 'Subtask diperbarui.']);
 }
+if ($action === 'set_done') {
+    $done = !empty($_POST['done']) ? 1 : 0;
+    if ($done) $stmt = $conn->prepare("UPDATE quest_subtasks SET done_at = IFNULL(done_at, NOW()) WHERE id = ? AND user_id = ? AND quest_id = ?");
+    else $stmt = $conn->prepare("UPDATE quest_subtasks SET done_at = NULL WHERE id = ? AND user_id = ? AND quest_id = ?");
+    $stmt->bind_param("iii", $sub_id, $user_id, $quest_id);
+    $stmt->execute(); $stmt->close(); $conn->close();
+    $respond(['status' => 'success', 'id' => $sub_id, 'quest_id' => $quest_id, 'done' => (bool)$done, 'message' => 'Subtask diperbarui.']);
+}
 if ($action === 'delete') {
     $stmt = $conn->prepare("DELETE FROM quest_subtasks WHERE id = ? AND user_id = ? AND quest_id = ?");
     $stmt->bind_param("iii", $sub_id, $user_id, $quest_id);

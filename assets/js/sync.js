@@ -69,12 +69,22 @@ window.LTOutbox = (function() {
         });
     }
 
+    function dedupeKey(entry) {
+        if (entry.type === 'quest_toggle') return 'quest:' + entry.quest_id;
+        if (entry.type === 'mission_claim') return 'mission:' + entry.mission_key;
+        if (entry.type === 'subtask_set' || entry.type === 'subtask_delete') return 'subtask:' + entry.subtask_id;
+        if (entry.type === 'review_answer') return 'review:' + entry.review_id;
+        return null;
+    }
+
     function enqueue(entry) {
         entry.id = 'q' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
         entry.ts = Date.now();
         entry.attempts = 0;
-        const queue = load();
-        if (entry.type === 'quest_toggle' && queue.some((e) => e.type === 'quest_toggle' && String(e.quest_id) === String(entry.quest_id))) return;
+        const queue = load().filter((e) => {
+            const k = dedupeKey(e);
+            return !k || k !== dedupeKey(entry);
+        });
         queue.push(entry);
         save(queue);
         render();
@@ -160,6 +170,62 @@ window.LTOutbox = (function() {
                         return 'done';
                     }
                     return data.message && authFailed(data.message) ? 'auth' : 'retry';
+                }).catch(() => 'retry');
+        }
+        if (entry.type === 'mission_claim') {
+            return postForm('claim_mission.php', { csrf_token: freshCsrf(entry.csrf), mission_key: entry.mission_key }, true)
+                .then((res) => res.json().catch(() => ({ status: 'error', message: '' })))
+                .then((data) => {
+                    if (data.status === 'success') {
+                        document.dispatchEvent(new CustomEvent('lt:mission-synced', { detail: { data } }));
+                        return 'done';
+                    }
+                    return data.message && authFailed(data.message) ? 'auth' : 'retry';
+                }).catch(() => 'retry');
+        }
+        if (entry.type === 'subtask_set') {
+            return postForm('subtask.php', { csrf_token: freshCsrf(entry.csrf), action: 'set_done', quest_id: entry.quest_id, subtask_id: entry.subtask_id, done: entry.done ? '1' : '' }, true)
+                .then((res) => res.json().catch(() => ({ status: 'error', message: '' })))
+                .then((data) => {
+                    if (data.status === 'success') {
+                        document.dispatchEvent(new CustomEvent('lt:subtask-synced', { detail: { data } }));
+                        return 'done';
+                    }
+                    return data.message && authFailed(data.message) ? 'auth' : 'retry';
+                }).catch(() => 'retry');
+        }
+        if (entry.type === 'subtask_create') {
+            if (!String(entry.title || '').trim()) return Promise.resolve('done');
+            return postForm('subtask.php', { csrf_token: freshCsrf(entry.csrf), action: 'create', quest_id: entry.quest_id, title: entry.title }, true)
+                .then((res) => res.json().catch(() => ({ status: 'error', message: '' })))
+                .then((data) => {
+                    if (data.status === 'success') {
+                        document.dispatchEvent(new CustomEvent('lt:subtask-synced', { detail: { data } }));
+                        return 'done';
+                    }
+                    return data.message && authFailed(data.message) ? 'auth' : 'retry';
+                }).catch(() => 'retry');
+        }
+        if (entry.type === 'subtask_delete') {
+            return postForm('subtask.php', { csrf_token: freshCsrf(entry.csrf), action: 'delete', quest_id: entry.quest_id, subtask_id: entry.subtask_id }, true)
+                .then((res) => res.json().catch(() => ({ status: 'error', message: '' })))
+                .then((data) => {
+                    if (data.status === 'success') {
+                        document.dispatchEvent(new CustomEvent('lt:subtask-synced', { detail: { data } }));
+                        return 'done';
+                    }
+                    return data.message && authFailed(data.message) ? 'auth' : 'retry';
+                }).catch(() => 'retry');
+        }
+        if (entry.type === 'review_answer') {
+            return postForm('review.php', { csrf_token: freshCsrf(entry.csrf), review_id: entry.review_id, result: entry.result }, false)
+                .then((res) => {
+                    if (res.status === 403) return 'auth';
+                    if (res.ok) {
+                        document.dispatchEvent(new CustomEvent('lt:review-synced', { detail: { reviewId: entry.review_id } }));
+                        return 'done';
+                    }
+                    return 'retry';
                 }).catch(() => 'retry');
         }
         if (entry.type === 'error_add') {
