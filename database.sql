@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `last_active_date` DATE NULL,
     `last_login_at` DATETIME NULL,
     `freeze_tokens` INT NOT NULL DEFAULT 1,
+    `best_streak` INT NOT NULL DEFAULT 0,
     `show_on_board` TINYINT NOT NULL DEFAULT 0,
     `public_profile` TINYINT NOT NULL DEFAULT 0,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP

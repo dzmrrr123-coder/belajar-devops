@@ -63,6 +63,7 @@ $total_quests_cnt = (int)($stmt->get_result()->fetch_assoc()['cnt'] ?? 14);
 $stmt->close();
 $overall_quest_percent = $total_quests_cnt > 0 ? round(($total_completed / $total_quests_cnt) * 100) : 0;
 $missions = get_daily_mission_status($conn, $user_id);
+$xp_week = weekly_xp($conn, $user_id);
 $due_reviews = 0;
 try {
     $dq = $conn->prepare("SELECT COUNT(*) c FROM reviews WHERE user_id = ? AND next_due <= CURDATE()");
@@ -116,6 +117,7 @@ require_once 'includes/navbar.php';
         </div>
         <div class="strip-side">
             <span><strong><?= (int)$user['streak'] ?></strong> hari konsisten</span>
+            <span><strong>+<?= (int)$xp_week ?> XP</strong> minggu ini</span>
             <span><strong><span id="dashQuestDone"><?= $total_completed ?></span>/<?= $total_quests_cnt ?></strong> quest (<?= $overall_quest_percent ?>%)</span>
         </div>
     </section>

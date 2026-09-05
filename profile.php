@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, freeze_tokens, show_on_board, public_profile, created_at FROM users WHERE id = ?");
+$stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, freeze_tokens, best_streak, show_on_board, public_profile, created_at FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
@@ -137,7 +137,7 @@ require_once 'includes/navbar.php';
     <div class="page-head">
         <div class="page-kicker">Level <?= $level ?> · <?= htmlspecialchars($rank) ?></div>
         <h1 class="page-title"><?= htmlspecialchars($user['username']) ?></h1>
-        <p class="page-desc"><?= (int)$user['xp'] ?> XP · <?= (int)$user['streak'] ?> hari konsisten · <i class="fas fa-snowflake"></i> <?= (int)($user['freeze_tokens'] ?? 0) ?> freeze · sejak <?= date('M Y', strtotime($user['created_at'])) ?></p>
+        <p class="page-desc"><?= (int)$user['xp'] ?> XP · <?= (int)$user['streak'] ?> hari konsisten (terbaik <?= (int)($user['best_streak'] ?? 0) ?>) · <i class="fas fa-snowflake"></i> <?= (int)($user['freeze_tokens'] ?? 0) ?> freeze · sejak <?= date('M Y', strtotime($user['created_at'])) ?></p>
         <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= $pct ?>" aria-valuemin="0" aria-valuemax="100"><div class="xp-progress-fill" style="width:<?= $pct ?>%"></div></div>
     </div>
     <div class="row g-4 align-items-start">

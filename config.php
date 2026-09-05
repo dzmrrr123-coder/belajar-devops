@@ -235,6 +235,7 @@ function ensure_database_schema($conn) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         @$conn->query("ALTER TABLE `users` ADD COLUMN `last_login_at` DATETIME NULL");
         @$conn->query("ALTER TABLE `users` ADD COLUMN `freeze_tokens` INT NOT NULL DEFAULT 1");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `best_streak` INT NOT NULL DEFAULT 0");
         @$conn->query("ALTER TABLE `users` ADD COLUMN `show_on_board` TINYINT NOT NULL DEFAULT 0");
         @$conn->query("ALTER TABLE `users` ADD COLUMN `public_profile` TINYINT NOT NULL DEFAULT 0");
         @$conn->query("CREATE TABLE IF NOT EXISTS `user_badges` (
@@ -544,7 +545,7 @@ function update_user_streak($conn, $user_id) {
     $yesterday = date('Y-m-d', strtotime('-1 day'));
     $two_ago = date('Y-m-d', strtotime('-2 days'));
 
-    $stmt = $conn->prepare("SELECT streak, last_active_date, freeze_tokens FROM users WHERE id = ?");
+    $stmt = $conn->prepare("SELECT streak, last_active_date, freeze_tokens, best_streak FROM users WHERE id = ?");
     if (!$stmt) return 0;
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
@@ -555,7 +556,14 @@ function update_user_streak($conn, $user_id) {
     $last_active = $res['last_active_date'];
     $streak = (int)$res['streak'];
     $tokens = (int)($res['freeze_tokens'] ?? 1);
-    if ($last_active === $today) return $streak;
+    $best = (int)($res['best_streak'] ?? 0);
+    if ($last_active === $today) {
+        if ($streak > $best) {
+            $up = $conn->prepare("UPDATE users SET best_streak = ? WHERE id = ?");
+            if ($up) { $up->bind_param("ii", $streak, $user_id); $up->execute(); $up->close(); }
+        }
+        return $streak;
+    }
 
     $used_freeze = false;
     if ($last_active === $yesterday) {
@@ -569,9 +577,10 @@ function update_user_streak($conn, $user_id) {
     }
     if (date('W') !== date('W', strtotime($last_active ?: $today))) $tokens = min(2, $tokens + 1);
 
-    $stmt = $conn->prepare("UPDATE users SET streak = ?, last_active_date = ?, freeze_tokens = ? WHERE id = ?");
+    $best = max($best, $streak);
+    $stmt = $conn->prepare("UPDATE users SET streak = ?, last_active_date = ?, freeze_tokens = ?, best_streak = ? WHERE id = ?");
     if ($stmt) {
-        $stmt->bind_param("isii", $streak, $today, $tokens, $user_id);
+        $stmt->bind_param("isiii", $streak, $today, $tokens, $best, $user_id);
         $stmt->execute();
         $stmt->close();
     }
