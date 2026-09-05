@@ -93,6 +93,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('X-Frame-Options: SAMEORIGIN');
+}
+
 // 3. Resolve Database configuration (Supports standard, Railway native, and URL connection strings)
 $db_host = getenv('DB_HOST') ?: (getenv('MYSQLHOST') ?: '');
 $db_port = (int)(getenv('DB_PORT') ?: (getenv('MYSQLPORT') ?: 0));
