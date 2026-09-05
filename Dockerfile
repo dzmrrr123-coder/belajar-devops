@@ -1,0 +1,23 @@
+FROM php:8.2-apache
+
+# Install mysqli & session extensions
+RUN docker-php-ext-install mysqli session && docker-php-ext-enable mysqli
+
+# Enable Apache mod_rewrite
+RUN a2enmod rewrite
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy application files
+COPY . /var/www/html/
+
+# Set correct permissions
+RUN chown -R www-data:www-data /var/www/html
+
+# Default port fallback
+ENV PORT=8080
+EXPOSE 8080
+
+# Configure port dynamically at runtime and start Apache
+CMD ["sh", "-c", "sed -i \"s/Listen [0-9]*/Listen ${PORT:-8080}/\" /etc/apache2/ports.conf && sed -i \"s/<VirtualHost \\*:[0-9]*>/<VirtualHost *:${PORT:-8080}>/\" /etc/apache2/sites-available/000-default.conf && exec apache2-foreground"]
