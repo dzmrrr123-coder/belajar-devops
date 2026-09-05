@@ -115,7 +115,7 @@ require_once 'includes/navbar.php';
                 <h2 class="section-title mb-1">Tambah catatan</h2>
                 <p class="text-secondary small mb-3">Dokumentasikan kendala teknis dan solusi yang berhasil kamu temukan.</p>
 
-                <form method="POST" action="errors.php">
+                <form method="POST" action="errors.php" data-outbox="error_add">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="add_error">
 

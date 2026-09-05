@@ -1,0 +1,17 @@
+{
+  "name": "Learn Tracker DevOps",
+  "short_name": "Learn Tracker",
+  "description": "Roadmap belajar DevOps 12 minggu: quest, sesi fokus, dan catatan.",
+  "start_url": "index.php",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fafbfa",
+  "theme_color": "#2f6b5e",
+  "lang": "id",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

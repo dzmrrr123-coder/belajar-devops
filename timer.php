@@ -236,6 +236,48 @@ function skipTimer() {
     }
 }
 
+function applyPomodoroResult(data, minutes) {
+    showToast(data.message, 'success');
+    const hudXp = document.getElementById('hudXp');
+    if (hudXp) hudXp.textContent = data.xp + ' XP';
+    const hudLevel = document.getElementById('hudLevel');
+    if (hudLevel) hudLevel.textContent = 'Lv. ' + data.level;
+    const hudStreak = document.getElementById('hudStreak');
+    if (hudStreak) hudStreak.textContent = data.streak + ' hari';
+    const sc = document.getElementById('todaySessionsCount');
+    if (sc) sc.textContent = data.today_sessions;
+    const mc = document.getElementById('todayMinutesCount');
+    if (mc) mc.textContent = data.today_minutes;
+    const list = document.getElementById('recentSessionsList');
+    if (list) {
+        const noTxt = document.getElementById('noSessionsText');
+        if (noTxt) noTxt.remove();
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const item = document.createElement('div');
+        item.className = 'session-row p-2 px-3 d-flex justify-content-between align-items-center';
+        const label = document.createElement('div');
+        label.className = 'd-flex align-items-center gap-2 small';
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-check-circle text-emerald';
+        icon.setAttribute('aria-hidden', 'true');
+        const txt = document.createElement('span');
+        txt.textContent = minutes + ' Menit Selesai';
+        label.appendChild(icon);
+        label.appendChild(txt);
+        const time = document.createElement('span');
+        time.className = 'text-muted small';
+        time.textContent = timeStr + ', Hari ini';
+        item.appendChild(label);
+        item.appendChild(time);
+        list.insertBefore(item, list.firstChild);
+    }
+}
+
+document.addEventListener('lt:pomodoro-synced', function(e) {
+    if (e.detail && e.detail.data) applyPomodoroResult(e.detail.data, e.detail.minutes || 25);
+});
+
 function sessionCompleted() {
     SoundEffects.pomodoroAlarm();
 
@@ -258,42 +300,16 @@ function sessionCompleted() {
         })
         .then(res => res.json())
         .then(data => {
-            if (data.status === 'success') {
-                showToast(data.message, 'success');
-                // Update HUD
-                const hudXp = document.getElementById('hudXp');
-                if (hudXp) hudXp.textContent = data.xp + ' XP';
-
-                const hudLevel = document.getElementById('hudLevel');
-                if (hudLevel) hudLevel.textContent = 'Lv. ' + data.level;
-
-                const hudStreak = document.getElementById('hudStreak');
-                if (hudStreak) hudStreak.textContent = data.streak + ' Hari';
-
-                // Update Session counters
-                document.getElementById('todaySessionsCount').textContent = data.today_sessions;
-                document.getElementById('todayMinutesCount').textContent = data.today_minutes;
-
-                // Add to recent list
-                const list = document.getElementById('recentSessionsList');
-                const noTxt = document.getElementById('noSessionsText');
-                if (noTxt) noTxt.remove();
-
-                const now = new Date();
-                const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                const item = document.createElement('div');
-                item.className = 'session-row p-2 px-3 d-flex justify-content-between align-items-center';
-                item.innerHTML = `
-                    <div class="d-flex align-items-center gap-2 small">
-                        <i class="fas fa-check-circle text-emerald"></i>
-                        <span>${Math.round(totalSeconds / 60)} Menit Selesai</span>
-                    </div>
-                    <span class="text-muted small">${timeStr}, Hari ini</span>
-                `;
-                list.insertBefore(item, list.firstChild);
-            }
+            if (data.status === 'success') applyPomodoroResult(data, Math.round(totalSeconds / 60));
         })
-        .catch(() => showToast('Sesi selesai, tetapi gagal tercatat. Refresh halaman.', 'warning'));
+        .catch(() => {
+            if (!navigator.onLine && window.LTOutbox) {
+                window.LTOutbox.enqueue({ type: 'pomodoro', minutes: Math.round(totalSeconds / 60), csrf: CSRF_TOKEN });
+                showToast('Offline. Sesi masuk antrean, terkirim saat online.', 'warning');
+            } else {
+                showToast('Sesi selesai, tetapi gagal tercatat. Refresh halaman.', 'warning');
+            }
+        });
 
         // Switch to Short Break automatically
         switchMode('shortBreak', 5);

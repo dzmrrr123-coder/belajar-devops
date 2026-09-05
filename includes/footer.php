@@ -51,6 +51,15 @@ $flash = get_flash();
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script src="assets/js/app.js?v=<?= filemtime(__DIR__ . '/../assets/js/app.js') ?>"></script>
+    <script src="assets/js/sync.js?v=<?= filemtime(__DIR__ . '/../assets/js/sync.js') ?>"></script>
+
+    <script>
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('sw.js').catch(function() {});
+        });
+    }
+    </script>
 
     <?php if ($flash): ?>
     <script>
