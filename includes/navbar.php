@@ -36,11 +36,13 @@ if (is_logged_in()) {
             <span>Learn Tracker</span>
         </a>
 
+        <?php if (is_logged_in()): ?>
         <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Buka navigasi">
             <span class="navbar-toggler-icon"></span>
         </button>
+        <?php endif; ?>
 
-        <div class="collapse navbar-collapse" id="navbarContent">
+        <div class="collapse navbar-collapse<?= is_logged_in() ? '' : ' show' ?>" id="navbarContent">
             <?php if (is_logged_in() && $hud_user): ?>
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
                     <li class="nav-item">
