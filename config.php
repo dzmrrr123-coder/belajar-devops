@@ -55,6 +55,39 @@ define('DB_USER', $resolved_user);
 define('DB_PASS', $resolved_pass);
 define('DB_NAME', $resolved_name);
 
+// Auto-initialize schema & seed data if tables do not exist
+function ensure_database_schema($conn) {
+    static $initialized = false;
+    if ($initialized) return;
+    $initialized = true;
+
+    $check = $conn->query("SHOW TABLES LIKE 'users'");
+    if ($check && $check->num_rows === 0) {
+        $schemaFile = __DIR__ . '/schema.sql';
+        if (file_exists($schemaFile)) {
+            $schemaSql = file_get_contents($schemaFile);
+            if ($conn->multi_query($schemaSql)) {
+                do {
+                    if ($res = $conn->store_result()) {
+                        $res->free();
+                    }
+                } while ($conn->more_results() && $conn->next_result());
+            }
+        }
+
+        $seedFile = __DIR__ . '/database.sql';
+        if (file_exists($seedFile)) {
+            $seedSql = file_get_contents($seedFile);
+            if (preg_match('/(INSERT INTO `quests`[\s\S]+?;)/i', $seedSql, $mQuests)) {
+                $conn->query($mQuests[1]);
+            }
+            if (preg_match('/(INSERT INTO `resources`[\s\S]+?;)/i', $seedSql, $mRes)) {
+                $conn->query($mRes[1]);
+            }
+        }
+    }
+}
+
 // Connect database
 function db_connect() {
     $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
@@ -62,6 +95,7 @@ function db_connect() {
         die("Database connection failed: " . htmlspecialchars($conn->connect_error));
     }
     $conn->set_charset("utf8mb4");
+    ensure_database_schema($conn);
     return $conn;
 }
 
