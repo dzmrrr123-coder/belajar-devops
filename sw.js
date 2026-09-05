@@ -1,5 +1,5 @@
-const CACHE = 'lt-static-v2';
-const PRECACHE = ['assets/css/app.css', 'assets/js/app.js', 'assets/js/sync.js', 'offline.php'];
+const CACHE = 'lt-static-v3';
+const PRECACHE = ['assets/css/app.css', 'assets/js/app.js', 'assets/js/sync.js', 'offline.php', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/apple-touch-icon.png', 'assets/icons/maskable-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

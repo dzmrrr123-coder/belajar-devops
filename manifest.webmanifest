@@ -2,6 +2,7 @@
   "name": "Learn Tracker DevOps",
   "short_name": "Learn Tracker",
   "description": "Roadmap belajar DevOps 12 minggu: quest, sesi fokus, dan catatan.",
+  "id": "index.php",
   "start_url": "index.php",
   "scope": "./",
   "display": "standalone",
