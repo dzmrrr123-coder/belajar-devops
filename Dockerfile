@@ -10,6 +10,9 @@ RUN mkdir -p /tmp/sessions && chmod 777 /tmp/sessions
 # Disable ALL MPM modules first, then enable ONLY prefork
 # This prevents "More than one MPM loaded" error
 RUN a2dismod mpm_prefork mpm_event mpm_worker 2>/dev/null || true
+# Remove ALL MPM module symlinks and configs completely
+RUN rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf /etc/apache2/mods-available/mpm_event.load /etc/apache2/mods-available/mpm_worker.load
+# Now enable only prefork
 RUN a2enmod mpm_prefork
 
 # Enable Apache mod_rewrite and configure ServerName
