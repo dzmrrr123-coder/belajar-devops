@@ -27,6 +27,19 @@ Aplikasi pelacak progres belajar interaktif dengan sistem gamifikasi (*Experienc
 - 🎨 **Desain Cyberpunk-DevOps Modern**:
   - Glassmorphism UI berbasis dark theme dengan saturasi neon elektrik.
   - Animasi api streak dinamis (`flameBounce`), kartu 3D lift, dan audit skor aksesibilitas **100% (A11y Compliant)**.
+- 🎯 **Misi Harian & Multiplier**:
+  - 3 misi auto-detect (1 quest, 1 sesi fokus, 1 catatan), masing-masing **+5 XP**.
+  - Multiplier **x1.5** aktif saat semua misi harian selesai.
+- 🧩 **Quest Custom & Subtask**:
+  - Buat quest sendiri (max 20 XP) + langkah kecil checklist per quest.
+- 🔁 **Review Inbox (Spaced Repetition)**:
+  - Quest, catatan, dan jawaban otomatis terjadwal ulang 1-3-7-14-30 hari. Mode satu kartu: Tahu / Lupa.
+- 🏅 **12 Badge + Streak Freeze**:
+  - Badge otomatis (Quest Hunter, Deep Worker, Bug Hunter, streak 7/30, dll) + token freeze penyelamat streak mingguan.
+- 🏆 **Leaderboard & Profil Publik**:
+  - Opt-in, tanpa email, tab Total XP / Minggu ini. Profil publik `/u/username` siap share + export portofolio (Print/PDF, Markdown, JSON).
+- 📳 **PWA Mobile-First**:
+  - Bottom tabbar 5 tab, tombol ≥44px, antrean offline otomatis (quest, pomodoro, misi, subtask, review), install ke layar utama.
 
 ---
 
@@ -55,13 +68,15 @@ mysql -u root -p < database.sql
 *Atau import skema dasar melalui `schema.sql`.*
 
 ### 3. Konfigurasi Database
-Sesuaikan parameter koneksi di `config.php`:
-```php
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'learn-tracker');
+Via environment variable (`.env`, didukung Railway `MYSQL*`):
 ```
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASS=
+DB_NAME=learn-tracker
+```
+Skema auto-migrate saat konek (`ensure_database_schema()`), jadi DB lama ikut ter-upgrade. Cek `health.php` untuk diagnostik tabel.
 
 ### 4. Buka di Browser
 Akses melalui web server lokal:
@@ -97,9 +112,13 @@ http://localhost/learn-tracker/
 ## 🎯 Sistem Gamifikasi
 
 - **Perolehan XP**:
-  - Selesaikan Quest: **+10 s/d +40 XP**
+  - Selesaikan Quest: **+10 s/d +40 XP** (custom max 20)
   - Sesi Pomodoro (25 menit fokus): **+10 XP**
   - Catat Error & Solusi: **+5 XP**
+  - Klaim Misi Harian: **+5 XP** per misi (3/hari)
+  - Review pertama per kartu: **+5 XP**
+  - Question → Error Log: **+5 XP**
+  - Semua tercatat di ledger `xp_events` (basis leaderboard mingguan)
 - **Kalkulasi Level**: `Level = floor(sqrt(XP / 100)) + 1`
 - **Tingkatan Rank**:
   - Lv 1: *Terminal Cadet*

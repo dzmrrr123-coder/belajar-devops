@@ -157,7 +157,7 @@ require_once 'includes/navbar.php';
             <div class="card p-4">
                 <h2 class="h6 fw-bold mb-1">Target harian</h2>
                 <p class="text-secondary small mb-2"><?= $target_done ?>/<?= $daily_target ?> sesi fokus 25m</p>
-                <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= $target_pct ?>" aria-valuemin="0" aria-valuemax="100"><div class="xp-progress-fill" style="width:<?= $target_pct ?>%"></div></div>
+                <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= $target_pct ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres target harian"><div class="xp-progress-fill" style="width:<?= $target_pct ?>%"></div></div>
             </div>
 
             <div class="card p-4">
