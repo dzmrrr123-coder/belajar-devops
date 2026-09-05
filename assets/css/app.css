@@ -150,6 +150,11 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding:18px 0;backgroun
 .hud-menu-stat .val{font-weight:700;font-size:.9rem}
 .hud-rank{display:inline-block;background:var(--primary-soft);color:var(--primary);border:1px solid var(--line);border-radius:6px;font-size:.72rem;font-weight:700;padding:2px 8px;margin-top:6px}
 .navbar .dropdown-toggle span.fw-semibold{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.guest-actions{display:flex;align-items:center;gap:8px}
+@media(max-width:991.98px){
+.guest-actions{flex:1 1 100%;margin-top:10px}
+.guest-actions .btn{flex:1;min-height:44px;font-size:.9rem}
+}
 .navbar .min-w-0{min-width:0;overflow:hidden}
 .navbar .min-w-0 .fw-bold,.navbar .min-w-0 .text-secondary{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .btn-logout{min-height:48px;font-size:.95rem}

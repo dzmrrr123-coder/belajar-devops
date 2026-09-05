@@ -139,9 +139,9 @@ if (is_logged_in()) {
                     </div>
                 </div>
             <?php else: ?>
-                <div class="ms-auto d-flex align-items-center gap-2">
-                    <a href="login.php" class="btn btn-cyber-outline btn-sm"><i class="fas fa-sign-in-alt me-1"></i> Masuk</a>
-                    <a href="register.php" class="btn btn-cyber btn-sm"><i class="fas fa-user-plus me-1"></i> Daftar Akun</a>
+                <div class="ms-lg-auto d-flex align-items-center gap-2 guest-actions">
+                    <a href="login.php" class="btn btn-cyber-outline btn-sm"><i class="fas fa-sign-in-alt me-1" aria-hidden="true"></i> Masuk</a>
+                    <a href="register.php" class="btn btn-cyber btn-sm"><i class="fas fa-user-plus me-1" aria-hidden="true"></i> Daftar</a>
                 </div>
             <?php endif; ?>
         </div>
