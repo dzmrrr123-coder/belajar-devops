@@ -107,7 +107,7 @@ foreach ($errors as $e) {
     $categories_count[$cat] = ($categories_count[$cat] ?? 0) + 1;
 }
 
-$conn->close();
+
 
 $page_title = 'Error Log & Solusi Belajar';
 require_once 'includes/header.php';

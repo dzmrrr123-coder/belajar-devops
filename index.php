@@ -80,7 +80,7 @@ $stmt->execute();
 $pomodoro_today = (int)($stmt->get_result()->fetch_assoc()['pomodoro_today'] ?? 0);
 $stmt->close();
 
-$conn->close();
+
 
 $page_title = 'Dashboard Belajar';
 require_once 'includes/header.php';
@@ -106,7 +106,7 @@ require_once 'includes/navbar.php';
         </div>
         <div class="strip-side">
             <span><strong><?= (int)$user['streak'] ?></strong> hari konsisten</span>
-            <span><strong><?= $total_completed ?>/<?= $total_quests_cnt ?></strong> quest (<?= $overall_quest_percent ?>%)</span>
+            <span><strong><span id="dashQuestDone"><?= $total_completed ?></span>/<?= $total_quests_cnt ?></strong> quest (<?= $overall_quest_percent ?>%)</span>
         </div>
     </section>
 

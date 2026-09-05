@@ -130,6 +130,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
     $updated_user = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
+    $quests_done = 0;
+    $quests_total = 0;
+    $cnt = $conn->prepare("SELECT COUNT(*) AS done FROM user_quests WHERE user_id = ?");
+    if ($cnt) {
+        $cnt->bind_param("i", $user_id);
+        $cnt->execute();
+        $quests_done = (int)($cnt->get_result()->fetch_assoc()['done'] ?? 0);
+        $cnt->close();
+    }
+    $tot = $conn->query("SELECT COUNT(*) AS total FROM quests");
+    if ($tot) {
+        $quests_total = (int)($tot->fetch_assoc()['total'] ?? 0);
+        $tot->free();
+    }
+
     $conn->commit();
     } catch (Throwable $e) {
         $conn->rollback();
@@ -158,6 +173,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
             'next_level_xp' => xp_to_next_level($updated_user['xp']),
             'streak' => (int)$updated_user['streak'],
             'leveled_up' => $leveled_up,
+            'quests_done' => $quests_done,
+            'quests_total' => $quests_total,
             'message' => $msg
         ]);
         exit();

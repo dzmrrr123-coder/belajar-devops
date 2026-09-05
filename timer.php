@@ -39,7 +39,7 @@ $stmt->execute();
 $recent_sessions = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-$conn->close();
+
 
 $page_title = 'Pomodoro Focus Timer';
 require_once 'includes/header.php';
@@ -79,7 +79,7 @@ require_once 'includes/navbar.php';
                     </svg>
 
                     <div class="timer-center-text">
-                        <div class="timer-digits" id="timerDisplay">25:00</div>
+                        <div class="timer-digits" id="timerDisplay" role="timer" aria-label="Sisa waktu">25:00</div>
                         <div class="timer-state-label" id="timerStateLabel">Fokus Belajar</div>
                     </div>
                 </div>
@@ -238,7 +238,6 @@ function skipTimer() {
 
 function sessionCompleted() {
     SoundEffects.pomodoroAlarm();
-    triggerConfetti(false);
 
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Pomodoro selesai', {

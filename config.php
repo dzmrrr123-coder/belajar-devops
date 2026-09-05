@@ -133,6 +133,13 @@ function ensure_database_schema($conn) {
 
     try {
         mysqli_report(MYSQLI_REPORT_OFF);
+        $probe = $conn->query("SHOW TABLES LIKE 'users'");
+        $has_users = $probe && $probe->num_rows > 0;
+        if ($probe) $probe->free();
+        if ($has_users) {
+            mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+            return;
+        }
         // 1. Create users table
         $conn->query("CREATE TABLE IF NOT EXISTS `users` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -333,8 +340,15 @@ function render_db_error_page($error_msg, $host, $port, $user, $db) {
     <?php
 }
 
-// Connect database
+// Connect database (one shared connection per request)
 function db_connect() {
+    static $shared = null;
+    if ($shared instanceof mysqli) {
+        try {
+            if (@$shared->ping()) return $shared;
+        } catch (Throwable $e) {}
+        $shared = null;
+    }
     $conn = mysqli_init();
     if (!$conn) {
         throw new Exception("Gagal menginisialisasi MySQLi driver.");
@@ -350,6 +364,7 @@ function db_connect() {
         }
         $conn->set_charset("utf8mb4");
         ensure_database_schema($conn);
+        $shared = $conn;
         return $conn;
     } catch (Throwable $e) {
         http_response_code(500);

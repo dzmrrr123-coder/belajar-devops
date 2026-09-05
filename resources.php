@@ -33,7 +33,7 @@ foreach ($resources as $r) {
     $resources_by_week[$r['week']][] = $r;
 }
 
-$conn->close();
+
 
 $page_title = 'Sumber Belajar Terkurasi - Roadmap DevOps';
 require_once 'includes/header.php';

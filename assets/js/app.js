@@ -83,43 +83,50 @@ const SoundEffects = (function() {
     };
 })();
 
-// Confetti Cannon
-function triggerConfetti(levelUp = false) {
-    if (typeof confetti === 'function') {
-        if (levelUp) {
-            // Big celebration
-            const duration = 2.5 * 1000;
-            const end = Date.now() + duration;
-
-            (function frame() {
-                confetti({
-                    particleCount: 5,
-                    angle: 60,
-                    spread: 55,
-                    origin: { x: 0 },
-                    colors: ['#6366f1', '#a855f7', '#ec4899', '#fbbf24', '#34d399']
-                });
-                confetti({
-                    particleCount: 5,
-                    angle: 120,
-                    spread: 55,
-                    origin: { x: 1 },
-                    colors: ['#6366f1', '#a855f7', '#ec4899', '#fbbf24', '#34d399']
-                });
-                if (Date.now() < end) {
-                    requestAnimationFrame(frame);
-                }
-            })();
-        } else {
-            // Single burst
-            confetti({
-                particleCount: 60,
-                spread: 70,
-                origin: { y: 0.75 },
-                colors: ['#6366f1', '#10b981', '#fbbf24']
-            });
-        }
+let confettiPromise = null;
+function ensureConfetti() {
+    if (typeof confetti === 'function') return Promise.resolve(true);
+    if (!confettiPromise) {
+        confettiPromise = new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js';
+            s.async = true;
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+        });
     }
+    return confettiPromise;
+}
+
+function triggerConfetti(levelUp = false) {
+    if (!levelUp) return;
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+    ensureConfetti().then((ok) => {
+        if (!ok || typeof confetti !== 'function') return;
+        const duration = 2.5 * 1000;
+        const end = Date.now() + duration;
+        (function frame() {
+            confetti({
+                particleCount: 5,
+                angle: 60,
+                spread: 55,
+                origin: { x: 0 },
+                colors: ['#2f6b5e', '#8a6d2b', '#a44a3f']
+            });
+            confetti({
+                particleCount: 5,
+                angle: 120,
+                spread: 55,
+                origin: { x: 1 },
+                colors: ['#2f6b5e', '#8a6d2b', '#a44a3f']
+            });
+            if (Date.now() < end) {
+                requestAnimationFrame(frame);
+            }
+        })();
+    });
 }
 
 function showToast(message, type = 'success') {
@@ -199,6 +206,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const main = document.querySelector('main');
     if (main && !main.id) main.id = 'main';
     document.querySelectorAll('.lt-nav-link.active').forEach(a => a.setAttribute('aria-current', 'page'));
+
+    document.querySelectorAll('form:not(.quest-toggle-form)').forEach(form => {
+        form.addEventListener('submit', function() {
+            const btn = this.querySelector('button[type="submit"]');
+            if (btn && !btn.disabled) {
+                btn.disabled = true;
+                btn.setAttribute('aria-busy', 'true');
+            }
+        });
+    });
     // Sound Toggle Button listener
     const soundToggle = document.getElementById('ltSoundToggle');
     if (soundToggle) {
@@ -305,6 +322,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (nextLevelXpText) {
                         const need = Math.max(0, (data.next_level_xp ?? data.xp) - data.xp);
                         nextLevelXpText.textContent = need + ' XP lagi';
+                    }
+
+                    if (typeof data.quests_done === 'number') {
+                        const qd = document.getElementById('roadmapDone');
+                        if (qd) qd.textContent = data.quests_done;
+                        const dd = document.getElementById('dashQuestDone');
+                        if (dd) dd.textContent = data.quests_done;
+                        const total = data.quests_total > 0 ? data.quests_total : 0;
+                        const pct = total > 0 ? Math.round((data.quests_done / total) * 100) : 0;
+                        const rp = document.getElementById('roadmapPct');
+                        if (rp) rp.textContent = pct;
+                        const rb = document.getElementById('roadmapBar');
+                        if (rb) rb.style.width = pct + '%';
+                        const rw = document.getElementById('roadmapBarWrap');
+                        if (rw) rw.setAttribute('aria-valuenow', pct);
                     }
 
                     showToast(data.message, data.action === 'completed' ? 'success' : 'info');

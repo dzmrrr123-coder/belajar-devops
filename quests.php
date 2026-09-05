@@ -35,7 +35,7 @@ foreach ($all_quests as $q) {
 
 $completion_rate = $total_quests > 0 ? round(($completed_quests / $total_quests) * 100) : 0;
 
-$conn->close();
+
 
 $page_title = 'Quest Board - Roadmap 12 Minggu';
 require_once 'includes/header.php';
@@ -44,10 +44,10 @@ require_once 'includes/navbar.php';
 
 <main class="container py-4" role="main">
     <div class="page-head">
-        <div class="page-kicker">Roadmap persiapan PKL · <?= $completed_quests ?> dari <?= $total_quests ?> quest</div>
+        <div class="page-kicker">Roadmap persiapan PKL · <span id="roadmapDone"><?= $completed_quests ?></span> dari <span id="roadmapTotal"><?= $total_quests ?></span> quest</div>
         <h1 class="page-title">Roadmap DevOps 12 minggu</h1>
-        <p class="page-desc"><?= $xp_earned ?> dari <?= $total_xp_possible ?> XP quest terkumpul (<?= $completion_rate ?>%).</p>
-        <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= $completion_rate ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres roadmap"><div class="xp-progress-fill" style="width: <?= $completion_rate ?>%;"></div></div>
+        <p class="page-desc"><?= $xp_earned ?> dari <?= $total_xp_possible ?> XP quest terkumpul (<span id="roadmapPct"><?= $completion_rate ?></span>%).</p>
+        <div class="xp-progress-bar" id="roadmapBarWrap" role="progressbar" aria-valuenow="<?= $completion_rate ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres roadmap"><div class="xp-progress-fill" id="roadmapBar" style="width: <?= $completion_rate ?>%;"></div></div>
     </div>
 
     <div class="mb-4">
