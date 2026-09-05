@@ -139,13 +139,7 @@ function ensure_database_schema($conn) {
 
     try {
         mysqli_report(MYSQLI_REPORT_OFF);
-        $probe = $conn->query("SHOW TABLES LIKE 'users'");
-        $has_users = $probe && $probe->num_rows > 0;
-        if ($probe) $probe->free();
-        if ($has_users) {
-            mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-            return;
-        }
+        // Additive migrations run on every connect so existing DBs also upgrade.
         // 1. Create users table
         $conn->query("CREATE TABLE IF NOT EXISTS `users` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
