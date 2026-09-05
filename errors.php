@@ -22,10 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_error']) || (iss
         if ($stmt->execute()) {
             $new_error_id = $stmt->insert_id;
             $xp_gain = apply_xp_multiplier(5, mission_multiplier($conn, $user_id));
-            $stmt_xp = $conn->prepare("UPDATE users SET xp = xp + ? WHERE id = ?");
-            $stmt_xp->bind_param("ii", $xp_gain, $user_id);
-            $stmt_xp->execute();
-            $stmt_xp->close();
+            award_xp($conn, $user_id, $xp_gain, 'note');
 
             update_user_streak($conn, $user_id);
             schedule_review($conn, $user_id, 'error', (int)$new_error_id, $error_message, $solution);

@@ -31,10 +31,7 @@ try {
     $stmt->bind_param("is", $user_id, $key);
     $stmt->execute();
     $stmt->close();
-    $stmt = $conn->prepare("UPDATE users SET xp = xp + ? WHERE id = ?");
-    $stmt->bind_param("ii", $xp, $user_id);
-    $stmt->execute();
-    $stmt->close();
+    award_xp($conn, $user_id, $xp, 'mission');
     update_user_streak($conn, $user_id);
     $new_badges = check_and_unlock_badges($conn, $user_id);
     $conn->commit();

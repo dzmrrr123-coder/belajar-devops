@@ -246,6 +246,15 @@ function ensure_database_schema($conn) {
             CONSTRAINT `fk_user_badges_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         @$conn->query("CREATE INDEX idx_user_badges_user ON `user_badges` (`user_id`)");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `xp_events` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `amount` INT NOT NULL,
+            `reason` VARCHAR(64) NOT NULL DEFAULT 'other',
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_xp_events_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("CREATE INDEX idx_xp_events_user ON `xp_events` (`user_id`, `created_at`)");
         @$conn->query("ALTER TABLE `quests` ADD COLUMN `user_id` INT NULL");
         @$conn->query("ALTER TABLE `quests` ADD COLUMN `is_custom` TINYINT NOT NULL DEFAULT 0");
         @$conn->query("CREATE TABLE IF NOT EXISTS `daily_missions` (
@@ -322,7 +331,7 @@ function ensure_database_schema($conn) {
     }
 
     $missing = [];
-    foreach (['users','quests','user_quests','errors','resources','pomodoro_sessions','questions','daily_missions','quest_subtasks','reviews','user_badges'] as $t) {
+    foreach (['users','quests','user_quests','errors','resources','pomodoro_sessions','questions','daily_missions','quest_subtasks','reviews','user_badges','xp_events'] as $t) {
         try {
             $chk = $conn->query("SHOW TABLES LIKE '" . $conn->real_escape_string($t) . "'");
             if (!$chk || $chk->num_rows === 0) $missing[] = $t;
@@ -653,6 +662,30 @@ function mission_multiplier($conn, $user_id) {
 
 function apply_xp_multiplier($base, $mult) {
     return (int)ceil($base * $mult);
+}
+
+function award_xp($conn, $user_id, $amount, $reason = 'other') {
+    $amount = (int)$amount;
+    if ($amount === 0) return;
+    $stmt = $conn->prepare("UPDATE users SET xp = GREATEST(0, xp + ?) WHERE id = ?");
+    $stmt->bind_param("ii", $amount, $user_id);
+    $stmt->execute();
+    $stmt->close();
+    try {
+        $log = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason) VALUES (?, ?, ?)");
+        $log->bind_param("iis", $user_id, $amount, $reason);
+        $log->execute();
+        $log->close();
+    } catch (Throwable $e) {}
+}
+
+function weekly_xp($conn, $user_id) {
+    try {
+        $q = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND amount > 0");
+        $q->bind_param("i", $user_id); $q->execute();
+        $n = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        return $n;
+    } catch (Throwable $e) { return 0; }
 }
 
 function daily_mission_defs() {

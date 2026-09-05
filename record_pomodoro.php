@@ -41,10 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $xp_reward = apply_xp_multiplier($xp_reward, mission_multiplier($conn, $user_id));
     // Reward XP
-    $stmt = $conn->prepare("UPDATE users SET xp = xp + ? WHERE id = ?");
-    $stmt->bind_param("ii", $xp_reward, $user_id);
-    $stmt->execute();
-    $stmt->close();
+    award_xp($conn, $user_id, $xp_reward, 'pomodoro');
 
     // Update streak
     $new_streak = update_user_streak($conn, $user_id);

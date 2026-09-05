@@ -98,8 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $up = $conn->prepare("UPDATE questions SET linked_error_id = ?, status = 'answered', answered_at = IF(answered_at IS NULL, NOW(), answered_at) WHERE id = ? AND user_id = ?");
                 $up->bind_param("iii", $eid, $question_id, $user_id);
                 $up->execute(); $up->close();
-                $xp = $conn->prepare("UPDATE users SET xp = xp + 5 WHERE id = ?");
-                $xp->bind_param("i", $user_id); $xp->execute(); $xp->close();
+                award_xp($conn, $user_id, 5, 'note');
                 update_user_streak($conn, $user_id);
                 schedule_review($conn, $user_id, 'error', (int)$eid, $emsg, $sol);
                 set_flash('success', 'Dipindah ke Error Log! +5 XP.');

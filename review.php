@@ -20,9 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $up->bind_param("iiii", $next, $next, $rid, $user_id);
                 $up->execute(); $up->close();
                 if ((int)$rev['done_count'] === 0) {
-                    $xp = 5;
-                    $x = $conn->prepare("UPDATE users SET xp = xp + ? WHERE id = ?");
-                    $x->bind_param("ii", $xp, $user_id); $x->execute(); $x->close();
+                    award_xp($conn, $user_id, 5, 'review');
                     $nb = check_and_unlock_badges($conn, $user_id);
                     set_flash('success', 'Review tuntas! +5 XP. Jadwal berikutnya diperpanjang.' . (!empty($nb) ? ' Badge: ' . implode(', ', $nb) . '!' : ''));
                 } else {
