@@ -2,7 +2,7 @@
 require_once 'config.php';
 $conn = db_connect();
 $uname = mb_substr(trim($_GET['u'] ?? ''), 0, 100);
-$stmt = $conn->prepare("SELECT id, username, xp, streak, best_streak, public_profile, flair, created_at FROM users WHERE username = ?");
+$stmt = $conn->prepare("SELECT id, username, xp, streak, best_streak, public_profile, flair, avatar_frame, created_at FROM users WHERE username = ?");
 $stmt->bind_param("s", $uname);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
@@ -77,7 +77,10 @@ require_once 'includes/header.php';
 <main class="container py-4" role="main">
     <div class="page-head">
         <div class="page-kicker">Profil publik · Level <?= $level ?> · <?= htmlspecialchars($rank) ?></div>
-        <h1 class="page-title"><?= htmlspecialchars($user['username']) ?><?php if (!empty($user['flair'])): ?> <span class="flair-badge"><?= htmlspecialchars($user['flair']) ?></span><?php endif; ?></h1>
+        <div class="d-flex align-items-center gap-3 mb-2">
+            <span class="avatar-circle avatar-xl frame-<?= htmlspecialchars($user['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($user['username'], 0, 1)) ?></span>
+            <h1 class="page-title mb-0"><?= htmlspecialchars($user['username']) ?><?php if (!empty($user['flair'])): ?> <span class="flair-badge"><?= htmlspecialchars($user['flair']) ?></span><?php endif; ?></h1>
+        </div>
         <p class="page-desc"><?= (int)$user['xp'] ?> XP · <?= (int)$user['streak'] ?> streak (terbaik <?= (int)($user['best_streak'] ?? 0) ?>) · sejak <?= date('M Y', strtotime($user['created_at'])) ?></p>
         <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= $qpct ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres quest"><div class="xp-progress-fill" style="width: <?= $qpct ?>%;"></div></div>
         <div class="strip-meta"><span><?= $qd ?>/<?= $qt ?> quest (<?= $qpct ?>%)</span><span><?= $pomo ?> fokus · <?= $notes ?> catatan · <?= count($owned) ?> badge</span></div>

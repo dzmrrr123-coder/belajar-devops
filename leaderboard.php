@@ -15,9 +15,9 @@ $scope = ($_GET['scope'] ?? 'total') === 'week' ? 'week' : 'total';
 $rows = [];
 try {
     if ($scope === 'week') {
-        $s = $conn->prepare("SELECT u.username, u.xp, u.streak, u.public_profile, u.flair, GREATEST(0, COALESCE((SELECT SUM(e.amount) FROM xp_events e WHERE e.user_id = u.id AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0)) wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = u.id) qd FROM users u WHERE u.show_on_board = 1 ORDER BY wxp DESC, u.streak DESC LIMIT ? OFFSET ?");
+        $s = $conn->prepare("SELECT u.username, u.xp, u.streak, u.public_profile, u.flair, u.avatar_frame, GREATEST(0, COALESCE((SELECT SUM(e.amount) FROM xp_events e WHERE e.user_id = u.id AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0)) wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = u.id) qd FROM users u WHERE u.show_on_board = 1 ORDER BY wxp DESC, u.streak DESC LIMIT ? OFFSET ?");
     } else {
-        $s = $conn->prepare("SELECT username, xp, streak, public_profile, flair, xp AS wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = users.id) qd FROM users WHERE show_on_board = 1 ORDER BY xp DESC, streak DESC LIMIT ? OFFSET ?");
+        $s = $conn->prepare("SELECT username, xp, streak, public_profile, flair, avatar_frame, xp AS wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = users.id) qd FROM users WHERE show_on_board = 1 ORDER BY xp DESC, streak DESC LIMIT ? OFFSET ?");
     }
     $s->bind_param("ii", $per, $off);
     $s->execute();
@@ -63,6 +63,7 @@ require_once 'includes/navbar.php';
         <?php if (!$rows): ?><p class="text-secondary small p-3 mb-0">Belum ada peserta. Jadilah yang pertama dari Profil.</p><?php endif; ?>
         <?php $rank = $off; foreach ($rows as $r): $rank++; $lv = calculate_level($r['xp']); ?>
         <div class="list-row">
+            <span class="avatar-circle avatar-sm frame-<?= htmlspecialchars($r['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($r['username'], 0, 1)) ?></span>
             <strong class="me-1" style="min-width:36px">#<?= $rank ?></strong>
             <div class="list-main"><p class="list-title"><?php if (!empty($r['public_profile'])): ?><a class="board-link" href="u.php?u=<?= urlencode($r['username']) ?>"><?= htmlspecialchars($r['username']) ?></a><?php else: ?><?= htmlspecialchars($r['username']) ?><?php endif; ?><?php if (!empty($r['flair'])): ?> <span class="flair-badge"><?= htmlspecialchars($r['flair']) ?></span><?php endif; ?> · Lv <?= $lv ?></p><p class="list-meta"><?= $scope === 'week' ? (int)$r['wxp'] . ' XP minggu ini · ' : '' ?><?= (int)$r['xp'] ?> XP · <?= (int)$r['streak'] ?> streak · <?= (int)$r['qd'] ?> quest</p></div>
         </div>

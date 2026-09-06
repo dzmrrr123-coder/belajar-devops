@@ -54,6 +54,7 @@ a:hover{color:var(--primary-hover);text-decoration:underline}
 .avatar-circle{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;font-size:.72rem;font-weight:700}
 .avatar-lg{width:36px;height:36px;font-size:.85rem;flex-shrink:0}
 .avatar-xl{width:56px;height:56px;font-size:1.3rem;flex-shrink:0}
+.avatar-sm{width:26px;height:26px;font-size:.68rem;flex-shrink:0}
 .avatar-circle.frame-ring{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary)}
 .avatar-circle.frame-ember{box-shadow:0 0 0 2px var(--surface),0 0 0 4px #e09a3c}
 .avatar-circle.frame-gold{box-shadow:0 0 0 2px var(--surface),0 0 0 4px #c9a13b}
