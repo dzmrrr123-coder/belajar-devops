@@ -376,6 +376,22 @@ section[aria-labelledby="continue-material-heading"] .list-meta,section[aria-lab
 }
 #customMinutes{min-width:0}
 .session-item{min-width:0}
+.collapsible-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md)}
+.collapsible-summary{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;list-style:none;border-radius:var(--r-md)}
+.collapsible-summary::-webkit-details-marker{display:none}
+.collapsible-summary::marker{content:""}
+.collapsible-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.collapsible-text strong{font-size:.9rem;line-height:1.35}
+.collapsible-text small{font-size:.76rem;color:var(--muted)}
+.collapsible-chev{color:var(--faint);font-size:.75rem;transition:transform .18s ease;flex-shrink:0}
+.collapsible-card[open] .collapsible-chev{transform:rotate(180deg)}
+.collapsible-body{padding:2px 14px 14px}
+.leaderboard-actions{align-items:center}
+.question-card h2{overflow-wrap:break-word;word-break:break-word}
+.question-card .text-secondary{overflow-wrap:break-word}
+@media(max-width:767.98px){
+.leaderboard-actions{flex-direction:row;flex-wrap:wrap}
+}
 .profile-stats{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:.9rem;margin-bottom:14px;max-width:640px}
 .profile-stats strong{color:var(--ink);font-variant-numeric:tabular-nums}
 .profile-stats small{color:var(--faint)}

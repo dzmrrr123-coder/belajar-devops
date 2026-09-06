@@ -112,8 +112,12 @@ require_once 'includes/navbar.php';
     <div class="row g-4">
         <!-- Form Add Error -->
         <div class="col-lg-4">
-            <div class="card p-4 sticky-top" style="top: 80px;">
-                <h2 class="section-title mb-1">Tambah catatan</h2>
+            <details class="collapsible-card sticky-top" id="errorFormWrap" style="top: 80px;" open>
+                <summary class="collapsible-summary">
+                    <span class="collapsible-text"><strong>Tambah catatan</strong><small>+5 XP tiap catatan baru</small></span>
+                    <i class="fas fa-chevron-down collapsible-chev" aria-hidden="true"></i>
+                </summary>
+                <div class="collapsible-body">
                 <p class="text-secondary small mb-3">Dokumentasikan kendala teknis dan solusi yang berhasil kamu temukan.</p>
 
                 <form method="POST" action="errors.php" data-outbox="error_add">
@@ -153,7 +157,9 @@ require_once 'includes/navbar.php';
                         <i class="fas fa-save me-2"></i> Simpan catatan
                     </button>
                 </form>
-            </div>
+                </div>
+            </details>
+            <script>(function(){var d=document.getElementById('errorFormWrap');if(d&&matchMedia('(max-width:991.98px)').matches){d.removeAttribute('open');}})();</script>
         </div>
 
         <!-- Error List & Filter -->
@@ -249,7 +255,7 @@ require_once 'includes/navbar.php';
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="card p-5 text-center empty-state">
+                    <div class="card p-4 p-md-5 text-center empty-state">
                         <div class="empty-state-icon"><i class="fas fa-shield-alt text-emerald"></i></div>
                         <h2 class="h5 fw-bold mb-2">Belum Ada Catatan Error</h2>
                         <p class="text-secondary small mb-3">Belum pernah stuck atau error? Hebat! Jika kamu menemui bug, catat di formulir sebelah kiri untuk mendapatkan reward +5 XP.</p>
@@ -258,7 +264,7 @@ require_once 'includes/navbar.php';
             </div>
 
             <!-- Empty Search Result State -->
-            <div id="noErrorsSearch" class="card p-5 text-center empty-state d-none">
+            <div id="noErrorsSearch" class="card p-4 p-md-5 text-center empty-state d-none">
                 <div class="empty-state-icon"><i class="fas fa-search-minus"></i></div>
                 <h2 class="h5 fw-bold mb-2">Tidak ada error yang cocok</h2>
                 <p class="text-secondary small mb-0">Coba ubah kata kunci pencarian atau ganti filter kategori.</p>

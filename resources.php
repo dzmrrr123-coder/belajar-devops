@@ -102,7 +102,7 @@ require_once 'includes/navbar.php';
                 </section>
             <?php endforeach; ?>
         <?php else: ?>
-            <div class="card p-5 text-center empty-state">
+            <div class="card p-4 p-md-5 text-center empty-state">
                 <div class="empty-state-icon"><i class="fas fa-book-reader"></i></div>
                 <h2 class="h5 fw-bold mb-2">Tidak Ada Sumber untuk Filter Ini</h2>
                 <p class="text-secondary small mb-3">Materi untuk minggu ini sedang dipersiapkan atau belum tersedia.</p>
@@ -114,7 +114,7 @@ require_once 'includes/navbar.php';
     </div>
 
     <!-- Search No Result Message -->
-    <div id="noResourcesSearch" class="card p-5 text-center empty-state d-none">
+    <div id="noResourcesSearch" class="card p-4 p-md-5 text-center empty-state d-none">
         <div class="empty-state-icon"><i class="fas fa-search-minus"></i></div>
         <h2 class="h5 fw-bold mb-2">Tidak ada sumber belajar yang cocok</h2>
         <p class="text-secondary small mb-0">Coba gunakan kata kunci pencarian yang lebih umum.</p>

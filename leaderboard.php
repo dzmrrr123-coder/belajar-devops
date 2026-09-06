@@ -51,10 +51,12 @@ require_once 'includes/navbar.php';
         <div class="page-kicker">Opt-in · tanpa email<?= $my_rank ? ' · peringkat #' . $my_rank : '' ?></div>
         <h1 class="page-title">Leaderboard</h1>
         <p class="page-desc">Hanya yang mengaktifkan “Tampil di leaderboard” di Profil.</p>
-        <div class="page-actions">
-            <a href="leaderboard.php?scope=total" class="btn <?= $scope === 'total' ? 'btn-cyber' : 'btn-cyber-outline' ?> btn-sm">Total XP</a>
-            <a href="leaderboard.php?scope=week" class="btn <?= $scope === 'week' ? 'btn-cyber' : 'btn-cyber-outline' ?> btn-sm">Minggu ini</a>
-            <a href="profile.php" class="btn btn-cyber-outline btn-sm">Visibilitas</a>
+        <div class="page-actions leaderboard-actions">
+            <div class="segmented" role="group" aria-label="Rentang leaderboard">
+                <a href="leaderboard.php?scope=total" class="filter-pill <?= $scope === 'total' ? 'active' : '' ?>">Total XP</a>
+                <a href="leaderboard.php?scope=week" class="filter-pill <?= $scope === 'week' ? 'active' : '' ?>">Minggu ini</a>
+            </div>
+            <a href="profile.php" class="page-actions-link">Visibilitas <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
         </div>
     </div>
     <div class="card p-2">
