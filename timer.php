@@ -204,11 +204,48 @@ require_once 'includes/navbar.php';
 const CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
 const CIRCUMFERENCE = 2 * Math.PI * 95; // r = 95 -> ~596.90
 
+const STORE_KEY = 'lt_timer_v1';
+
 let timerMode = 'focus';
 let totalSeconds = 25 * 60;
 let remainingSeconds = 25 * 60;
 let timerInterval = null;
 let isRunning = false;
+let endsAt = null;
+let sessionId = null;
+let completedFor = null;
+
+function saveTimer() {
+    try {
+        const noteEl = document.getElementById('focusNote');
+        const customEl = document.getElementById('customMinutes');
+        localStorage.setItem(STORE_KEY, JSON.stringify({
+            mode: timerMode, totalSec: totalSeconds, remainingSec: remainingSeconds,
+            endsAt: endsAt, running: isRunning, sessionId: sessionId,
+            finished: false, note: noteEl ? noteEl.value.slice(0, 255) : '',
+            customMin: customEl ? customEl.value : '', ts: Date.now()
+        }));
+    } catch (e) {}
+}
+
+function readTimerStore() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { return null; }
+}
+
+function setModeUI() {
+    document.querySelectorAll('.timer-mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-mode') === timerMode);
+    });
+    let label = 'Fokus Belajar';
+    if (timerMode === 'shortBreak') label = 'Istirahat Pendek';
+    if (timerMode === 'longBreak') label = 'Istirahat Panjang';
+    document.getElementById('timerStateLabel').textContent = label;
+}
+
+function setStartBtn(text, icon) {
+    document.getElementById('startBtnText').textContent = text;
+    document.getElementById('startBtn').querySelector('i').className = icon;
+}
 
 const circle = document.getElementById('timerProgressCircle');
 circle.style.strokeDasharray = `${CIRCUMFERENCE} ${CIRCUMFERENCE}`;
@@ -220,11 +257,11 @@ function setProgress(percent) {
 }
 
 function updateDisplay() {
-    const mins = Math.floor(remainingSeconds / 60);
-    const secs = remainingSeconds % 60;
+    const mins = Math.floor(Math.max(0, remainingSeconds) / 60);
+    const secs = Math.max(0, remainingSeconds) % 60;
     const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     document.getElementById('timerDisplay').textContent = timeStr;
-    document.title = `(${timeStr}) Pomodoro - Learn Tracker`;
+    if (location.pathname.endsWith('timer.php')) document.title = `(${timeStr}) Pomodoro - Learn Tracker`;
 
     const progress = ((totalSeconds - remainingSeconds) / totalSeconds) * 100;
     setProgress(progress);
@@ -238,42 +275,60 @@ function toggleTimer() {
     }
 }
 
+function tickTimer() {
+    const r = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+    remainingSeconds = r;
+    if (r <= 0) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        isRunning = false;
+        endsAt = null;
+        updateDisplay();
+        sessionCompleted();
+    } else {
+        updateDisplay();
+    }
+}
+
 function startTimer() {
     if (isRunning) return;
+    if (remainingSeconds <= 0) remainingSeconds = totalSeconds;
+    if (!sessionId) sessionId = 't' + Date.now().toString(36);
+    endsAt = Date.now() + remainingSeconds * 1000;
     isRunning = true;
-    document.getElementById('startBtnText').textContent = 'Jeda';
-    document.getElementById('startBtn').querySelector('i').className = 'fas fa-pause me-2';
+    setStartBtn('Jeda', 'fas fa-pause me-2');
 
     // Request notification permission if needed
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }
 
-    timerInterval = setInterval(() => {
-        if (remainingSeconds > 0) {
-            remainingSeconds--;
-            updateDisplay();
-        } else {
-            clearInterval(timerInterval);
-            isRunning = false;
-            sessionCompleted();
-        }
-    }, 1000);
+    saveTimer();
+    clearInterval(timerInterval);
+    timerInterval = setInterval(tickTimer, 500);
+    updateDisplay();
 }
 
 function pauseTimer() {
+    if (isRunning && endsAt) remainingSeconds = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
     clearInterval(timerInterval);
+    timerInterval = null;
     isRunning = false;
-    document.getElementById('startBtnText').textContent = 'Lanjut';
-    document.getElementById('startBtn').querySelector('i').className = 'fas fa-play me-2';
+    endsAt = null;
+    setStartBtn('Lanjut', 'fas fa-play me-2');
+    saveTimer();
+    updateDisplay();
 }
 
 function resetTimer() {
     clearInterval(timerInterval);
+    timerInterval = null;
     isRunning = false;
+    endsAt = null;
+    sessionId = null;
     remainingSeconds = totalSeconds;
-    document.getElementById('startBtnText').textContent = 'Mulai';
-    document.getElementById('startBtn').querySelector('i').className = 'fas fa-play me-2';
+    setStartBtn('Mulai', 'fas fa-play me-2');
+    saveTimer();
     updateDisplay();
 }
 
@@ -327,22 +382,41 @@ document.addEventListener('lt:pomodoro-synced', function(e) {
 });
 
 function sessionCompleted() {
+    if (sessionId && completedFor === sessionId) return;
+    const store = readTimerStore();
+    if (store && store.recorded && store.sessionId === sessionId) {
+        completedFor = sessionId;
+        applyFinishedMode(store.mode || timerMode);
+        return;
+    }
+    completedFor = sessionId;
+    const doneMode = timerMode;
+    const doneMinutes = Math.round(totalSeconds / 60);
+    const noteEl = document.getElementById('focusNote');
+    const doneNote = noteEl ? noteEl.value.slice(0, 255) : '';
+    try {
+        localStorage.setItem(STORE_KEY, JSON.stringify({
+            finished: true, recorded: true, sessionId: sessionId,
+            mode: doneMode, totalSec: totalSeconds, ts: Date.now()
+        }));
+    } catch (e) {}
+    sessionId = null;
+
     SoundEffects.pomodoroAlarm();
 
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Pomodoro selesai', {
-            body: timerMode === 'focus' ? 'Waktu fokus selesai. Istirahat sejenak.' : 'Istirahat selesai. Siap fokus kembali?'
+            body: doneMode === 'focus' ? 'Waktu fokus selesai. Istirahat sejenak.' : 'Istirahat selesai. Siap fokus kembali?'
         });
     }
 
-    if (timerMode === 'focus') {
+    if (doneMode === 'focus') {
         // Record focus session via AJAX
         const formData = new FormData();
         formData.append('csrf_token', CSRF_TOKEN);
-        formData.append('duration', Math.round(totalSeconds / 60));
-        formData.append('mode', timerMode);
-        const noteEl = document.getElementById('focusNote');
-        formData.append('focus_note', noteEl ? noteEl.value.slice(0, 255) : '');
+        formData.append('duration', doneMinutes);
+        formData.append('mode', doneMode);
+        formData.append('focus_note', doneNote);
 
         fetch('record_pomodoro.php', {
             method: 'POST',
@@ -351,11 +425,11 @@ function sessionCompleted() {
         })
         .then(res => res.json())
         .then(data => {
-            if (data.status === 'success') applyPomodoroResult(data, Math.round(totalSeconds / 60));
+            if (data.status === 'success') applyPomodoroResult(data, doneMinutes);
         })
         .catch(() => {
             if (!navigator.onLine && window.LTOutbox) {
-                window.LTOutbox.enqueue({ type: 'pomodoro', minutes: Math.round(totalSeconds / 60), csrf: CSRF_TOKEN });
+                window.LTOutbox.enqueue({ type: 'pomodoro', minutes: doneMinutes, csrf: CSRF_TOKEN });
                 showToast('Offline. Sesi masuk antrean, terkirim saat online.', 'warning');
             } else {
                 showToast('Sesi selesai, tetapi gagal tercatat. Refresh halaman.', 'warning');
@@ -377,21 +451,38 @@ function setCustomFocus() {
     showToast('Fokus custom ' + v + ' menit siap.', 'info');
 }
 
+function applyFinishedMode(doneMode) {
+    sessionId = null;
+    endsAt = null;
+    isRunning = false;
+    if (doneMode === 'focus') {
+        timerMode = 'shortBreak';
+        totalSeconds = 5 * 60;
+    } else {
+        timerMode = 'focus';
+        totalSeconds = 25 * 60;
+    }
+    remainingSeconds = totalSeconds;
+    setModeUI();
+    setStartBtn('Mulai', 'fas fa-play me-2');
+    saveTimer();
+    updateDisplay();
+}
+
 function switchMode(mode, minutes) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    isRunning = false;
+    endsAt = null;
+    sessionId = null;
     timerMode = mode;
     totalSeconds = minutes * 60;
     remainingSeconds = totalSeconds;
 
-    document.querySelectorAll('.timer-mode-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
-    });
-
-    let label = 'Fokus Belajar';
-    if (mode === 'shortBreak') label = 'Istirahat Pendek';
-    if (mode === 'longBreak') label = 'Istirahat Panjang';
-    document.getElementById('timerStateLabel').textContent = label;
-
-    resetTimer();
+    setModeUI();
+    setStartBtn('Mulai', 'fas fa-play me-2');
+    saveTimer();
+    updateDisplay();
 }
 
 document.querySelectorAll('.timer-mode-btn').forEach(btn => {
@@ -402,7 +493,68 @@ document.querySelectorAll('.timer-mode-btn').forEach(btn => {
     });
 });
 
-updateDisplay();
+function restoreTimer() {
+    const s = readTimerStore();
+    if (!s) { updateDisplay(); return; }
+    if (s.finished) {
+        if (s.recorded) {
+            completedFor = s.sessionId || completedFor;
+            applyFinishedMode(s.mode || 'focus');
+        } else {
+            sessionId = s.sessionId || null;
+            timerMode = s.mode || 'focus';
+            totalSeconds = s.totalSec || 25 * 60;
+            remainingSeconds = 0;
+            setModeUI();
+            updateDisplay();
+            sessionCompleted();
+        }
+        return;
+    }
+    timerMode = s.mode || 'focus';
+    totalSeconds = s.totalSec || 25 * 60;
+    sessionId = s.sessionId || null;
+    const noteEl = document.getElementById('focusNote');
+    if (noteEl && typeof s.note === 'string') noteEl.value = s.note;
+    const customEl = document.getElementById('customMinutes');
+    if (customEl && timerMode === 'focus' && s.customMin) customEl.value = s.customMin;
+    setModeUI();
+    if (s.running && s.endsAt) {
+        const r = Math.max(0, Math.ceil((s.endsAt - Date.now()) / 1000));
+        if (r <= 0) {
+            remainingSeconds = 0;
+            endsAt = null;
+            isRunning = false;
+            updateDisplay();
+            sessionCompleted();
+            return;
+        }
+        remainingSeconds = r;
+        endsAt = s.endsAt;
+        isRunning = true;
+        setStartBtn('Jeda', 'fas fa-pause me-2');
+        clearInterval(timerInterval);
+        timerInterval = setInterval(tickTimer, 500);
+    } else {
+        remainingSeconds = (typeof s.remainingSec === 'number') ? Math.max(0, Math.min(s.remainingSec, totalSeconds)) : totalSeconds;
+        endsAt = null;
+        isRunning = false;
+        setStartBtn(remainingSeconds < totalSeconds ? 'Lanjut' : 'Mulai', 'fas fa-play me-2');
+    }
+    updateDisplay();
+}
+
+restoreTimer();
+
+window.addEventListener('storage', function(e) {
+    if (e.key !== STORE_KEY || isRunning) return;
+    restoreTimer();
+});
+
+['focusNote', 'customMinutes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => { if (!isRunning) saveTimer(); });
+});
 </script>
 
 <?php require_once 'includes/footer.php'; ?>
