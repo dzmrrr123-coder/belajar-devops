@@ -73,8 +73,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
                 $rrow = $rev->get_result()->fetch_assoc();
                 $rev->close();
                 $next = review_next_interval((int)($rrow['interval_day'] ?? 1));
-                $up = $conn->prepare("UPDATE reviews SET interval_day = ?, next_due = DATE_ADD(CURDATE(), INTERVAL ? DAY), done_count = done_count + 1 WHERE user_id = ? AND source = 'quiz' AND source_id = ?");
-                $up->bind_param("iiii", $next, $next, $user_id, $card_id);
+                $rtitle = mb_substr(trim((string)($card['question'] ?? 'Kuis')), 0, 255);
+                $rdetail = mb_substr((string)($card['answer'] ?? ''), 0, 2000);
+                $up = $conn->prepare("INSERT INTO reviews (user_id, source, source_id, title, detail, next_due, interval_day, done_count) VALUES (?, 'quiz', ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, 1) ON DUPLICATE KEY UPDATE interval_day = VALUES(interval_day), next_due = VALUES(next_due), done_count = done_count + 1");
+                $up->bind_param("iissii", $user_id, $card_id, $rtitle, $rdetail, $next, $next);
                 $up->execute(); $up->close();
                 $cap = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND ref_type = 'quiz' AND amount > 0 AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY");
                 $cap->bind_param("i", $user_id);

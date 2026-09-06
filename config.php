@@ -131,7 +131,66 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 25);
+define('SCHEMA_VERSION', 26);
+
+function quiz_bank_cards() {
+    return [
+        ['Linux', 'Perintah melihat isi direktori + file tersembunyi?', 'ls -la'],
+        ['Linux', 'Perintah pindah ke direktori home user?', 'cd ~ atau cd'],
+        ['Linux', 'Cara melihat 20 baris terakhir file log?', 'tail -n 20 /var/log/nginx/error.log'],
+        ['Linux', 'Perintah cek pemakaian disk per partisi?', 'df -h'],
+        ['Linux', 'Perintah memberi hak eksekusi ke script?', 'chmod +x deploy.sh'],
+        ['Linux', 'Perintah menjalankan perintah sebagai root?', 'sudo <perintah>, misal sudo apt update'],
+        ['Git', 'Perintah menyimpan snapshot perubahan ke staging?', 'git add . lalu git commit -m "pesan"'],
+        ['Git', 'Perintah melihat riwayat commit ringkas?', 'git log --oneline'],
+        ['Git', 'Perintah pindah branch / membuat branch baru?', 'git checkout -b fitur-x (atau git switch -c fitur-x)'],
+        ['Git', 'Perintah menggabungkan branch ke branch aktif?', 'git merge nama-branch'],
+        ['Git', 'Perintah mengunduh perubahan remote tanpa merge?', 'git fetch origin'],
+        ['Git', 'Perintah membatalkan file yang belum di-commit?', 'git restore <file> (atau git checkout -- <file>)'],
+        ['MySQL', 'Perintah membuat database baru?', 'CREATE DATABASE tokoonline CHARACTER SET utf8mb4;'],
+        ['MySQL', 'Perintah menambah kolom ke tabel?', 'ALTER TABLE users ADD COLUMN avatar VARCHAR(255);'],
+        ['MySQL', 'Klausa mencegah duplikat & mempercepat pencarian?', 'UNIQUE constraint dan INDEX pada kolom yang sering dicari'],
+        ['MySQL', 'Apa fungsi FOREIGN KEY?', 'Menjamin relasi antar tabel valid; baris anak wajib punya induk yang ada'],
+        ['MySQL', 'Perintah backup satu database?', 'mysqldump -u root -p tokoonline > backup.sql'],
+        ['MySQL', 'Bedanya DELETE vs TRUNCATE?', 'DELETE bisa WHERE + tercatat per baris; TRUNCATE hapus semua cepat tanpa WHERE'],
+        ['PHP', 'Fungsi mengamankan output HTML dari XSS?', 'htmlspecialchars($data, ENT_QUOTES, "UTF-8")'],
+        ['PHP', 'Cara mencegah SQL injection dengan MySQLi?', 'Prepared statement: $conn->prepare + bind_param'],
+        ['PHP', 'Fungsi hashing password yang dianjurkan?', 'password_hash($pw, PASSWORD_BCRYPT) + password_verify'],
+        ['PHP', 'Bedanya == dan === di PHP?', '== longgar (konversi tipe), === ketat (nilai + tipe sama)'],
+        ['PHP', 'Apa itu PDO/MySQLi prepared statement?', 'Query dikirim terpisah dari data sehingga input tak dieksekusi sebagai SQL'],
+        ['PHP', 'Fungsi redirect lalu hentikan eksekusi?', 'header("Location: index.php"); exit();'],
+        ['Docker', 'Perintah membangun image dari Dockerfile?', 'docker build -t nama-app .'],
+        ['Docker', 'Perintah menjalankan container dari image?', 'docker run -d -p 8080:80 nama-app'],
+        ['Docker', 'File untuk orkestrasi multi-container?', 'docker-compose.yml + perintah docker compose up -d'],
+        ['Docker', 'Perintah melihat container yang berjalan?', 'docker ps (semua termasuk berhenti: docker ps -a)'],
+        ['Docker', 'Perintah menghapus image tak terpakai?', 'docker image prune'],
+        ['Docker', 'Apa itu volume di Docker?', 'Penyimpanan persisten di luar container agar data tak hilang saat container dihapus'],
+        ['AWS', 'Layanan VPS di AWS?', 'EC2 (Elastic Compute Cloud)'],
+        ['AWS', 'Layanan penyimpanan objek di AWS?', 'S3 (Simple Storage Service)'],
+        ['AWS', 'Apa itu Security Group?', 'Firewall virtual pengatur inbound/outbound instance EC2'],
+        ['AWS', 'Perintah koneksi SSH ke EC2?', 'ssh -i kunci.pem ubuntu@<ip-publik>'],
+        ['AWS', 'Tool gratis sertifikat SSL?', "Let's Encrypt via Certbot"],
+        ['AWS', 'Apa itu reverse proxy (Nginx)?', 'Server perantara yang meneruskan request ke aplikasi di belakangnya + terminasi SSL'],
+    ];
+}
+
+function seed_quiz_bank($conn, $user_id) {
+    $n = 0;
+    try {
+        $ins = $conn->prepare("INSERT IGNORE INTO quiz_cards (user_id, source, source_id, question, answer) VALUES (?, 'bank', ?, ?, ?)");
+        if (!$ins) return 0;
+        foreach (quiz_bank_cards() as $i => $c) {
+            $sid = $i + 1;
+            $q = mb_substr(trim((string)$c[1]), 0, 255);
+            $a = mb_substr(trim((string)$c[2]), 0, 2000);
+            if ($q === '' || $a === '') continue;
+            $ins->bind_param("iiss", $user_id, $sid, $q, $a);
+            if ($ins->execute() && $ins->affected_rows > 0) $n++;
+        }
+        $ins->close();
+    } catch (Throwable $e) {}
+    return $n;
+}
 
 // Auto-initialize schema & seed data safely without multi_query
 function ensure_database_schema($conn) {
@@ -321,6 +380,13 @@ function ensure_database_schema($conn) {
         @$conn->query("CREATE INDEX idx_resources_week ON `resources` (`week`)");
         @$conn->query("CREATE INDEX idx_quests_week_user ON `quests` (`week`, `user_id`)");
         @$conn->query("CREATE INDEX idx_users_board ON `users` (`show_on_board`, `xp`)");
+        try {
+            $ur = $conn->query("SELECT id FROM `users`");
+            if ($ur) {
+                while ($u = $ur->fetch_assoc()) seed_quiz_bank($conn, (int)$u['id']);
+                $ur->free();
+            }
+        } catch (Throwable $e) {}
         @$conn->query("CREATE INDEX idx_errors_user ON `errors` (`user_id`, `created_at`)");
         @$conn->query("CREATE INDEX idx_pomodoro_user ON `pomodoro_sessions` (`user_id`, `completed_at`)");
         @$conn->query("CREATE INDEX idx_questions_user ON `questions` (`user_id`, `status`, `created_at`)");

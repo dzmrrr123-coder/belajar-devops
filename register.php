@@ -50,11 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param("sss", $username, $email, $hashed);
 
                 if ($stmt->execute()) {
-                    $_SESSION['user_id'] = $stmt->insert_id;
+                    $new_id = (int)$stmt->insert_id;
+                    $_SESSION['user_id'] = $new_id;
                     $_SESSION['username'] = $username;
                     $stmt->close();
+                    seed_quiz_bank($conn, $new_id);
                     $conn->close();
-                    set_flash('success', "Akun berhasil dibuat. Selamat datang, {$username}!");
+                    set_flash('success', "Akun berhasil dibuat. Selamat datang, {$username}! 36 kartu kuis menantimu.");
                     session_regenerate_id(true);
                     redirect('index.php');
                 } else {

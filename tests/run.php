@@ -65,5 +65,12 @@ check('frame ring ok', avatar_unlocked('ring', 3, 0, []), true);
 check('frame ember', avatar_unlocked('ember', 1, 7, []), true);
 check('frame legend badge', avatar_unlocked('legend', 1, 0, ['quest-all' => []]), true);
 
+check('bank 36 kartu', count(quiz_bank_cards()), 36);
+$bank_ok = true;
+foreach (quiz_bank_cards() as $c) {
+    if (!is_array($c) || count($c) !== 3 || trim((string)$c[1]) === '' || trim((string)$c[2]) === '') { $bank_ok = false; break; }
+}
+check('bank format', $bank_ok, true);
+
 echo "pass: {$pass}, fail: {$fail}" . PHP_EOL;
 exit($fail > 0 ? 1 : 0);
