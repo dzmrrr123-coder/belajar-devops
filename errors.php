@@ -21,14 +21,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_error']) || (iss
         $stmt->bind_param("issss", $user_id, $category, $error_message, $solution, $reference);
         if ($stmt->execute()) {
             $new_error_id = $stmt->insert_id;
-            $xp_gain = apply_xp_multiplier(5, mission_multiplier($conn, $user_id));
-            award_xp($conn, $user_id, $xp_gain, 'note', 'error', (int)$new_error_id);
+            $xp_gain = 0;
+            $quota_left = NOTE_DAILY_XP_CAP - daily_reason_xp($conn, $user_id, 'note');
+            if ($quota_left > 0) {
+                $xp_gain = min(apply_xp_multiplier(5, mission_multiplier($conn, $user_id)), $quota_left);
+                award_xp($conn, $user_id, $xp_gain, 'note', 'error', (int)$new_error_id);
+            }
 
             update_user_streak($conn, $user_id);
             schedule_review($conn, $user_id, 'error', (int)$new_error_id, $error_message, $solution);
             $nb = check_and_unlock_badges($conn, $user_id);
 
-            set_flash('success', "Catatan berhasil disimpan. +{$xp_gain} XP." . (!empty($nb) ? ' Badge: ' . implode(', ', $nb) . '!' : ''));
+            $msg = $xp_gain > 0 ? "Catatan berhasil disimpan. +{$xp_gain} XP." : "Catatan tersimpan. Kuota XP catatan harian (+" . NOTE_DAILY_XP_CAP . ") tercapai.";
+            set_flash('success', $msg . (!empty($nb) ? ' Badge: ' . implode(', ', $nb) . '!' : ''));
         } else {
             set_flash('danger', "Gagal menyimpan error ke database.");
         }
@@ -75,8 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
 }
 
 
-// Fetch all errors
-$stmt = $conn->prepare("SELECT * FROM errors WHERE user_id = ? ORDER BY created_at DESC");
+// Fetch errors (dibatasi 500 terbaru agar halaman tetap ringan)
+$stmt = $conn->prepare("SELECT id, user_id, category, error_message, solution, reference_link, created_at FROM errors WHERE user_id = ? ORDER BY created_at DESC LIMIT 500");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $errors = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

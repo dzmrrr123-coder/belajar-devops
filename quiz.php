@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
     $i = max(0, (int)($_POST['i'] ?? 0));
     $run = $_SESSION['quiz_run'] ?? ['tahu' => 0, 'lupa' => 0, 'xp' => 0];
 
-    $stmt = $conn->prepare("SELECT * FROM quiz_cards WHERE id = ? AND user_id = ?");
+    $stmt = $conn->prepare("SELECT id, user_id, source, source_id, question, answer, created_at FROM quiz_cards WHERE id = ? AND user_id = ?");
     $stmt->bind_param("ii", $card_id, $user_id);
     $stmt->execute();
     $card = $stmt->get_result()->fetch_assoc();
@@ -158,7 +158,7 @@ $card = null;
 $i = 0;
 if (!$done && !empty($ids)) {
     $i = max(0, min(count($ids) - 1, (int)($_GET['i'] ?? 0)));
-    $stmt = $conn->prepare("SELECT * FROM quiz_cards WHERE id = ? AND user_id = ?");
+    $stmt = $conn->prepare("SELECT id, user_id, source, source_id, question, answer, created_at FROM quiz_cards WHERE id = ? AND user_id = ?");
     $stmt->bind_param("ii", $ids[$i], $user_id);
     $stmt->execute();
     $card = $stmt->get_result()->fetch_assoc();

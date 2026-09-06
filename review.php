@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rid = (int)($_POST['review_id'] ?? 0);
     $result = $_POST['result'] ?? '';
     if ($rid > 0 && in_array($result, ['know', 'forgot'], true)) {
-        $stmt = $conn->prepare("SELECT * FROM reviews WHERE id = ? AND user_id = ?");
+        $stmt = $conn->prepare("SELECT id, user_id, source, source_id, title, detail, next_due, interval_day, done_count, lapses FROM reviews WHERE id = ? AND user_id = ?");
         $stmt->bind_param("ii", $rid, $user_id);
         $stmt->execute();
         $rev = $stmt->get_result()->fetch_assoc();
@@ -42,7 +42,7 @@ $stmt = $conn->prepare("SELECT COUNT(*) c FROM reviews WHERE user_id = ? AND nex
 $stmt->bind_param("i", $user_id); $stmt->execute();
 $due_count = (int)($stmt->get_result()->fetch_assoc()['c'] ?? 0);
 $stmt->close();
-$stmt = $conn->prepare("SELECT * FROM reviews WHERE user_id = ? AND next_due <= CURDATE() ORDER BY next_due ASC, id ASC LIMIT 20");
+$stmt = $conn->prepare("SELECT id, user_id, source, source_id, title, detail, next_due, interval_day, done_count, lapses FROM reviews WHERE user_id = ? AND next_due <= CURDATE() ORDER BY next_due ASC, id ASC LIMIT 20");
 $stmt->bind_param("i", $user_id); $stmt->execute();
 $due = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();

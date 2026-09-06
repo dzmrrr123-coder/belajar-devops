@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'to_error' && $question_id > 0) {
-        $qq = $conn->prepare("SELECT * FROM questions WHERE id = ? AND user_id = ?");
+        $qq = $conn->prepare("SELECT id, user_id, quest_id, title, description, topic, status, priority, answer, reference_link, linked_error_id, created_at, updated_at, answered_at FROM questions WHERE id = ? AND user_id = ?");
         $qq->bind_param("ii", $question_id, $user_id);
         $qq->execute();
         $qr = $qq->get_result()->fetch_assoc();
@@ -98,11 +98,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $up = $conn->prepare("UPDATE questions SET linked_error_id = ?, status = 'answered', answered_at = IF(answered_at IS NULL, NOW(), answered_at) WHERE id = ? AND user_id = ?");
                 $up->bind_param("iii", $eid, $question_id, $user_id);
                 $up->execute(); $up->close();
-                $xp_gain = apply_xp_multiplier(5, mission_multiplier($conn, $user_id));
-                award_xp($conn, $user_id, $xp_gain, 'note', 'error', (int)$eid);
+                $xp_gain = 0;
+                $quota_left = NOTE_DAILY_XP_CAP - daily_reason_xp($conn, $user_id, 'note');
+                if ($quota_left > 0) {
+                    $xp_gain = min(apply_xp_multiplier(5, mission_multiplier($conn, $user_id)), $quota_left);
+                    award_xp($conn, $user_id, $xp_gain, 'note', 'error', (int)$eid);
+                }
                 update_user_streak($conn, $user_id);
                 schedule_review($conn, $user_id, 'error', (int)$eid, $emsg, $sol);
-                set_flash('success', "Dipindah ke Error Log! +{$xp_gain} XP.");
+                set_flash('success', $xp_gain > 0 ? "Dipindah ke Error Log! +{$xp_gain} XP." : "Dipindah ke Error Log. Kuota XP catatan harian tercapai.");
             } else set_flash('danger', 'Gagal memindah.');
             $ins->close();
         }
@@ -128,10 +132,10 @@ $status_filter = $_GET['status'] ?? 'all';
 $allowed_statuses = ['open', 'in_review', 'answered', 'archived'];
 $questions = [];
 if (in_array($status_filter, $allowed_statuses, true)) {
-    $stmt = $conn->prepare('SELECT q.*, quests.title AS quest_title FROM questions q LEFT JOIN quests ON quests.id = q.quest_id WHERE q.user_id = ? AND q.status = ? ORDER BY q.created_at DESC');
+    $stmt = $conn->prepare('SELECT q.id, q.user_id, q.quest_id, q.title, q.description, q.topic, q.status, q.priority, q.answer, q.reference_link, q.linked_error_id, q.created_at, q.updated_at, q.answered_at, quests.title AS quest_title FROM questions q LEFT JOIN quests ON quests.id = q.quest_id WHERE q.user_id = ? AND q.status = ? ORDER BY q.created_at DESC LIMIT 500');
     $stmt->bind_param('is', $user_id, $status_filter);
 } else {
-    $stmt = $conn->prepare('SELECT q.*, quests.title AS quest_title FROM questions q LEFT JOIN quests ON quests.id = q.quest_id WHERE q.user_id = ? ORDER BY q.created_at DESC');
+    $stmt = $conn->prepare('SELECT q.id, q.user_id, q.quest_id, q.title, q.description, q.topic, q.status, q.priority, q.answer, q.reference_link, q.linked_error_id, q.created_at, q.updated_at, q.answered_at, quests.title AS quest_title FROM questions q LEFT JOIN quests ON quests.id = q.quest_id WHERE q.user_id = ? ORDER BY q.created_at DESC LIMIT 500');
     $stmt->bind_param('i', $user_id);
 }
 $stmt->execute();

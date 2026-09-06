@@ -5,31 +5,24 @@ require_login();
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
 
-// Get today's Pomodoro sessions
+// Get today + lifetime Pomodoro stats dalam 1 roundtrip
 $stmt = $conn->prepare("
-    SELECT COUNT(*) as today_sessions, COALESCE(SUM(duration_minutes), 0) as today_minutes 
-    FROM pomodoro_sessions 
-    WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY
-");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$today_stats = $stmt->get_result()->fetch_assoc();
-$stmt->close();
-
-// Get lifetime Pomodoro sessions
-$stmt = $conn->prepare("
-    SELECT COUNT(*) as total_sessions, COALESCE(SUM(duration_minutes), 0) as total_minutes 
-    FROM pomodoro_sessions 
+    SELECT COUNT(*) as total_sessions, COALESCE(SUM(duration_minutes), 0) as total_minutes,
+        SUM(completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) as today_sessions,
+        COALESCE(SUM(IF(completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY, duration_minutes, 0)), 0) as today_minutes
+    FROM pomodoro_sessions
     WHERE user_id = ?
 ");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
-$all_stats = $stmt->get_result()->fetch_assoc();
+$pomo_stats = $stmt->get_result()->fetch_assoc() ?: [];
 $stmt->close();
+$today_stats = ['today_sessions' => (int)($pomo_stats['today_sessions'] ?? 0), 'today_minutes' => (int)($pomo_stats['today_minutes'] ?? 0)];
+$all_stats = ['total_sessions' => (int)($pomo_stats['total_sessions'] ?? 0), 'total_minutes' => (int)($pomo_stats['total_minutes'] ?? 0)];
 
 // Get recent 5 sessions
 $stmt = $conn->prepare("
-    SELECT * FROM pomodoro_sessions
+    SELECT id, user_id, duration_minutes, mode, focus_note, completed_at FROM pomodoro_sessions
     WHERE user_id = ?
     ORDER BY completed_at DESC
     LIMIT 5

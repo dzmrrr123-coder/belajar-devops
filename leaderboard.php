@@ -15,9 +15,9 @@ $scope = ($_GET['scope'] ?? 'total') === 'week' ? 'week' : 'total';
 $rows = [];
 try {
     if ($scope === 'week') {
-        $s = $conn->prepare("SELECT u.username, u.xp, u.streak, u.public_profile, u.flair, u.avatar_frame, GREATEST(0, COALESCE((SELECT SUM(e.amount) FROM xp_events e WHERE e.user_id = u.id AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0)) wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = u.id) qd FROM users u WHERE u.show_on_board = 1 ORDER BY wxp DESC, u.streak DESC LIMIT ? OFFSET ?");
+        $s = $conn->prepare("SELECT u.username, u.xp, u.streak, u.public_profile, u.flair, u.avatar_frame, GREATEST(0, COALESCE(w.wxp, 0)) wxp, COALESCE(qc.qd, 0) qd FROM users u LEFT JOIN (SELECT user_id, SUM(amount) wxp FROM xp_events WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY user_id) w ON w.user_id = u.id LEFT JOIN (SELECT user_id, COUNT(*) qd FROM user_quests GROUP BY user_id) qc ON qc.user_id = u.id WHERE u.show_on_board = 1 ORDER BY wxp DESC, u.streak DESC LIMIT ? OFFSET ?");
     } else {
-        $s = $conn->prepare("SELECT username, xp, streak, public_profile, flair, avatar_frame, xp AS wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = users.id) qd FROM users WHERE show_on_board = 1 ORDER BY xp DESC, streak DESC LIMIT ? OFFSET ?");
+        $s = $conn->prepare("SELECT u.username, u.xp, u.streak, u.public_profile, u.flair, u.avatar_frame, u.xp AS wxp, COALESCE(qc.qd, 0) qd FROM users u LEFT JOIN (SELECT user_id, COUNT(*) qd FROM user_quests GROUP BY user_id) qc ON qc.user_id = u.id WHERE u.show_on_board = 1 ORDER BY u.xp DESC, u.streak DESC LIMIT ? OFFSET ?");
     }
     $s->bind_param("ii", $per, $off);
     $s->execute();
@@ -27,19 +27,13 @@ try {
 $my_rank = null;
 $on_board = false;
 try {
-    $c = $conn->prepare("SELECT show_on_board FROM users WHERE id = ?");
-    $c->bind_param("i", $user_id); $c->execute();
-    $on_board = !empty($c->get_result()->fetch_assoc()['show_on_board']);
+    $c = $conn->prepare("SELECT show_on_board, (SELECT COUNT(*) FROM users WHERE show_on_board = 1 AND xp > (SELECT xp FROM users WHERE id = ?)) + 1 AS r FROM users WHERE id = ?");
+    $c->bind_param("ii", $user_id, $user_id); $c->execute();
+    $me = $c->get_result()->fetch_assoc() ?: [];
     $c->close();
+    $on_board = !empty($me['show_on_board']);
+    if ($on_board) $my_rank = (int)($me['r'] ?? 0);
 } catch (Throwable $e) {}
-if ($on_board) {
-    try {
-        $s = $conn->prepare("SELECT COUNT(*) c FROM users WHERE show_on_board = 1 AND xp > (SELECT xp FROM users WHERE id = ?)");
-        $s->bind_param("i", $user_id); $s->execute();
-        $my_rank = (int)($s->get_result()->fetch_assoc()['c'] ?? 0) + 1;
-        $s->close();
-    } catch (Throwable $e) {}
-}
 $conn->close();
 $pages = max(1, (int)ceil($total / $per));
 $page_title = 'Leaderboard';

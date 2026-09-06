@@ -112,36 +112,23 @@ $rank = get_user_rank($level);
 $pct = level_progress_percent($user['xp']);
 
 $stats = ['quest_done' => 0, 'quest_total' => 0, 'pomodoro' => 0, 'notes' => 0, 'q_open' => 0];
-$stmt = $conn->prepare("SELECT COUNT(*) c FROM quests WHERE user_id IS NULL OR user_id = ?");
-$stmt->bind_param("i", $user_id); $stmt->execute();
-$stats['quest_total'] = (int)($stmt->get_result()->fetch_assoc()['c'] ?? 0);
+$stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS quest_total, (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id=uq.quest_id WHERE uq.user_id=? AND (q.user_id IS NULL OR q.user_id=?)) AS quest_done, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id=?) AS pomo, (SELECT COUNT(*) FROM errors WHERE user_id=?) AS notes, (SELECT COUNT(*) FROM questions WHERE user_id=? AND status='open') AS q_open");
+$stmt->bind_param("iiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id); $stmt->execute();
+$row = $stmt->get_result()->fetch_assoc() ?: [];
 $stmt->close();
-$stmt = $conn->prepare("SELECT COUNT(*) c FROM user_quests uq JOIN quests q ON q.id=uq.quest_id WHERE uq.user_id=? AND (q.user_id IS NULL OR q.user_id=?)");
-$stmt->bind_param("ii", $user_id, $user_id); $stmt->execute();
-$stats['quest_done'] = (int)($stmt->get_result()->fetch_assoc()['c'] ?? 0);
-$stmt->close();
-$stmt = $conn->prepare("SELECT COUNT(*) c FROM pomodoro_sessions WHERE user_id=?");
-$stmt->bind_param("i", $user_id); $stmt->execute();
-$stats['pomodoro'] = (int)($stmt->get_result()->fetch_assoc()['c'] ?? 0);
-$stmt->close();
-$stmt = $conn->prepare("SELECT COUNT(*) c FROM errors WHERE user_id=?");
-$stmt->bind_param("i", $user_id); $stmt->execute();
-$stats['notes'] = (int)($stmt->get_result()->fetch_assoc()['c'] ?? 0);
-$stmt->close();
-$stmt = $conn->prepare("SELECT COUNT(*) c FROM questions WHERE user_id=? AND status='open'");
-$stmt->bind_param("i", $user_id); $stmt->execute();
-$stats['q_open'] = (int)($stmt->get_result()->fetch_assoc()['c'] ?? 0);
-$stmt->close();
+$stats['quest_total'] = (int)($row['quest_total'] ?? 0);
+$stats['quest_done'] = (int)($row['quest_done'] ?? 0);
+$stats['pomodoro'] = (int)($row['pomo'] ?? 0);
+$stats['notes'] = (int)($row['notes'] ?? 0);
+$stats['q_open'] = (int)($row['q_open'] ?? 0);
 
 $activity = [];
-foreach (['user_quests' => 'completed_at', 'pomodoro_sessions' => 'completed_at', 'errors' => 'created_at', 'questions' => 'created_at'] as $tbl => $col) {
-    try {
-        $q = $conn->prepare("SELECT DATE($col) d, COUNT(*) c FROM $tbl WHERE user_id=? AND $col >= DATE_SUB(CURDATE(), INTERVAL 83 DAY) GROUP BY DATE($col)");
-        $q->bind_param("i", $user_id); $q->execute();
-        foreach ($q->get_result()->fetch_all(MYSQLI_ASSOC) as $r) $activity[$r['d']] = ($activity[$r['d']] ?? 0) + (int)$r['c'];
-        $q->close();
-    } catch (Throwable $e) {}
-}
+try {
+    $q = $conn->prepare("SELECT d, SUM(c) c FROM (SELECT DATE(completed_at) d, COUNT(*) c FROM user_quests WHERE user_id=? AND completed_at >= DATE_SUB(CURDATE(), INTERVAL 83 DAY) GROUP BY DATE(completed_at) UNION ALL SELECT DATE(completed_at) d, COUNT(*) c FROM pomodoro_sessions WHERE user_id=? AND completed_at >= DATE_SUB(CURDATE(), INTERVAL 83 DAY) GROUP BY DATE(completed_at) UNION ALL SELECT DATE(created_at) d, COUNT(*) c FROM errors WHERE user_id=? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 83 DAY) GROUP BY DATE(created_at) UNION ALL SELECT DATE(created_at) d, COUNT(*) c FROM questions WHERE user_id=? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 83 DAY) GROUP BY DATE(created_at)) t GROUP BY d");
+    $q->bind_param("iiii", $user_id, $user_id, $user_id, $user_id); $q->execute();
+    foreach ($q->get_result()->fetch_all(MYSQLI_ASSOC) as $r) $activity[$r['d']] = (int)$r['c'];
+    $q->close();
+} catch (Throwable $e) {}
 $days = [];
 for ($i = 83; $i >= 0; $i--) {
     $d = date('Y-m-d', strtotime("-$i days"));

@@ -45,19 +45,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Update streak
     $new_streak = update_user_streak($conn, $user_id);
 
-    // Fetch updated user info
-    $stmt = $conn->prepare("SELECT xp, streak FROM users WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
+    // Fetch updated user info + today's stats dalam 1 roundtrip
+    $stmt = $conn->prepare("SELECT (SELECT xp FROM users WHERE id = ?) AS xp, (SELECT streak FROM users WHERE id = ?) AS streak, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS today_sessions, (SELECT COALESCE(SUM(duration_minutes),0) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS today_minutes");
+    $stmt->bind_param("iiii", $user_id, $user_id, $user_id, $user_id);
     $stmt->execute();
-    $user = $stmt->get_result()->fetch_assoc();
+    $row = $stmt->get_result()->fetch_assoc() ?: [];
     $stmt->close();
-
-    // Count today's sessions
-    $stmt = $conn->prepare("SELECT COUNT(*) as today_sessions, SUM(duration_minutes) as today_minutes FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $stats = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    $user = ['xp' => (int)($row['xp'] ?? 0), 'streak' => (int)($row['streak'] ?? 0)];
+    $stats = ['today_sessions' => (int)($row['today_sessions'] ?? 0), 'today_minutes' => (int)($row['today_minutes'] ?? 0)];
 
     $new_badges = check_and_unlock_badges($conn, $user_id);
     $conn->commit();

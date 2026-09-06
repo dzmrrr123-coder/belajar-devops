@@ -134,19 +134,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
 
     $quests_done = 0;
     $quests_total = 0;
-    $cnt = $conn->prepare("SELECT COUNT(*) AS done FROM user_quests WHERE user_id = ?");
+    $cnt = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests WHERE user_id = ?) AS done, (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS total");
     if ($cnt) {
-        $cnt->bind_param("i", $user_id);
+        $cnt->bind_param("ii", $user_id, $user_id);
         $cnt->execute();
-        $quests_done = (int)($cnt->get_result()->fetch_assoc()['done'] ?? 0);
+        $cc = $cnt->get_result()->fetch_assoc() ?: [];
+        $quests_done = (int)($cc['done'] ?? 0);
+        $quests_total = (int)($cc['total'] ?? 0);
         $cnt->close();
-    }
-    $tot = $conn->prepare("SELECT COUNT(*) AS total FROM quests WHERE user_id IS NULL OR user_id = ?");
-    if ($tot) {
-        $tot->bind_param("i", $user_id);
-        $tot->execute();
-        $quests_total = (int)($tot->get_result()->fetch_assoc()['total'] ?? 0);
-        $tot->close();
     }
 
     if ($action === 'completed') $new_badges = check_and_unlock_badges($conn, $user_id);

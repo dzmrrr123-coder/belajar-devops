@@ -131,7 +131,7 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 24);
+define('SCHEMA_VERSION', 25);
 
 // Auto-initialize schema & seed data safely without multi_query
 function ensure_database_schema($conn) {
@@ -320,6 +320,7 @@ function ensure_database_schema($conn) {
         @$conn->query("CREATE INDEX idx_subtasks_quest ON `quest_subtasks` (`user_id`, `quest_id`)");
         @$conn->query("CREATE INDEX idx_resources_week ON `resources` (`week`)");
         @$conn->query("CREATE INDEX idx_quests_week_user ON `quests` (`week`, `user_id`)");
+        @$conn->query("CREATE INDEX idx_users_board ON `users` (`show_on_board`, `xp`)");
         @$conn->query("CREATE INDEX idx_errors_user ON `errors` (`user_id`, `created_at`)");
         @$conn->query("CREATE INDEX idx_pomodoro_user ON `pomodoro_sessions` (`user_id`, `completed_at`)");
         @$conn->query("CREATE INDEX idx_questions_user ON `questions` (`user_id`, `status`, `created_at`)");
@@ -671,26 +672,48 @@ function user_badges($conn, $user_id) {
 function check_and_unlock_badges($conn, $user_id) {
     $defs = badge_defs();
     $owned = user_badges($conn, $user_id);
+    $cat_of = [
+        'first-quest' => 'quest', 'quest-5' => 'quest', 'quest-10' => 'quest', 'quest-all' => 'quest',
+        'focus-1' => 'focus', 'focus-25' => 'focus',
+        'note-1' => 'note', 'note-25' => 'note',
+        'streak-7' => 'streak', 'streak-30' => 'streak',
+        'review-10' => 'review', 'custom-1' => 'custom',
+    ];
+    $need = [];
+    foreach ($cat_of as $slug => $cat) {
+        if (!isset($owned[$slug]) && isset($defs[$slug])) $need[$cat] = true;
+    }
+    if (empty($need)) return [];
     $c = ['quest' => 0, 'focus' => 0, 'note' => 0, 'streak' => 0, 'review' => 0, 'custom' => 0];
     try {
-        $q = $conn->prepare("SELECT COUNT(*) n FROM user_quests WHERE user_id = ?");
-        $q->bind_param("i", $user_id); $q->execute(); $c['quest'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        $q = $conn->prepare("SELECT COUNT(*) n FROM pomodoro_sessions WHERE user_id = ? AND mode = 'focus'");
-        $q->bind_param("i", $user_id); $q->execute(); $c['focus'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM errors WHERE user_id = ?) + (SELECT COUNT(*) FROM questions WHERE user_id = ?) n");
-        $q->bind_param("ii", $user_id, $user_id); $q->execute(); $c['note'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        $q = $conn->prepare("SELECT streak, freeze_tokens FROM users WHERE id = ?");
-        $q->bind_param("i", $user_id); $q->execute();
-        $u = $q->get_result()->fetch_assoc(); $q->close();
-        $c['streak'] = (int)($u['streak'] ?? 0);
-        $rev_done = 0;
-        try {
-            $q = $conn->prepare("SELECT COALESCE(SUM(done_count),0) n FROM reviews WHERE user_id = ?");
-            $q->bind_param("i", $user_id); $q->execute(); $rev_done = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        } catch (Throwable $e) {}
-        $c['review'] = $rev_done;
-        $q = $conn->prepare("SELECT COUNT(*) n FROM quests WHERE user_id = ? AND is_custom = 1");
-        $q->bind_param("i", $user_id); $q->execute(); $c['custom'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        if (isset($need['quest'])) {
+            $q = $conn->prepare("SELECT COUNT(*) n FROM user_quests WHERE user_id = ?");
+            $q->bind_param("i", $user_id); $q->execute(); $c['quest'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        }
+        if (isset($need['focus'])) {
+            $q = $conn->prepare("SELECT COUNT(*) n FROM pomodoro_sessions WHERE user_id = ? AND mode = 'focus'");
+            $q->bind_param("i", $user_id); $q->execute(); $c['focus'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        }
+        if (isset($need['note'])) {
+            $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM errors WHERE user_id = ?) + (SELECT COUNT(*) FROM questions WHERE user_id = ?) n");
+            $q->bind_param("ii", $user_id, $user_id); $q->execute(); $c['note'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        }
+        if (isset($need['streak'])) {
+            $q = $conn->prepare("SELECT streak FROM users WHERE id = ?");
+            $q->bind_param("i", $user_id); $q->execute();
+            $u = $q->get_result()->fetch_assoc(); $q->close();
+            $c['streak'] = (int)($u['streak'] ?? 0);
+        }
+        if (isset($need['review'])) {
+            try {
+                $q = $conn->prepare("SELECT COALESCE(SUM(done_count),0) n FROM reviews WHERE user_id = ?");
+                $q->bind_param("i", $user_id); $q->execute(); $c['review'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+            } catch (Throwable $e) {}
+        }
+        if (isset($need['custom'])) {
+            $q = $conn->prepare("SELECT COUNT(*) n FROM quests WHERE user_id = ? AND is_custom = 1");
+            $q->bind_param("i", $user_id); $q->execute(); $c['custom'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        }
     } catch (Throwable $e) { return []; }
     $rules = [
         'first-quest' => $c['quest'] >= 1, 'quest-5' => $c['quest'] >= 5, 'quest-10' => $c['quest'] >= 10, 'quest-all' => $c['quest'] >= 14,
@@ -723,6 +746,17 @@ function mission_multiplier($conn, $user_id) {
 
 function apply_xp_multiplier($base, $mult) {
     return (int)ceil($base * $mult);
+}
+
+define('NOTE_DAILY_XP_CAP', 25);
+
+function daily_reason_xp($conn, $user_id, $reason) {
+    try {
+        $q = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND reason = ? AND amount > 0 AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY");
+        $q->bind_param("is", $user_id, $reason); $q->execute();
+        $n = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        return max(0, $n);
+    } catch (Throwable $e) { return 0; }
 }
 
 function xp_events_has_ref($conn) {
@@ -823,18 +857,16 @@ function get_daily_mission_status($conn, $user_id) {
     $out = [];
     foreach ($defs as $k => $d) $out[$k] = ['done' => false, 'claimed' => false] + $d;
     try {
-        $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests WHERE user_id=? AND completed_at=CURDATE()) AS qc, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id=? AND completed_at>=CURDATE() AND completed_at<CURDATE() + INTERVAL 1 DAY) AS fc, (SELECT COUNT(*) FROM errors WHERE user_id=? AND created_at>=CURDATE() AND created_at<CURDATE() + INTERVAL 1 DAY) + (SELECT COUNT(*) FROM questions WHERE user_id=? AND created_at>=CURDATE() AND created_at<CURDATE() + INTERVAL 1 DAY) AS nc");
-        $q->bind_param("iiii", $user_id, $user_id, $user_id, $user_id); $q->execute();
+        $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests WHERE user_id=? AND completed_at=CURDATE()) AS qc, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id=? AND completed_at>=CURDATE() AND completed_at<CURDATE() + INTERVAL 1 DAY) AS fc, (SELECT COUNT(*) FROM errors WHERE user_id=? AND created_at>=CURDATE() AND created_at<CURDATE() + INTERVAL 1 DAY) + (SELECT COUNT(*) FROM questions WHERE user_id=? AND created_at>=CURDATE() AND created_at<CURDATE() + INTERVAL 1 DAY) AS nc, (SELECT COUNT(*) FROM daily_missions WHERE user_id=? AND mission_date=CURDATE() AND mission_key='quest1' AND claimed_at IS NOT NULL) AS c_quest1, (SELECT COUNT(*) FROM daily_missions WHERE user_id=? AND mission_date=CURDATE() AND mission_key='focus1' AND claimed_at IS NOT NULL) AS c_focus1, (SELECT COUNT(*) FROM daily_missions WHERE user_id=? AND mission_date=CURDATE() AND mission_key='note1' AND claimed_at IS NOT NULL) AS c_note1");
+        $q->bind_param("iiiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id, $user_id); $q->execute();
         $mc = $q->get_result()->fetch_assoc() ?: [];
         $q->close();
         $out['quest1']['done'] = ((int)($mc['qc'] ?? 0)) > 0;
         $out['focus1']['done'] = ((int)($mc['fc'] ?? 0)) > 0;
         $out['note1']['done'] = ((int)($mc['nc'] ?? 0)) > 0;
-        $q = $conn->prepare("SELECT mission_key FROM daily_missions WHERE user_id=? AND mission_date=CURDATE() AND claimed_at IS NOT NULL");
-        $q->bind_param("i", $user_id); $q->execute();
-        $rows = $q->get_result()->fetch_all(MYSQLI_ASSOC);
-        $q->close();
-        foreach ($rows as $r) if (isset($out[$r['mission_key']])) $out[$r['mission_key']]['claimed'] = true;
+        foreach (['quest1' => 'c_quest1', 'focus1' => 'c_focus1', 'note1' => 'c_note1'] as $k => $ck) {
+            if (((int)($mc[$ck] ?? 0)) > 0) $out[$k]['claimed'] = true;
+        }
     } catch (Throwable $e) {}
     return $out;
 }

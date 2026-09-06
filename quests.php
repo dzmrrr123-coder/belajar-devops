@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Get all quests with user completion status (global + milik sendiri)
 $stmt = $conn->prepare("
-    SELECT q.*, uq.completed_at
+    SELECT q.id, q.user_id, q.week, q.title, q.description, q.xp_reward, q.is_custom, uq.completed_at
     FROM quests q
     LEFT JOIN user_quests uq ON q.id = uq.quest_id AND uq.user_id = ?
     WHERE (q.user_id IS NULL OR q.user_id = ?)
@@ -50,7 +50,7 @@ $all_quests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
 $subtasks_by_quest = [];
-$st = $conn->prepare("SELECT * FROM quest_subtasks WHERE user_id = ? ORDER BY id ASC");
+$st = $conn->prepare("SELECT id, user_id, quest_id, title, done_at, created_at FROM quest_subtasks WHERE user_id = ? ORDER BY id ASC");
 $st->bind_param("i", $user_id);
 $st->execute();
 foreach ($st->get_result()->fetch_all(MYSQLI_ASSOC) as $s) $subtasks_by_quest[(int)$s['quest_id']][] = $s;

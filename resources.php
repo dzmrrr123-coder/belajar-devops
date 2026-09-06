@@ -8,13 +8,13 @@ $week_filter = isset($_GET['week']) ? (int)$_GET['week'] : 0;
 
 // Query resources
 if ($week_filter > 0) {
-    $stmt = $conn->prepare("SELECT * FROM resources WHERE week = ? ORDER BY type ASC, id ASC");
+    $stmt = $conn->prepare("SELECT id, week, title, type, url FROM resources WHERE week = ? ORDER BY type ASC, id ASC");
     $stmt->bind_param("i", $week_filter);
     $stmt->execute();
     $resources = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 } else {
-    $result = $conn->query("SELECT * FROM resources ORDER BY week ASC, type ASC, id ASC");
+    $result = $conn->query("SELECT id, week, title, type, url FROM resources ORDER BY week ASC, type ASC, id ASC");
     $resources = $result->fetch_all(MYSQLI_ASSOC);
 }
 
