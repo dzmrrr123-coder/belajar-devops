@@ -152,7 +152,7 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding:18px 0;backgroun
 .timer-pill.done{background:var(--primary,#2f6b5e)}
 .timer-pill-time{font-variant-numeric:tabular-nums}
 .timer-pill-label{font-weight:400;opacity:.75}
-.timer-pill{touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.timer-pill{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;cursor:grab}
 .timer-pill:active{cursor:grabbing}
 .timer-pill.dragging{opacity:.92;cursor:grabbing;box-shadow:0 12px 28px rgba(0,0,0,.45)}
 .timer-pill.snap{transition:left .18s ease,top .18s ease}

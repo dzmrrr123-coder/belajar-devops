@@ -543,6 +543,8 @@ document.addEventListener('DOMContentLoaded', function() {
             el.id = 'ltTimerPill';
             el.className = 'timer-pill';
             el.href = 'timer.php';
+            el.draggable = false;
+            el.ondragstart = function(e) { e.preventDefault(); };
             el.innerHTML = '<i class="fas fa-grip-vertical timer-pill-handle" aria-hidden="true" title="Geser untuk memindah"></i><i class="fas fa-clock" aria-hidden="true"></i><span class="timer-pill-time"></span><span class="timer-pill-label"></span><button type="button" class="timer-pill-close" aria-label="Tutup bubble timer"><i class="fas fa-xmark" aria-hidden="true"></i></button>';
             el.querySelector('.timer-pill-close').addEventListener('click', function(e) {
                 e.preventDefault();
