@@ -52,7 +52,7 @@ for ($d = 0; $d < 84; $d++) {
     $w = (int)floor((83 - $d) / 7);
     if ($w >= 0 && $w <= 11) $weeks[11 - $w] += (int)($vals[$d] ?? 0);
 }
-$weeks = array_values($weeks);
+$weeks = array_reverse(array_values($weeks));
 $week_max = max(1, max($weeks));
 
 $last28 = array_slice($vals, -28);
@@ -73,6 +73,7 @@ try {
     foreach ($allq as $r) if (!empty($r['done'])) $doneset[(int)$r['id']] = true;
     $per = [];
     foreach ($allq as $r) {
+        $total_cnt++;
         $sk = skill_for_week((int)$r['week']);
         $per[$sk] = $per[$sk] ?? ['done' => 0, 'total' => 0];
         $per[$sk]['total']++;
