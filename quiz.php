@@ -4,6 +4,11 @@ require_login();
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
 
+// Anti-farm: XP kuis maksimal 20/hari, dan kartu yang sudah dijawab Tahu
+// hari ini tidak ditawarkan lagi (cek di query latihan/review di bawah).
+define('QUIZ_DAILY_XP_CAP', 20);
+define('QUIZ_TODAY_DONE_SQL', "NOT EXISTS (SELECT 1 FROM xp_events e WHERE e.user_id = c.user_id AND e.ref_type = 'quiz' AND e.ref_id = c.id AND e.amount > 0 AND e.created_at >= CURDATE() AND e.created_at < CURDATE() + INTERVAL 1 DAY)");
+
 // Tambah kartu kuis dari Notes / Questions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create') {
     verify_csrf();
@@ -54,26 +59,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
 
     if ($card) {
         if ($result === 'know') {
-            $rev = $conn->prepare("SELECT interval_day, done_count FROM reviews WHERE user_id = ? AND source = 'quiz' AND source_id = ?");
-            $rev->bind_param("ii", $user_id, $card_id);
-            $rev->execute();
-            $rrow = $rev->get_result()->fetch_assoc();
-            $rev->close();
-            $next = review_next_interval((int)($rrow['interval_day'] ?? 1));
-            $up = $conn->prepare("UPDATE reviews SET interval_day = ?, next_due = DATE_ADD(CURDATE(), INTERVAL ? DAY), done_count = done_count + 1 WHERE user_id = ? AND source = 'quiz' AND source_id = ?");
-            $up->bind_param("iiii", $next, $next, $user_id, $card_id);
-            $up->execute(); $up->close();
             $chk = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND ref_type = 'quiz' AND ref_id = ? AND amount > 0 AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY");
             $chk->bind_param("ii", $user_id, $card_id);
             $chk->execute();
             $already = (int)($chk->get_result()->fetch_assoc()['n'] ?? 0);
             $chk->close();
             if ($already <= 0) {
-                award_xp($conn, $user_id, 2, 'quiz', 'quiz', $card_id);
-                $run['xp'] = ($run['xp'] ?? 0) + 2;
+                $rev = $conn->prepare("SELECT interval_day, done_count FROM reviews WHERE user_id = ? AND source = 'quiz' AND source_id = ?");
+                $rev->bind_param("ii", $user_id, $card_id);
+                $rev->execute();
+                $rrow = $rev->get_result()->fetch_assoc();
+                $rev->close();
+                $next = review_next_interval((int)($rrow['interval_day'] ?? 1));
+                $up = $conn->prepare("UPDATE reviews SET interval_day = ?, next_due = DATE_ADD(CURDATE(), INTERVAL ? DAY), done_count = done_count + 1 WHERE user_id = ? AND source = 'quiz' AND source_id = ?");
+                $up->bind_param("iiii", $next, $next, $user_id, $card_id);
+                $up->execute(); $up->close();
+                $cap = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND ref_type = 'quiz' AND amount > 0 AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY");
+                $cap->bind_param("i", $user_id);
+                $cap->execute();
+                $today_sum = (int)($cap->get_result()->fetch_assoc()['n'] ?? 0);
+                $cap->close();
+                if ($today_sum < QUIZ_DAILY_XP_CAP) {
+                    $gain = min(2, QUIZ_DAILY_XP_CAP - $today_sum);
+                    award_xp($conn, $user_id, $gain, 'quiz', 'quiz', $card_id);
+                    $run['xp'] = ($run['xp'] ?? 0) + $gain;
+                }
+                check_and_unlock_badges($conn, $user_id);
             }
             $run['tahu'] = ($run['tahu'] ?? 0) + 1;
-            check_and_unlock_badges($conn, $user_id);
         } else {
             $up = $conn->prepare("UPDATE reviews SET interval_day = 1, next_due = DATE_ADD(CURDATE(), INTERVAL 1 DAY), lapses = lapses + 1 WHERE user_id = ? AND source = 'quiz' AND source_id = ?");
             $up->bind_param("ii", $user_id, $card_id);
@@ -110,17 +123,26 @@ try {
     $c->close();
 } catch (Throwable $e) {}
 
+$quiz_xp_today = 0;
+try {
+    $c = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND ref_type = 'quiz' AND amount > 0 AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY");
+    $c->bind_param("i", $user_id); $c->execute();
+    $quiz_xp_today = (int)($c->get_result()->fetch_assoc()['n'] ?? 0);
+    $c->close();
+} catch (Throwable $e) {}
+$quiz_quota_left = max(0, QUIZ_DAILY_XP_CAP - $quiz_xp_today);
+
 if (!$done && empty($ids)) {
     if ($mode === 'review') {
         try {
-            $s = $conn->prepare("SELECT c.id FROM quiz_cards c JOIN reviews r ON r.source = 'quiz' AND r.source_id = c.id AND r.user_id = c.user_id WHERE c.user_id = ? AND r.next_due <= CURDATE() ORDER BY r.next_due ASC, c.id ASC LIMIT 20");
+            $s = $conn->prepare("SELECT c.id FROM quiz_cards c JOIN reviews r ON r.source = 'quiz' AND r.source_id = c.id AND r.user_id = c.user_id WHERE c.user_id = ? AND r.next_due <= CURDATE() AND " . QUIZ_TODAY_DONE_SQL . " ORDER BY r.next_due ASC, c.id ASC LIMIT 20");
             $s->bind_param("i", $user_id); $s->execute();
             foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $r) $ids[] = (int)$r['id'];
             $s->close();
         } catch (Throwable $e) {}
     } else {
         try {
-            $s = $conn->prepare("SELECT id FROM quiz_cards WHERE user_id = ? ORDER BY RAND() LIMIT 10");
+            $s = $conn->prepare("SELECT c.id FROM quiz_cards c WHERE c.user_id = ? AND " . QUIZ_TODAY_DONE_SQL . " ORDER BY RAND() LIMIT 10");
             $s->bind_param("i", $user_id); $s->execute();
             foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $r) $ids[] = (int)$r['id'];
             $s->close();
@@ -153,9 +175,9 @@ require_once 'includes/navbar.php';
 ?>
 <main class="container py-4 quiz-page" role="main">
     <div class="page-head">
-        <div class="page-kicker"><?= $total_cards ?> kartu · <?= $due_count ?> jatuh tempo</div>
+        <div class="page-kicker"><?= $total_cards ?> kartu · <?= $due_count ?> jatuh tempo · kuota +<?= $quiz_quota_left ?> XP hari ini</div>
         <h1 class="page-title">Kuis</h1>
-        <p class="page-desc">Uji ingatanmu satu kartu satu waktu. Tahu +2 XP (sekali per kartu per hari).</p>
+        <p class="page-desc">Uji ingatanmu satu kartu satu waktu. Tahu +2 XP — maks +<?= QUIZ_DAILY_XP_CAP ?> XP/hari, kartu tuntas tak muncul lagi.</p>
         <div class="page-actions leaderboard-actions">
             <div class="segmented" role="group" aria-label="Mode kuis">
                 <a href="quiz.php?mode=latihan" class="filter-pill <?= $mode === 'latihan' ? 'active' : '' ?>">Latihan acak</a>
@@ -187,8 +209,8 @@ require_once 'includes/navbar.php';
     <?php elseif (empty($ids)): ?>
     <div class="empty-state card p-4 p-md-5">
         <div class="empty-state-icon"><i class="fas fa-check-double" aria-hidden="true"></i></div>
-        <h2 class="h5 fw-bold">Tidak ada kartu <?= $mode === 'review' ? 'jatuh tempo' : 'untuk latihan' ?>.</h2>
-        <p class="text-secondary small mb-3"><?= $mode === 'review' ? 'Semua terjadwal rapi. Coba mode latihan.' : 'Tambah kartu dari Notes atau Questions dulu.' ?></p>
+        <h2 class="h5 fw-bold"><?= $total_cards > 0 ? 'Tuntas hari ini!' : 'Tidak ada kartu ' . ($mode === 'review' ? 'jatuh tempo' : 'untuk latihan') . '.' ?></h2>
+        <p class="text-secondary small mb-3"><?= $total_cards > 0 ? 'Semua kartu sudah dijawab. Kembali besok untuk +XP lagi.' : ($mode === 'review' ? 'Semua terjadwal rapi. Coba mode latihan.' : 'Tambah kartu dari Notes atau Questions dulu.') ?></p>
         <div class="d-flex gap-2 justify-content-center flex-wrap">
             <?php if ($mode === 'review'): ?><a href="quiz.php?mode=latihan" class="btn btn-cyber btn-sm">Latihan acak</a><?php endif; ?>
             <a href="errors.php" class="btn btn-cyber-outline btn-sm">Ke Notes</a>
@@ -216,7 +238,7 @@ require_once 'includes/navbar.php';
                     <input type="hidden" name="ids" value="<?= htmlspecialchars(implode(',', $ids)) ?>">
                     <input type="hidden" name="i" value="<?= $i ?>">
                     <button type="submit" name="result" value="forgot" class="btn btn-cyber-outline flex-fill"><i class="fas fa-rotate-left me-1" aria-hidden="true"></i>Lupa</button>
-                    <button type="submit" name="result" value="know" class="btn btn-cyber flex-fill"><i class="fas fa-check me-1" aria-hidden="true"></i>Tahu (+2 XP)</button>
+                    <button type="submit" name="result" value="know" class="btn btn-cyber flex-fill"><i class="fas fa-check me-1" aria-hidden="true"></i>Tahu<?= $quiz_quota_left > 0 ? ' (+' . min(2, $quiz_quota_left) . ' XP)' : '' ?></button>
                 </form>
                 <p class="small text-muted mt-3 mb-0">Sesi ini: Tahu <?= (int)($run['tahu'] ?? 0) ?> · Lupa <?= (int)($run['lupa'] ?? 0) ?> · +<?= (int)($run['xp'] ?? 0) ?> XP</p>
             </article>
