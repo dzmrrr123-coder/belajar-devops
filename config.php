@@ -779,18 +779,13 @@ function get_daily_mission_status($conn, $user_id) {
     $out = [];
     foreach ($defs as $k => $d) $out[$k] = ['done' => false, 'claimed' => false] + $d;
     try {
-        $q = $conn->prepare("SELECT COUNT(*) c FROM user_quests WHERE user_id=? AND completed_at=CURDATE()");
-        $q->bind_param("i", $user_id); $q->execute();
-        $out['quest1']['done'] = ((int)($q->get_result()->fetch_assoc()['c'] ?? 0)) > 0;
+        $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests WHERE user_id=? AND completed_at=CURDATE()) AS qc, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id=? AND completed_at>=CURDATE() AND completed_at<CURDATE() + INTERVAL 1 DAY) AS fc, (SELECT COUNT(*) FROM errors WHERE user_id=? AND created_at>=CURDATE() AND created_at<CURDATE() + INTERVAL 1 DAY) + (SELECT COUNT(*) FROM questions WHERE user_id=? AND created_at>=CURDATE() AND created_at<CURDATE() + INTERVAL 1 DAY) AS nc");
+        $q->bind_param("iiii", $user_id, $user_id, $user_id, $user_id); $q->execute();
+        $mc = $q->get_result()->fetch_assoc() ?: [];
         $q->close();
-        $q = $conn->prepare("SELECT COUNT(*) c FROM pomodoro_sessions WHERE user_id=? AND completed_at>=CURDATE() AND completed_at<CURDATE() + INTERVAL 1 DAY");
-        $q->bind_param("i", $user_id); $q->execute();
-        $out['focus1']['done'] = ((int)($q->get_result()->fetch_assoc()['c'] ?? 0)) > 0;
-        $q->close();
-        $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM errors WHERE user_id=? AND created_at>=CURDATE() AND created_at<CURDATE() + INTERVAL 1 DAY) + (SELECT COUNT(*) FROM questions WHERE user_id=? AND created_at>=CURDATE() AND created_at<CURDATE() + INTERVAL 1 DAY) AS c");
-        $q->bind_param("ii", $user_id, $user_id); $q->execute();
-        $out['note1']['done'] = ((int)($q->get_result()->fetch_assoc()['c'] ?? 0)) > 0;
-        $q->close();
+        $out['quest1']['done'] = ((int)($mc['qc'] ?? 0)) > 0;
+        $out['focus1']['done'] = ((int)($mc['fc'] ?? 0)) > 0;
+        $out['note1']['done'] = ((int)($mc['nc'] ?? 0)) > 0;
         $q = $conn->prepare("SELECT mission_key FROM daily_missions WHERE user_id=? AND mission_date=CURDATE() AND claimed_at IS NOT NULL");
         $q->bind_param("i", $user_id); $q->execute();
         $rows = $q->get_result()->fetch_all(MYSQLI_ASSOC);

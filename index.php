@@ -47,20 +47,15 @@ $stmt->execute();
 $quests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-// Total completed quests count
-$stmt = $conn->prepare("SELECT COUNT(*) as total_done FROM user_quests uq JOIN quests q ON q.id = uq.quest_id WHERE uq.user_id = ? AND (q.user_id IS NULL OR q.user_id = ?)");
-$stmt->bind_param("ii", $user_id, $user_id);
+// Dashboard counts dalam 1 roundtrip (quest selesai + total quest + pomodoro hari ini)
+$stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id = uq.quest_id WHERE uq.user_id = ? AND (q.user_id IS NULL OR q.user_id = ?)) AS total_done, (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS total_cnt, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS pomo_today");
+$stmt->bind_param("iiii", $user_id, $user_id, $user_id, $user_id);
 $stmt->execute();
-$total_done_res = $stmt->get_result()->fetch_assoc();
-$total_completed = (int)($total_done_res['total_done'] ?? 0);
+$dash_counts = $stmt->get_result()->fetch_assoc() ?: [];
 $stmt->close();
-
-// Total quests available (global + custom sendiri)
-$stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM quests WHERE user_id IS NULL OR user_id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$total_quests_cnt = (int)($stmt->get_result()->fetch_assoc()['cnt'] ?? 14);
-$stmt->close();
+$total_completed = (int)($dash_counts['total_done'] ?? 0);
+$total_quests_cnt = (int)($dash_counts['total_cnt'] ?? 14);
+$pomodoro_today = (int)($dash_counts['pomo_today'] ?? 0);
 $overall_quest_percent = $total_quests_cnt > 0 ? round(($total_completed / $total_quests_cnt) * 100) : 0;
 $missions = get_daily_mission_status($conn, $user_id);
 $xp_week = weekly_xp($conn, $user_id);
@@ -84,12 +79,7 @@ $stmt->execute();
 $resources = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-// Today pomodoro count
-$stmt = $conn->prepare("SELECT COUNT(*) as pomodoro_today FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$pomodoro_today = (int)($stmt->get_result()->fetch_assoc()['pomodoro_today'] ?? 0);
-$stmt->close();
+
 
 
 
