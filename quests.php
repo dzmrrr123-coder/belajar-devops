@@ -143,13 +143,13 @@ require_once 'includes/navbar.php';
 
                                     <!-- Quest Info -->
                                     <div class="flex-grow-1 min-w-0">
-                                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-                                            <h2 class="h6 fw-bold mb-0 quest-title"><?= htmlspecialchars($q['title']) ?> <?php if (!empty($q['is_custom'])): ?><span class="quest-pending">Custom</span><?php endif; ?></h2>
+                                        <div class="quest-title-row">
+                                            <h2 class="h6 fw-bold quest-title"><?= htmlspecialchars($q['title']) ?> <?php if (!empty($q['is_custom'])): ?><span class="quest-pending">Custom</span><?php endif; ?></h2>
                                             <span class="quest-badge-xp">
-                                                <i class="fas fa-bolt"></i> +<?= (int)$q['xp_reward'] ?> XP
+                                                <i class="fas fa-bolt" aria-hidden="true"></i> +<?= (int)$q['xp_reward'] ?> XP
                                             </span>
                                         </div>
-                                        <p class="text-secondary small mb-2"><?= htmlspecialchars($q['description']) ?></p>
+                                        <p class="text-secondary small mb-2 quest-desc"><?= htmlspecialchars($q['description']) ?></p>
                                         <?php $subs = $subtasks_by_quest[(int)$q['id']] ?? []; $sdone = count(array_filter($subs, fn($s) => !empty($s['done_at']))); ?>
                                         <div class="d-flex align-items-center flex-wrap gap-2 quest-status-badge mb-1">
                                             <?php if ($is_done): ?>

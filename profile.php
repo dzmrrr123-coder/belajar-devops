@@ -137,7 +137,12 @@ require_once 'includes/navbar.php';
     <div class="page-head">
         <div class="page-kicker">Level <?= $level ?> · <?= htmlspecialchars($rank) ?></div>
         <h1 class="page-title"><?= htmlspecialchars($user['username']) ?></h1>
-        <p class="page-desc"><?= (int)$user['xp'] ?> XP · <?= (int)$user['streak'] ?> hari konsisten (terbaik <?= (int)($user['best_streak'] ?? 0) ?>) · <i class="fas fa-snowflake"></i> <?= (int)($user['freeze_tokens'] ?? 0) ?> freeze · sejak <?= date('M Y', strtotime($user['created_at'])) ?></p>
+        <div class="profile-stats">
+            <span><strong><?= (int)$user['xp'] ?></strong> XP</span>
+            <span><strong><?= (int)$user['streak'] ?></strong> hari <small>(terbaik <?= (int)($user['best_streak'] ?? 0) ?>)</small></span>
+            <span><i class="fas fa-snowflake" aria-hidden="true"></i> <strong><?= (int)($user['freeze_tokens'] ?? 0) ?></strong> freeze</span>
+            <span>sejak <?= date('M Y', strtotime($user['created_at'])) ?></span>
+        </div>
         <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= $pct ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres menuju level berikutnya"><div class="xp-progress-fill" style="width:<?= $pct ?>%"></div></div>
     </div>
     <div class="row g-4 align-items-start">
@@ -150,7 +155,7 @@ require_once 'includes/navbar.php';
                     <span class="heat lvl-<?= $d['lvl'] ?>" title="<?= $d['date'] ?> · <?= $d['count'] ?> aktivitas" tabindex="0"></span>
                     <?php endforeach; ?>
                 </div>
-                <div class="d-flex gap-3 small text-muted mt-2"><span><strong><?= $stats['quest_done'] ?>/<?= $stats['quest_total'] ?></strong> quest</span><span><strong><?= $stats['pomodoro'] ?></strong> fokus</span><span><strong><?= $stats['notes'] ?></strong> catatan</span><span><strong><?= $stats['q_open'] ?></strong> tanya terbuka</span></div>
+                <div class="profile-legend small text-muted mt-2"><span><strong><?= $stats['quest_done'] ?>/<?= $stats['quest_total'] ?></strong> quest</span><span><strong><?= $stats['pomodoro'] ?></strong> fokus</span><span><strong><?= $stats['notes'] ?></strong> catatan</span><span><strong><?= $stats['q_open'] ?></strong> tanya terbuka</span></div>
             </section>
             <section class="card p-4" aria-label="Badge">
                 <h2 class="h5 fw-bold mb-1">Badge (<?= count($badges_owned) ?>/<?= count($badge_list) ?>)</h2>
@@ -168,12 +173,12 @@ require_once 'includes/navbar.php';
             <section class="card p-4" aria-label="Tanya dan catatan">
                 <h2 class="h5 fw-bold mb-1">Lanjutan</h2>
                 <p class="text-secondary small mb-3">Questions sekarang menyatu dengan Notes agar tab bawah tetap 5.</p>
-                <div class="page-actions">
-                    <a href="errors.php" class="btn btn-cyber-outline">Buka Notes</a>
-                    <a href="questions.php" class="btn btn-cyber-outline">Questions (<?= $stats['q_open'] ?> open)</a>
-                    <a href="review.php" class="btn btn-cyber-outline">Review</a>
-                    <a href="leaderboard.php" class="btn btn-cyber-outline">Leaderboard</a>
-                    <a href="export.php" class="btn btn-cyber-outline">Export CV</a>
+                <div>
+                    <a class="list-row" href="errors.php"><div class="list-main"><p class="list-title">Notes</p><p class="list-meta"><?= $stats['notes'] ?> catatan error &amp; solusi</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
+                    <a class="list-row" href="questions.php"><div class="list-main"><p class="list-title">Questions</p><p class="list-meta"><?= $stats['q_open'] ?> diskusi terbuka</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
+                    <a class="list-row" href="review.php"><div class="list-main"><p class="list-title">Review</p><p class="list-meta">Pengulangan terjadwal</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
+                    <a class="list-row" href="leaderboard.php"><div class="list-main"><p class="list-title">Leaderboard</p><p class="list-meta">Peringkat XP global</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
+                    <a class="list-row" href="export.php"><div class="list-main"><p class="list-title">Export CV</p><p class="list-meta">Unduh portofolio belajar</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
                 </div>
             </section>
             <section class="card p-4" aria-label="Visibilitas">
