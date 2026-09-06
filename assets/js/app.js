@@ -392,6 +392,8 @@ function applyQuestResponse(data, form) {
         if (submitBtn) {
             submitBtn.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i>';
             submitBtn.title = 'Batalkan selesai';
+            const lbl = submitBtn.getAttribute('aria-label') || '';
+            submitBtn.setAttribute('aria-label', 'Batalkan quest selesai: ' + lbl.replace(/^(Batalkan quest selesai: |Tandai quest selesai: )/, ''));
         }
         if (data.leveled_up) {
             SoundEffects.levelUp();
@@ -410,6 +412,8 @@ function applyQuestResponse(data, form) {
         if (submitBtn) {
             submitBtn.innerHTML = '<i class="fas fa-circle" aria-hidden="true"></i>';
             submitBtn.title = 'Tandai selesai';
+            const lbl = submitBtn.getAttribute('aria-label') || '';
+            submitBtn.setAttribute('aria-label', 'Tandai quest selesai: ' + lbl.replace(/^(Batalkan quest selesai: |Tandai quest selesai: )/, ''));
         }
     }
 
@@ -424,6 +428,11 @@ function applyQuestResponse(data, form) {
 
     const statTotalXp = document.getElementById('statTotalXp');
     if (statTotalXp) statTotalXp.textContent = data.xp;
+
+    if (typeof data.xp_delta === 'number') {
+        const dw = document.getElementById('dashWeekXp');
+        if (dw) dw.textContent = Math.max(0, (parseInt(dw.textContent, 10) || 0) + data.xp_delta);
+    }
 
     const statLevel = document.getElementById('statLevel');
     if (statLevel) statLevel.textContent = data.level;
@@ -449,6 +458,8 @@ function applyQuestResponse(data, form) {
         const pct = total > 0 ? Math.round((data.quests_done / total) * 100) : 0;
         const rp = document.getElementById('roadmapPct');
         if (rp) rp.textContent = pct;
+        const dp = document.getElementById('dashQuestPct');
+        if (dp) dp.textContent = pct;
         const rb = document.getElementById('roadmapBar');
         if (rb) rb.style.width = pct + '%';
         const rw = document.getElementById('roadmapBarWrap');
@@ -464,6 +475,84 @@ function applyQuestResponse(data, form) {
     if (data.new_badges && data.new_badges.length && data.action !== 'completed') {
         setTimeout(() => showToast('Badge baru: ' + data.new_badges.join(', ') + '!', 'success'), 600);
     }
+}
+
+function reviewDueLabel(dd) {
+    const today = new Date();
+    const t = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const p = String(dd || '').split('-');
+    const d = Date.UTC(+p[0], (+p[1] || 1) - 1, +p[2] || 1);
+    const diff = Math.round((d - t) / 86400000);
+    if (diff <= 0 && d <= t) {
+        if (d < t) return 'terlambat ' + Math.max(1, Math.round((t - d) / 86400000)) + ' hari';
+        return 'hari ini';
+    }
+    try {
+        return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+    } catch (err) { return dd; }
+}
+
+function applyReviewResponse(data) {
+    showToast(data.message, data.result === 'know' ? 'success' : 'info');
+    if (data.xp_gain > 0) {
+        try { triggerConfetti(true); } catch (err) {}
+        try { if (window.SoundEffects) SoundEffects.questComplete(); } catch (err) {}
+    }
+    if (Array.isArray(data.new_badges) && data.new_badges.length) {
+        setTimeout(() => showToast('Badge baru: ' + data.new_badges.join(', ') + '!', 'success'), 600);
+    }
+    const kicker = document.getElementById('reviewKicker');
+    if (kicker) kicker.textContent = data.remaining + ' perlu direview hari ini';
+    const card = document.querySelector('.review-card');
+    if (!data.next || !card) {
+        if (card) {
+            card.outerHTML = '<div class="empty-state card p-4 p-md-5"><div class="empty-state-icon"><i class="fas fa-check-double"></i></div><h2 class="h5 fw-bold">Bersih! Tidak ada review jatuh tempo.</h2><p class="text-secondary small mb-0">Selesaikan quest atau tulis catatan — otomatis masuk antrean review besok.</p></div>';
+        }
+        return;
+    }
+    const n = data.next;
+    const idInput = document.getElementById('reviewIdInput');
+    if (idInput) idInput.value = n.id;
+    const src = document.getElementById('reviewSource');
+    if (src) src.textContent = n.source;
+    const due = document.getElementById('reviewDue');
+    if (due) due.textContent = reviewDueLabel(n.next_due) + ' · interval ' + n.interval_day + ' hari';
+    const title = document.getElementById('reviewTitle');
+    if (title) title.textContent = n.title;
+    const det = document.getElementById('reviewDetail');
+    if (det) {
+        det.innerHTML = '';
+        let text = (n.detail || '').trim();
+        if (text.length > 400) text = text.slice(0, 400) + '...';
+        if (text) {
+            if (n.source === 'quiz') {
+                const d = document.createElement('details');
+                d.className = 'quiz-answer';
+                const s = document.createElement('summary');
+                s.className = 'quiz-answer-toggle';
+                s.innerHTML = '<i class="fas fa-eye me-1" aria-hidden="true"></i>Lihat jawaban';
+                const body = document.createElement('div');
+                body.className = 'code-solution';
+                body.textContent = text;
+                d.appendChild(s); d.appendChild(body); det.appendChild(d);
+            } else {
+                const p = document.createElement('p');
+                p.className = 'text-secondary';
+                p.textContent = text;
+                det.appendChild(p);
+            }
+        }
+    }
+    const pos = document.getElementById('reviewPos');
+    if (pos) pos.textContent = 'Kartu 1 dari ' + data.remaining;
+    const bar = document.getElementById('reviewBar');
+    if (bar) {
+        bar.style.width = Math.round(100 / Math.max(1, data.remaining)) + '%';
+        const wrap = bar.closest('[role="progressbar"]');
+        if (wrap) { wrap.setAttribute('aria-valuemax', data.remaining); wrap.setAttribute('aria-valuenow', 1); }
+    }
+    const left = document.getElementById('reviewLeft');
+    if (left) left.textContent = 'Sisa ' + Math.max(0, data.remaining - 1) + ' kartu lagi setelah ini.';
 }
 
 document.addEventListener('lt:quest-synced', function(e) {
@@ -728,6 +817,45 @@ document.addEventListener('DOMContentLoaded', function() {
                         submitBtn.innerHTML = submitBtn.dataset.orig;
                     }
                 }
+            });
+        });
+    });
+
+    // Review Card Interceptor (tanpa reload per kartu)
+    document.querySelectorAll('form.review-actions').forEach(form => {
+        if (!form.querySelector('input[name="review_id"]')) return;
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btns = [...this.querySelectorAll('button[type="submit"]')];
+            const clicked = e.submitter && e.submitter.type === 'submit' ? e.submitter : btns[0];
+            btns.forEach(b => { b.disabled = true; });
+            let orig = null;
+            if (clicked) {
+                orig = clicked.innerHTML;
+                clicked.innerHTML = '<span class="spinner" aria-hidden="true"></span>';
+            }
+            const fd = new FormData(this);
+            if (clicked && clicked.name) fd.append(clicked.name, clicked.value);
+            fetch('review.php', {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then(data => {
+                if (data.status !== 'success') {
+                    showToast(data.message || 'Gagal menyimpan review.', 'danger');
+                    return;
+                }
+                applyReviewResponse(data);
+            })
+            .catch(() => { form.submit(); })
+            .finally(() => {
+                btns.forEach(b => { b.disabled = false; });
+                if (clicked && orig && clicked.innerHTML.includes('spinner')) clicked.innerHTML = orig;
             });
         });
     });

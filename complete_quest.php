@@ -166,6 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
             'action' => $action,
             'quest_id' => $quest_id,
             'xp_reward' => $xp_reward,
+            'xp_delta' => $action === 'completed' ? (int)$xp_reward : -(int)$xp_reward,
             'xp' => (int)$updated_user['xp'],
             'level' => calculate_level($updated_user['xp']),
             'level_title' => get_user_rank(calculate_level($updated_user['xp'])),

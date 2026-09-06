@@ -15,6 +15,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <meta name="description" content="Learn Tracker - platform belajar DevOps terstruktur 12 minggu.">
     <meta name="theme-color" content="#2f6b5e">
     <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
     <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">

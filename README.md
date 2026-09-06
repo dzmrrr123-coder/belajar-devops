@@ -111,13 +111,14 @@ http://localhost/learn-tracker/
 
 ## 🎯 Sistem Gamifikasi
 
-- **Perolehan XP**:
+- **Perolehan XP** (anti-farm: ada cap harian):
   - Selesaikan Quest: **+10 s/d +40 XP** (custom max 20)
   - Sesi Pomodoro (25 menit fokus): **+10 XP**
-  - Catat Error & Solusi: **+5 XP**
+  - Catat Error & Solusi: **+5 XP**, maks **+25 XP/hari**
+  - Kuis: **+2 XP** per kartu Tahu, maks **+20 XP/hari** (kartu tuntas tak muncul lagi hari itu)
   - Klaim Misi Harian: **+5 XP** per misi (3/hari)
   - Review pertama per kartu: **+5 XP**
-  - Question → Error Log: **+5 XP**
+  - Question → Error Log: **+5 XP** (masuk kuota catatan harian)
   - Semua tercatat di ledger `xp_events` (basis leaderboard mingguan)
 - **Kalkulasi Level**: `Level = floor(sqrt(XP / 100)) + 1`
 - **Tingkatan Rank**:

@@ -178,8 +178,8 @@ require_once 'includes/navbar.php';
         </div>
         <div class="strip-side">
             <span><strong><?= (int)$user['streak'] ?></strong> hari konsisten</span>
-            <span><strong>+<?= (int)$xp_week ?> XP</strong> minggu ini</span>
-            <span><strong><span id="dashQuestDone"><?= $total_completed ?></span>/<?= $total_quests_cnt ?></strong> quest (<?= $overall_quest_percent ?>%)</span>
+            <span><strong>+<span id="dashWeekXp"><?= (int)$xp_week ?></span> XP</strong> minggu ini</span>
+            <span><strong><span id="dashQuestDone"><?= $total_completed ?></span>/<?= $total_quests_cnt ?></strong> quest (<span id="dashQuestPct"><?= $overall_quest_percent ?></span>%)</span>
         </div>
     </section>
 
