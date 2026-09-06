@@ -393,22 +393,40 @@ document.querySelector('.chest-form')?.addEventListener('submit', async function
         showToast((data && data.message) || 'Gagal membuka peti.', 'warning');
         return;
     }
-    setTimeout(function() {
+    const tier = data.tier || 'common';
+    const tierLabel = { common: 'Biasa', rare: 'Langka', epic: 'Epik', legendary: 'Legendaris' }[tier] || 'Biasa';
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reveal = function() {
         card.classList.remove('opening');
         card.classList.add('opened');
         card.innerHTML = '<span class="chest-icon" aria-hidden="true"><i class="fas fa-box-open"></i></span>'
-            + '<span class="chest-text"><span class="chest-reward">+' + data.xp + ' XP' + (data.freeze > 0 ? ' + 1 freeze' : '') + '</span>'
+            + '<span class="chest-text"><span class="chest-tier tier-' + tier + '">' + tierLabel + '</span>'
+            + '<span class="chest-reward tier-' + tier + '">+' + data.xp + ' XP' + (data.freeze > 0 ? ' + 1 freeze' : '') + '</span>'
             + '<small>peti hari ini sudah dibuka · kembali besok</small></span>';
         const xpEl = document.getElementById('statTotalXp');
         if (xpEl) xpEl.textContent = (parseInt(xpEl.textContent, 10) || 0) + (parseInt(data.xp, 10) || 0);
-        showToast(data.message, 'success');
-        if (data.rare) {
+        xpJuice(data.xp, card, { tier: tier, buzz: tier === 'common' ? 12 : [20, 50, 30] });
+        showToast(tierLabel + '! ' + data.message, 'success');
+        if (tier === 'legendary' || tier === 'epic') {
             try { triggerConfetti(true); } catch (err) {}
             try { if (window.SoundEffects) SoundEffects.levelUp(); } catch (err) {}
+        } else if (tier === 'rare') {
+            try { triggerConfetti(false); } catch (err) {}
+            try { if (window.SoundEffects) SoundEffects.questComplete(); } catch (err) {}
         } else {
             try { if (window.SoundEffects) SoundEffects.questComplete(); } catch (err) {}
         }
-    }, 650);
+    };
+    if (reduceMotion) { reveal(); return; }
+    const cyc = card.querySelector('.chest-text');
+    if (cyc) cyc.innerHTML = '<span class="chest-cycle">+?</span><small>mengocok…</small>';
+    let ticks = 0;
+    const slot = setInterval(function() {
+        ticks++;
+        const el = card.querySelector('.chest-cycle');
+        if (el) el.textContent = '+' + (3 + Math.floor(Math.random() * 13)) + ' XP';
+        if (ticks >= 10) { clearInterval(slot); reveal(); }
+    }, 90);
 });
 </script>
 

@@ -13,9 +13,11 @@ function reviewDueLabel(dd) {
     } catch (err) { return dd; }
 }
 
-function applyReviewResponse(data) {
-    showToast(data.message, data.result === 'know' ? 'success' : 'info');
+function applyReviewResponse(data, form) {
+    const ok = data.result === 'good' || data.result === 'easy' || data.result === 'know' || data.result === 'hard';
+    showToast(data.message + (data.next_interval ? ' Berikutnya ' + data.next_interval + ' hari.' : ''), ok ? 'success' : 'info');
     if (data.xp_gain > 0) {
+        xpJuice(data.xp_gain, form);
         try { triggerConfetti(true); } catch (err) {}
         try { if (window.SoundEffects) SoundEffects.questComplete(); } catch (err) {}
     }
@@ -36,8 +38,10 @@ function applyReviewResponse(data) {
     if (idInput) idInput.value = n.id;
     const src = document.getElementById('reviewSource');
     if (src) src.textContent = n.source;
+    const sk = document.getElementById('reviewSkill');
+    if (sk) sk.textContent = n.skill || 'General';
     const due = document.getElementById('reviewDue');
-    if (due) due.textContent = reviewDueLabel(n.next_due) + ' · interval ' + n.interval_day + ' hari';
+    if (due) due.textContent = reviewDueLabel(n.next_due) + ' · interval ' + n.interval_day + ' hari · reps ' + (n.reps || 0);
     const title = document.getElementById('reviewTitle');
     if (title) title.textContent = n.title;
     const det = document.getElementById('reviewDetail');
@@ -75,9 +79,10 @@ function applyReviewResponse(data) {
     const left = document.getElementById('reviewLeft');
     if (left) left.textContent = 'Sisa ' + Math.max(0, data.remaining - 1) + ' kartu lagi setelah ini.';
 }
-function applyQuizResponse(data) {
+function applyQuizResponse(data, form) {
     const run = data.run || {};
     if (data.result === 'know' && data.gain > 0) {
+        xpJuice(data.gain, form);
         showToast('Tahu! +' + data.gain + ' XP.', 'success');
         try { triggerConfetti(true); } catch (err) {}
         try { if (window.SoundEffects) SoundEffects.questComplete(); } catch (err) {}
@@ -155,7 +160,7 @@ document.querySelectorAll('form.review-actions').forEach(form => {
                     showToast(data.message || 'Gagal menyimpan review.', 'danger');
                     return;
                 }
-                applyReviewResponse(data);
+                applyReviewResponse(data, form);
             })
         .catch(() => {
             if (!navigator.onLine) return;
@@ -188,7 +193,7 @@ document.querySelectorAll('form.review-actions').forEach(form => {
                     showToast(data.message || 'Gagal menyimpan jawaban.', 'danger');
                     return;
                 }
-                applyQuizResponse(data);
+                applyQuizResponse(data, form);
             })
         .catch(() => {
             if (!navigator.onLine && window.LTOutbox) {

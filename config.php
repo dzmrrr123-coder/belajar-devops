@@ -131,7 +131,7 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 28);
+define('SCHEMA_VERSION', 29);
 
 function quiz_topics() {
     return ['Linux', 'Git', 'MySQL', 'PHP', 'Laravel', 'Docker', 'AWS', 'Networking', 'General'];
@@ -443,6 +443,10 @@ function ensure_database_schema($conn) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         @$conn->query("ALTER TABLE `users` ADD COLUMN `flair` VARCHAR(24) NULL DEFAULT NULL");
         @$conn->query("ALTER TABLE `users` ADD COLUMN `avatar_frame` VARCHAR(16) NOT NULL DEFAULT 'default'");
+        @$conn->query("ALTER TABLE `reviews` ADD COLUMN `ease_factor` FLOAT NOT NULL DEFAULT 2.5");
+        @$conn->query("ALTER TABLE `reviews` ADD COLUMN `reps` INT NOT NULL DEFAULT 0");
+        @$conn->query("ALTER TABLE `reviews` ADD COLUMN `skill` VARCHAR(32) NOT NULL DEFAULT 'General'");
+        @$conn->query("CREATE INDEX idx_reviews_skill_due ON `reviews` (`user_id`, `skill`, `next_due`)");
 
         // 8. Seed default quests and resources if quests table is empty
         $checkQuests = $conn->query("SELECT COUNT(*) AS total FROM `quests`");
@@ -990,12 +994,21 @@ function review_next_interval($current) {
     return 30;
 }
 
-function schedule_review($conn, $user_id, $source, $source_id, $title, $detail = '') {
+function schedule_review($conn, $user_id, $source, $source_id, $title, $detail = '', $skill = '') {
     try {
         $title = mb_substr(trim((string)$title) ?: 'Review', 0, 255);
         $detail = mb_substr((string)$detail, 0, 2000);
-        $stmt = $conn->prepare("INSERT INTO reviews (user_id, source, source_id, title, detail, next_due, interval_day) VALUES (?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL 1 DAY), 1) ON DUPLICATE KEY UPDATE title=VALUES(title), detail=VALUES(detail)");
-        $stmt->bind_param("isiss", $user_id, $source, $source_id, $title, $detail);
+        $skill = mb_substr(trim((string)$skill) ?: review_skill_for($source, $title, $detail), 0, 32);
+        $stmt = $conn->prepare("INSERT INTO reviews (user_id, source, source_id, title, detail, next_due, interval_day, skill) VALUES (?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL 1 DAY), 1, ?) ON DUPLICATE KEY UPDATE title=VALUES(title), detail=VALUES(detail), skill=VALUES(skill)");
+        if (!$stmt) {
+            $fb = $conn->prepare("INSERT INTO reviews (user_id, source, source_id, title, detail, next_due, interval_day) VALUES (?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL 1 DAY), 1) ON DUPLICATE KEY UPDATE title=VALUES(title), detail=VALUES(detail)");
+            if (!$fb) return;
+            $fb->bind_param("isiss", $user_id, $source, $source_id, $title, $detail);
+            $fb->execute();
+            $fb->close();
+            return;
+        }
+        $stmt->bind_param("isssss", $user_id, $source, $source_id, $title, $detail, $skill);
         $stmt->execute();
         $stmt->close();
     } catch (Throwable $e) {}
@@ -1062,6 +1075,113 @@ function avatar_unlocked($frame, $level, $best_streak, $badges, $is_owner = fals
     if ($frame === 'gold') return $level >= 5;
     if ($frame === 'legend') return $level >= 8 || isset($badges['quest-all']);
     return false;
+}
+
+function analytics_trend_percent($now, $prev) {
+    $now = max(0, (int)$now);
+    $prev = max(0, (int)$prev);
+    if ($now === 0 && $prev === 0) return 0;
+    if ($prev <= 0) return 100;
+    return (int)round(($now - $prev) / $prev * 100);
+}
+
+function analytics_consistency_score($active_days, $total_days) {
+    $total_days = max(1, (int)$total_days);
+    $active_days = min($total_days, max(0, (int)$active_days));
+    return (int)round($active_days / $total_days * 100);
+}
+
+function analytics_heat_level($xp) {
+    $xp = max(0, (int)$xp);
+    if ($xp <= 0) return 0;
+    if ($xp < 10) return 1;
+    if ($xp < 25) return 2;
+    if ($xp < 50) return 3;
+    return 4;
+}
+
+function analytics_streak_verdict($score) {
+    $score = (int)$score;
+    if ($score >= 70) return 'Ritme kuat. Tinggal jaga.';
+    if ($score >= 40) return 'Ritme tumbuh. Tambah 1 sesi kecil.';
+    if ($score > 0) return 'Ritme rapuh. Satu aksi hari ini cukup.';
+    return 'Belum mulai. Satu sesi 25 menit memecah kebekuan.';
+}
+
+function analytics_project_days_left($done, $total, $avg_per_day) {
+    $done = max(0, (int)$done);
+    $total = max(0, (int)$total);
+    $avg = max(0.0, (float)$avg_per_day);
+    $left = max(0, $total - $done);
+    if ($left <= 0) return 0;
+    if ($avg <= 0) return -1;
+    return (int)ceil($left / $avg);
+}
+
+function analytics_predict_label($days_left) {
+    $days_left = (int)$days_left;
+    if ($days_left < 0) return 'Selesaikan 1 quest untuk memproyeksi target.';
+    if ($days_left === 0) return 'Roadmap tuntas. Pertahankan dengan review.';
+    if ($days_left === 1) return 'Tuntas besok jika ritme dijaga.';
+    if ($days_left <= 14) return 'Tuntas sekitar ' . $days_left . ' hari lagi.';
+    if ($days_left <= 60) return 'Sekitar ' . (int)ceil($days_left / 7) . ' minggu menuju tuntas.';
+    return 'Sekitar ' . (int)ceil($days_left / 30) . ' bulan menuju tuntas di ritme ini.';
+}
+
+function analytics_week_label($offset) {
+    $offset = (int)$offset;
+    if ($offset === 0) return 'Minggu ini';
+    if ($offset === 1) return 'Lalu';
+    return 'M-' . $offset;
+}
+
+function sm2_grade_to_int($grade) {
+    $map = ['again' => 0, 'hard' => 3, 'good' => 4, 'easy' => 5, 'forgot' => 0, 'know' => 4];
+    if (is_int($grade)) return min(5, max(0, $grade));
+    $g = strtolower(trim((string)$grade));
+    return $map[$g] ?? 4;
+}
+
+function sm2_next($ease, $reps, $interval, $grade) {
+    $ease = max(1.3, min(3.0, (float)$ease ?: 2.5));
+    $reps = max(0, (int)$reps);
+    $interval = max(1, (int)$interval);
+    $g = sm2_grade_to_int($grade);
+    if ($g < 3) {
+        return ['interval' => 1, 'ease' => max(1.3, $ease - 0.2), 'reps' => 0];
+    }
+    $new_ease = $ease + (0.1 - (5 - $g) * (0.08 + (5 - $g) * 0.02));
+    $new_ease = max(1.3, min(3.0, $new_ease));
+    if ($reps === 0) {
+        $next = 1;
+    } elseif ($reps === 1) {
+        $next = 6;
+    } else {
+        $next = (int)round($interval * $new_ease);
+    }
+    if ($g === 3) $next = max(1, (int)round($next * 0.8));
+    if ($g === 5) $next = (int)round($next * 1.15) + 1;
+    $next = min(90, max(1, $next));
+    return ['interval' => $next, 'ease' => round($new_ease, 2), 'reps' => $reps + 1];
+}
+
+function sm2_labels() {
+    return [
+        'again' => ['label' => 'Lagi', 'hint' => 'besok', 'key' => '1'],
+        'hard' => ['label' => 'Sulit', 'hint' => 'segera', 'key' => '2'],
+        'good' => ['label' => 'Bisa', 'hint' => 'sesuai jadwal', 'key' => '3'],
+        'easy' => ['label' => 'Mudah', 'hint' => 'lama', 'key' => '4'],
+    ];
+}
+
+function review_skill_for($source, $title, $detail) {
+    $t = normalize_skill((string)$title . ' ' . (string)$detail);
+    if ($t !== '' && $t !== 'General') return $t;
+    $defs = skill_defs();
+    foreach (array_keys($defs) as $sk) {
+        if (stripos((string)$source, $sk) !== false) return $sk;
+    }
+    return 'General';
 }
 
 // Flash messages

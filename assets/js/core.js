@@ -234,6 +234,27 @@ function installPWA() {
 }
 window.installPWA = installPWA;
 
+/* Juice: angka +XP melayang + getar */
+function buzz(pattern) {
+    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
+}
+function xpJuice(amount, anchor, opts) {
+    amount = parseInt(amount, 10) || 0;
+    if (amount <= 0) return;
+    opts = opts || {};
+    buzz(opts.buzz || 12);
+    const host = anchor && anchor.getBoundingClientRect ? anchor : null;
+    const r = host ? host.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 3, width: 0 };
+    const s = document.createElement('span');
+    s.className = 'xp-float' + (opts.tier ? ' tier-' + opts.tier : '');
+    s.setAttribute('aria-hidden', 'true');
+    s.textContent = '+' + amount + ' XP';
+    s.style.left = (r.left + r.width / 2 + window.scrollX) + 'px';
+    s.style.top = (r.top + window.scrollY) + 'px';
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 1300);
+}
+
 /* Shared AJAX helpers */
 function submitterFormData(form, submitter) {
     const fd = new FormData(form);

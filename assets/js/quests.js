@@ -19,12 +19,14 @@ function applyQuestResponse(data, form) {
             const lbl = submitBtn.getAttribute('aria-label') || '';
             submitBtn.setAttribute('aria-label', 'Batalkan quest selesai: ' + lbl.replace(/^(Batalkan quest selesai: |Tandai quest selesai: )/, ''));
         }
-        if (data.leveled_up) {
-            SoundEffects.levelUp();
-            triggerConfetti(true);
-        } else {
-            SoundEffects.questComplete();
-        }
+    if (typeof data.xp_delta === 'number' && data.xp_delta > 0) xpJuice(data.xp_delta, questItem || form);
+    if (data.leveled_up) {
+        buzz([25, 50, 25]);
+        SoundEffects.levelUp();
+        triggerConfetti(true);
+    } else {
+        SoundEffects.questComplete();
+    }
     } else {
         if (questItem) {
             questItem.classList.remove('completed');

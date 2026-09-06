@@ -4,7 +4,7 @@ require_login();
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
 $q = mb_substr(trim($_GET['q'] ?? ''), 0, 100);
-$quests = $resources = $errors = $questions = [];
+$quests = $resources = $errors = $questions = $cards = [];
 if ($q !== '') {
     $like = '%' . addcslashes($q, '%_\\') . '%';
     $s = $conn->prepare("SELECT id, week, title FROM quests WHERE (user_id IS NULL OR user_id = ?) AND (title LIKE ? OR description LIKE ?) ORDER BY week LIMIT 8");
@@ -19,6 +19,9 @@ if ($q !== '') {
     $s = $conn->prepare("SELECT id, title, status FROM questions WHERE user_id = ? AND (title LIKE ? OR description LIKE ?) ORDER BY created_at DESC LIMIT 8");
     $s->bind_param("iss", $user_id, $like, $like); $s->execute();
     $questions = $s->get_result()->fetch_all(MYSQLI_ASSOC); $s->close();
+    $s = $conn->prepare("SELECT id, topic, question FROM quiz_cards WHERE user_id = ? AND (question LIKE ? OR answer LIKE ?) ORDER BY created_at DESC LIMIT 8");
+    $s->bind_param("iss", $user_id, $like, $like); $s->execute();
+    $cards = $s->get_result()->fetch_all(MYSQLI_ASSOC); $s->close();
 }
 $conn->close();
 $page_title = 'Pencarian';
@@ -27,7 +30,7 @@ require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
     <div class="page-head">
-        <div class="page-kicker">Cari di quest, materi, catatan, tanya</div>
+        <div class="page-kicker">Cari di quest, materi, catatan, tanya, kuis</div>
         <h1 class="page-title">Pencarian</h1>
         <form method="GET" action="search.php" class="d-flex gap-2 mt-3" role="search">
             <input name="q" class="form-control" value="<?= htmlspecialchars($q) ?>" placeholder="Contoh: JOIN, docker, auth…" maxlength="100" aria-label="Kata kunci">
@@ -51,6 +54,9 @@ require_once 'includes/navbar.php';
             <h2 class="h6 fw-bold mt-4">Questions (<?= count($questions) ?>)</h2>
             <?php foreach ($questions as $r): ?><a class="list-row" href="questions.php"><div class="list-main"><p class="list-title"><?= htmlspecialchars($r['title']) ?></p><p class="list-meta"><?= htmlspecialchars($r['status']) ?></p></div><i class="fas fa-chevron-right list-chev"></i></a><?php endforeach; ?>
             <?php if (!$questions): ?><p class="small text-muted">Tidak ada pertanyaan cocok.</p><?php endif; ?>
+            <h2 class="h6 fw-bold mt-4">Kartu Kuis (<?= count($cards) ?>)</h2>
+            <?php foreach ($cards as $r): ?><a class="list-row" href="quiz.php?mode=latihan"><div class="list-main"><p class="list-title"><?= htmlspecialchars(mb_strimwidth($r['question'], 0, 80, '...')) ?></p><p class="list-meta"><?= htmlspecialchars($r['topic'] ?? 'General') ?></p></div><i class="fas fa-chevron-right list-chev"></i></a><?php endforeach; ?>
+            <?php if (!$cards): ?><p class="small text-muted">Tidak ada kartu cocok.</p><?php endif; ?>
         </div>
     </div>
     <?php endif; ?>

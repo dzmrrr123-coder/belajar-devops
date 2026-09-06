@@ -58,6 +58,7 @@ document.querySelectorAll('.mission-claim-form').forEach(form => {
                     if (hx) { const cur = parseInt(hx.textContent, 10); if (!isNaN(cur)) hx.textContent = (cur + d.xp_reward) + ' XP'; }
                     const sx = document.getElementById('statTotalXp');
                     if (sx) { const cur = parseInt(sx.textContent, 10); if (!isNaN(cur)) sx.textContent = cur + d.xp_reward; }
+                    xpJuice(d.xp_reward, card || btn);
                 }
                 SoundEffects.questComplete();
             }

@@ -44,10 +44,11 @@ try {
     }
     $conn->commit();
     $rare = ($xp >= 10 || $freeze > 0);
+    $tier = $freeze > 0 ? 'legendary' : ($xp >= 13 ? 'epic' : ($xp >= 8 ? 'rare' : 'common'));
     $msg = "Peti dibuka! +{$xp} XP" . ($freeze > 0 ? ' + 1 freeze' : '') . ".";
     if ($is_ajax) {
         header('Content-Type: application/json');
-        echo json_encode(['status' => 'success', 'xp' => $xp, 'freeze' => $freeze, 'rare' => $rare, 'message' => $msg]);
+        echo json_encode(['status' => 'success', 'xp' => $xp, 'freeze' => $freeze, 'rare' => $rare, 'tier' => $tier, 'message' => $msg]);
         exit();
     }
     set_flash('success', $msg);
