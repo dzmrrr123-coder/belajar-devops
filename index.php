@@ -99,6 +99,15 @@ require_once 'includes/navbar.php';
         </div>
     </div>
 
+    <?php $streak_risk = ((int)$user['streak'] > 0) && empty($missions['quest1']['done']) && empty($missions['focus1']['done']) && empty($missions['note1']['done']); ?>
+    <?php if ($streak_risk): ?>
+    <a class="streak-banner" href="timer.php">
+        <i class="fas fa-fire" aria-hidden="true"></i>
+        <span><strong>Streak <?= (int)$user['streak'] ?> hari belum aman hari ini.</strong> Satu aksi kecil sebelum tengah malam<?php if ((int)($user['freeze_tokens'] ?? 0) > 0): ?> · freeze tersisa <?= (int)$user['freeze_tokens'] ?><?php endif; ?>.</span>
+        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+    </a>
+    <?php endif; ?>
+
     <?php
     $claimable_xp = 0; $claimable_n = 0;
     foreach ($missions as $m) if (!empty($m['done']) && empty($m['claimed'])) { $claimable_n++; $claimable_xp += (int)$m['xp']; }

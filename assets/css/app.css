@@ -157,6 +157,9 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding:18px 0;backgroun
 .timer-pill.dragging{opacity:.92;cursor:grabbing;box-shadow:0 12px 28px rgba(0,0,0,.45)}
 .timer-pill.snap{transition:left .18s ease,top .18s ease}
 .timer-pill-handle{opacity:.55;font-size:.72rem}
+.lofi-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:18px}
+.lofi-row .btn.active{background:var(--primary-soft);border-color:var(--primary);color:var(--primary)}
+.lofi-row input[type="range"]{width:120px;accent-color:var(--primary);cursor:pointer}
 .timer-pill-close{border:none;background:rgba(255,255,255,.16);color:#fff;width:22px;height:22px;border-radius:50%;font-size:.62rem;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0}
 .timer-pill-close:hover{background:rgba(255,255,255,.32)}
 body.has-tabbar .timer-pill{bottom:calc(76px + env(safe-area-inset-bottom))}
@@ -463,6 +466,12 @@ section[aria-labelledby="continue-material-heading"] .list-meta,section[aria-lab
 .share-row .btn{flex:0 0 auto}
 .board-link{color:var(--ink);font-weight:700}
 .board-link:hover{color:var(--primary)}
+.streak-banner{display:flex;align-items:center;gap:10px;background:var(--warning-soft);border:1px solid #e6dcc0;border-radius:var(--r-md);padding:12px 14px;margin-bottom:12px;color:var(--ink);font-size:.88rem}
+.streak-banner:hover{text-decoration:none;border-color:var(--warning)}
+.streak-banner .fa-fire{color:var(--warning)}
+.streak-banner span{flex:1;min-width:0}
+.streak-banner .fa-chevron-right{color:var(--faint);font-size:.75rem}
+[data-theme="dark"] .streak-banner{border-color:#57503a}
 .next-action{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--primary);border-radius:var(--r-md);padding:12px 14px;margin-bottom:16px;color:var(--ink)}
 a.next-action:hover{text-decoration:none;border-color:var(--line-strong);border-left-color:var(--primary)}
 .next-action-icon{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;background:var(--primary-soft);color:var(--primary);font-size:.95rem;flex-shrink:0}
