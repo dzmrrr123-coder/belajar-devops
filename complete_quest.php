@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         $mult = mission_multiplier($conn, $user_id);
         $xp_reward = apply_xp_multiplier($xp_reward, $mult);
         // Add XP
-        award_xp($conn, $user_id, $xp_reward, 'quest');
+        award_xp($conn, $user_id, $xp_reward, 'quest', 'quest', $quest_id);
 
         // Update streak
         $new_streak = update_user_streak($conn, $user_id);
@@ -109,19 +109,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         $stmt->execute();
         $stmt->close();
 
-        // Deduct XP (never below 0)
-        $stmt = $conn->prepare("UPDATE users SET xp = GREATEST(0, xp - ?) WHERE id = ?");
-        $stmt->bind_param("ii", $xp_reward, $user_id);
-        $stmt->execute();
-        $stmt->close();
+        $awarded = awarded_for_ref($conn, $user_id, 'quest', $quest_id);
+        $deduct = $awarded > 0 ? $awarded : apply_xp_multiplier($xp_reward, mission_multiplier($conn, $user_id));
+        award_xp($conn, $user_id, -$deduct, 'quest_undo', 'quest', $quest_id);
+        $xp_reward = $deduct;
 
         delete_review($conn, $user_id, 'quest', $quest_id);
-        $new_xp = max(0, $u_data['xp'] - $xp_reward);
+        $new_xp = sync_user_xp($conn, $user_id);
         $new_level = calculate_level($new_xp);
         $new_streak = (int)$u_data['streak'];
         $action = 'uncompleted';
 
-        $msg = "Quest ditandai belum selesai. -{$xp_reward} XP disesuaikan.";
+        $msg = "Quest ditandai belum selesai. -{$deduct} XP disesuaikan.";
         set_flash('info', $msg);
     }
 

@@ -256,6 +256,9 @@ function ensure_database_schema($conn) {
             CONSTRAINT `fk_xp_events_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         @$conn->query("CREATE INDEX idx_xp_events_user ON `xp_events` (`user_id`, `created_at`)");
+        @$conn->query("ALTER TABLE `xp_events` ADD COLUMN `ref_type` VARCHAR(32) NULL");
+        @$conn->query("ALTER TABLE `xp_events` ADD COLUMN `ref_id` INT NULL");
+        @$conn->query("CREATE INDEX idx_xp_events_ref ON `xp_events` (`user_id`, `ref_type`, `ref_id`)");
         @$conn->query("ALTER TABLE `quests` ADD COLUMN `user_id` INT NULL");
         @$conn->query("ALTER TABLE `quests` ADD COLUMN `is_custom` TINYINT NOT NULL DEFAULT 0");
         @$conn->query("CREATE TABLE IF NOT EXISTS `daily_missions` (
@@ -673,7 +676,7 @@ function apply_xp_multiplier($base, $mult) {
     return (int)ceil($base * $mult);
 }
 
-function award_xp($conn, $user_id, $amount, $reason = 'other') {
+function award_xp($conn, $user_id, $amount, $reason = 'other', $ref_type = null, $ref_id = null) {
     $amount = (int)$amount;
     if ($amount === 0) return;
     $stmt = $conn->prepare("UPDATE users SET xp = GREATEST(0, xp + ?) WHERE id = ?");
@@ -681,19 +684,86 @@ function award_xp($conn, $user_id, $amount, $reason = 'other') {
     $stmt->execute();
     $stmt->close();
     try {
-        $log = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason) VALUES (?, ?, ?)");
-        $log->bind_param("iis", $user_id, $amount, $reason);
-        $log->execute();
-        $log->close();
+        $has_ref = false;
+        try {
+            $chk = $conn->query("SHOW COLUMNS FROM `xp_events` LIKE 'ref_type'");
+            $has_ref = ($chk && $chk->num_rows > 0);
+            if ($chk) $chk->free();
+        } catch (Throwable $e) {}
+        if ($has_ref) {
+            $log = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason, ref_type, ref_id) VALUES (?, ?, ?, ?, ?)");
+            $log->bind_param("iissi", $user_id, $amount, $reason, $ref_type, $ref_id);
+            $log->execute();
+            $log->close();
+        } else {
+            $log = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason) VALUES (?, ?, ?)");
+            $log->bind_param("iis", $user_id, $amount, $reason);
+            $log->execute();
+            $log->close();
+        }
     } catch (Throwable $e) {}
+}
+
+function xp_ledger_sum($conn, $user_id) {
+    try {
+        $q = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ?");
+        $q->bind_param("i", $user_id); $q->execute();
+        $n = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        return max(0, $n);
+    } catch (Throwable $e) { return 0; }
+}
+
+function sync_user_xp($conn, $user_id) {
+    try {
+        $sum = xp_ledger_sum($conn, $user_id);
+        $cur = 0;
+        $q = $conn->prepare("SELECT xp FROM users WHERE id = ?");
+        $q->bind_param("i", $user_id); $q->execute();
+        $cur = (int)($q->get_result()->fetch_assoc()['xp'] ?? 0); $q->close();
+        if ($sum < $cur) {
+            $diff = $cur - $sum;
+            try {
+                $has_ref = false;
+                try {
+                    $chk = $conn->query("SHOW COLUMNS FROM `xp_events` LIKE 'ref_type'");
+                    $has_ref = ($chk && $chk->num_rows > 0);
+                    if ($chk) $chk->free();
+                } catch (Throwable $e) {}
+                if ($has_ref) {
+                    $b = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason) VALUES (?, ?, 'backfill')");
+                    $b->bind_param("ii", $user_id, $diff);
+                } else {
+                    $b = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason) VALUES (?, ?, 'backfill')");
+                    $b->bind_param("ii", $user_id, $diff);
+                }
+                $b->execute(); $b->close();
+            } catch (Throwable $e) {}
+            return $cur;
+        }
+        $up = $conn->prepare("UPDATE users SET xp = ? WHERE id = ?");
+        $up->bind_param("ii", $sum, $user_id);
+        $up->execute(); $up->close();
+        return $sum;
+    } catch (Throwable $e) { return 0; }
+}
+
+function awarded_for_ref($conn, $user_id, $ref_type, $ref_id) {
+    try {
+        $q = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND ref_type = ? AND ref_id = ? AND amount > 0");
+        $ref_id = (int)$ref_id;
+        $q->bind_param("isi", $user_id, $ref_type, $ref_id);
+        $q->execute();
+        $n = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
+        return $n;
+    } catch (Throwable $e) { return 0; }
 }
 
 function weekly_xp($conn, $user_id) {
     try {
-        $q = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND amount > 0");
+        $q = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
         $q->bind_param("i", $user_id); $q->execute();
         $n = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        return $n;
+        return max(0, $n);
     } catch (Throwable $e) { return 0; }
 }
 

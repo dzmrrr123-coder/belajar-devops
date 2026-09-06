@@ -20,9 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $up->bind_param("iiii", $next, $next, $rid, $user_id);
                 $up->execute(); $up->close();
                 if ((int)$rev['done_count'] === 0) {
-                    award_xp($conn, $user_id, 5, 'review');
+                    $xp_gain = apply_xp_multiplier(5, mission_multiplier($conn, $user_id));
+                    award_xp($conn, $user_id, $xp_gain, 'review', 'review', $rid);
                     $nb = check_and_unlock_badges($conn, $user_id);
-                    set_flash('success', 'Review tuntas! +5 XP. Jadwal berikutnya diperpanjang.' . (!empty($nb) ? ' Badge: ' . implode(', ', $nb) . '!' : ''));
+                    set_flash('success', "Review tuntas! +{$xp_gain} XP. Jadwal berikutnya diperpanjang." . (!empty($nb) ? ' Badge: ' . implode(', ', $nb) . '!' : ''));
                 } else {
                     check_and_unlock_badges($conn, $user_id);
                     set_flash('success', 'Bagus! Jadwal review diperpanjang.');

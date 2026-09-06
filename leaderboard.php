@@ -15,7 +15,7 @@ $scope = ($_GET['scope'] ?? 'total') === 'week' ? 'week' : 'total';
 $rows = [];
 try {
     if ($scope === 'week') {
-        $s = $conn->prepare("SELECT u.username, u.xp, u.streak, COALESCE((SELECT SUM(e.amount) FROM xp_events e WHERE e.user_id = u.id AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND e.amount > 0), 0) wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = u.id) qd FROM users u WHERE u.show_on_board = 1 ORDER BY wxp DESC, u.streak DESC LIMIT ? OFFSET ?");
+        $s = $conn->prepare("SELECT u.username, u.xp, u.streak, GREATEST(0, COALESCE((SELECT SUM(e.amount) FROM xp_events e WHERE e.user_id = u.id AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0)) wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = u.id) qd FROM users u WHERE u.show_on_board = 1 ORDER BY wxp DESC, u.streak DESC LIMIT ? OFFSET ?");
     } else {
         $s = $conn->prepare("SELECT username, xp, streak, xp AS wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = users.id) qd FROM users WHERE show_on_board = 1 ORDER BY xp DESC, streak DESC LIMIT ? OFFSET ?");
     }

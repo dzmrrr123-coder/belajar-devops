@@ -34,11 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $conn->prepare("INSERT INTO pomodoro_sessions (user_id, duration_minutes, mode, focus_note, completed_at) VALUES (?, ?, ?, ?, NOW())");
     $stmt->bind_param("iiss", $user_id, $duration, $mode, $note);
     $stmt->execute();
+    $pomodoro_id = (int)$stmt->insert_id;
     $stmt->close();
 
     $xp_reward = apply_xp_multiplier($xp_reward, mission_multiplier($conn, $user_id));
     // Reward XP
-    award_xp($conn, $user_id, $xp_reward, 'pomodoro');
+    award_xp($conn, $user_id, $xp_reward, 'pomodoro', 'pomodoro', $pomodoro_id);
 
     // Update streak
     $new_streak = update_user_streak($conn, $user_id);

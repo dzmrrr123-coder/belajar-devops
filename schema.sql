@@ -156,9 +156,12 @@ CREATE TABLE IF NOT EXISTS xp_events (
     user_id INT NOT NULL,
     amount INT NOT NULL,
     reason VARCHAR(64) NOT NULL DEFAULT 'other',
+    ref_type VARCHAR(32) NULL,
+    ref_id INT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_xp_events_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_xp_events_user (user_id, created_at)
+    INDEX idx_xp_events_user (user_id, created_at),
+    INDEX idx_xp_events_ref (user_id, ref_type, ref_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS remember_tokens (
