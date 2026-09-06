@@ -362,3 +362,15 @@ section[aria-labelledby="continue-material-heading"] .list-meta,section[aria-lab
 .mission-body .mission-card .mission-main{flex:1;min-width:0}
 .mission-body .mission-card .btn{flex-shrink:0}
 }
+.review-back{margin-top:-4px}
+.review-progress{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:.76rem;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.review-progress-bar{flex:1;height:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.review-progress-bar>div{background:var(--primary);height:100%;border-radius:99px}
+.review-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-bottom:8px}
+.review-due{font-size:.8rem;color:var(--muted)}
+.review-title{overflow-wrap:break-word;word-break:break-word}
+.review-card .text-secondary{overflow-wrap:break-word}
+@media(max-width:767.98px){
+.review-card{padding:18px 16px}
+.review-progress{font-size:.72rem}
+}

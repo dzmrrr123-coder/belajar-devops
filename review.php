@@ -48,6 +48,17 @@ $due = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 $current = $due[0] ?? null;
 $conn->close();
+$due_label = 'hari ini';
+if ($current) {
+    $today = date('Y-m-d');
+    $dd = (string)($current['next_due'] ?? $today);
+    if ($dd < $today) {
+        $late = max(1, (int)((strtotime($today) - strtotime($dd)) / 86400));
+        $due_label = 'terlambat ' . $late . ' hari';
+    } elseif ($dd > $today) {
+        $due_label = date('d M Y', strtotime($dd));
+    }
+}
 $page_title = 'Review Inbox';
 require_once 'includes/header.php';
 require_once 'includes/navbar.php';
@@ -57,13 +68,12 @@ require_once 'includes/navbar.php';
         <div class="page-kicker"><?= $due_count ?> perlu direview hari ini</div>
         <h1 class="page-title">Review Inbox</h1>
         <p class="page-desc">Satu kartu satu waktu. Jujur saja — lupa itu normal, sistem atur ulang otomatis (1-3-7-14-30 hari).</p>
-        <div class="page-actions">
-            <a href="index.php" class="btn btn-cyber-outline">Dashboard</a>
-            <a href="quests.php" class="btn btn-cyber-outline">Roadmap</a>
+        <div class="page-actions review-back">
+            <a href="index.php" class="page-actions-link"><i class="fas fa-arrow-left" aria-hidden="true"></i>Dashboard</a>
         </div>
     </div>
     <?php if (!$current): ?>
-    <div class="empty-state card p-5">
+    <div class="empty-state card p-4 p-md-5">
         <div class="empty-state-icon"><i class="fas fa-check-double"></i></div>
         <h2 class="h5 fw-bold">Bersih! Tidak ada review jatuh tempo.</h2>
         <p class="text-secondary small mb-0">Selesaikan quest atau tulis catatan — otomatis masuk antrean review besok.</p>
@@ -72,11 +82,15 @@ require_once 'includes/navbar.php';
     <div class="row g-4 justify-content-center">
         <div class="col-lg-7">
             <article class="card p-4 review-card">
-                <div class="d-flex flex-wrap gap-2 mb-2">
-                    <span class="question-status status-in_review"><?= htmlspecialchars($current['source']) ?></span>
-                    <span class="text-secondary small">Jatuh tempo <?= htmlspecialchars($current['next_due']) ?> · interval <?= (int)$current['interval_day'] ?> hari</span>
+                <div class="review-progress">
+                    <span>Kartu 1 dari <?= $due_count ?></span>
+                    <div class="review-progress-bar" role="progressbar" aria-valuenow="1" aria-valuemin="0" aria-valuemax="<?= $due_count ?>" aria-label="Posisi kartu review"><div style="width: <?= (int)round(100 / max(1, $due_count)) ?>%;"></div></div>
                 </div>
-                <h2 class="h5 fw-bold"><?= htmlspecialchars($current['title']) ?></h2>
+                <div class="review-meta">
+                    <span class="question-status status-in_review"><?= htmlspecialchars($current['source']) ?></span>
+                    <span class="review-due"><?= htmlspecialchars($due_label) ?> · interval <?= (int)$current['interval_day'] ?> hari</span>
+                </div>
+                <h2 class="h5 fw-bold review-title"><?= htmlspecialchars($current['title']) ?></h2>
                 <?php if (!empty($current['detail'])): ?><p class="text-secondary"><?= nl2br(htmlspecialchars(mb_strimwidth($current['detail'], 0, 400, '...'))) ?></p><?php endif; ?>
                 <form method="POST" action="review.php" class="review-actions">
                     <?= csrf_field() ?>
