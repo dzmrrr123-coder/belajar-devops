@@ -4,52 +4,25 @@ require_login();
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
 
-// XP 7 hari terakhir vs 7 hari sebelumnya (1 roundtrip)
-$xp_now = 0; $xp_prev = 0;
+// Semua angka ringkasan dalam 1 roundtrip
+$xp_now = 0; $xp_prev = 0; $fs = 0; $fm = 0; $qd = 0; $notes = 0; $due = 0;
 try {
-    $s = $conn->prepare("SELECT (SELECT COALESCE(SUM(amount),0) FROM xp_events WHERE user_id = ? AND created_at >= CURDATE() - INTERVAL 6 DAY) AS now_xp, (SELECT COALESCE(SUM(amount),0) FROM xp_events WHERE user_id = ? AND created_at >= CURDATE() - INTERVAL 13 DAY AND created_at < CURDATE() - INTERVAL 6 DAY) AS prev_xp");
-    $s->bind_param("ii", $user_id, $user_id);
+    $s = $conn->prepare("SELECT (SELECT COALESCE(SUM(amount),0) FROM xp_events WHERE user_id = ? AND created_at >= CURDATE() - INTERVAL 6 DAY) AS now_xp, (SELECT COALESCE(SUM(amount),0) FROM xp_events WHERE user_id = ? AND created_at >= CURDATE() - INTERVAL 13 DAY AND created_at < CURDATE() - INTERVAL 6 DAY) AS prev_xp, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() - INTERVAL 6 DAY) AS fs, (SELECT COALESCE(SUM(duration_minutes),0) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() - INTERVAL 6 DAY) AS fm, (SELECT COUNT(*) FROM user_quests WHERE user_id = ? AND completed_at >= CURDATE() - INTERVAL 6 DAY) AS qd, (SELECT COUNT(*) FROM errors WHERE user_id = ? AND created_at >= CURDATE() - INTERVAL 6 DAY) + (SELECT COUNT(*) FROM questions WHERE user_id = ? AND created_at >= CURDATE() - INTERVAL 6 DAY) AS n, (SELECT COUNT(*) FROM reviews WHERE user_id = ? AND next_due <= CURDATE()) AS due");
+    $s->bind_param("iiiiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id, $user_id, $user_id);
     $s->execute();
     $r = $s->get_result()->fetch_assoc() ?: [];
     $s->close();
     $xp_now = (int)($r['now_xp'] ?? 0);
     $xp_prev = (int)($r['prev_xp'] ?? 0);
-} catch (Throwable $e) {}
-
-// Fokus + quest selesai 7 hari terakhir (1 roundtrip)
-$fs = 0; $fm = 0; $qd = 0;
-try {
-    $s = $conn->prepare("SELECT (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() - INTERVAL 6 DAY) AS fs, (SELECT COALESCE(SUM(duration_minutes),0) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() - INTERVAL 6 DAY) AS fm, (SELECT COUNT(*) FROM user_quests WHERE user_id = ? AND completed_at >= CURDATE() - INTERVAL 6 DAY) AS qd");
-    $s->bind_param("iii", $user_id, $user_id, $user_id);
-    $s->execute();
-    $r = $s->get_result()->fetch_assoc() ?: [];
-    $s->close();
     $fs = (int)($r['fs'] ?? 0); $fm = (int)($r['fm'] ?? 0); $qd = (int)($r['qd'] ?? 0);
+    $notes = (int)($r['n'] ?? 0);
+    $due = (int)($r['due'] ?? 0);
 } catch (Throwable $e) {}
 
-// Catatan 7 hari terakhir (1 roundtrip)
-$notes = 0;
+// Spotlight skill dari quest + antrean 3 quest berikut (1 roundtrip)
+$strongest = '—'; $attention = '—'; $queue = [];
 try {
-    $s = $conn->prepare("SELECT (SELECT COUNT(*) FROM errors WHERE user_id = ? AND created_at >= CURDATE() - INTERVAL 6 DAY) + (SELECT COUNT(*) FROM questions WHERE user_id = ? AND created_at >= CURDATE() - INTERVAL 6 DAY) AS n");
-    $s->bind_param("ii", $user_id, $user_id);
-    $s->execute();
-    $notes = (int)($s->get_result()->fetch_assoc()['n'] ?? 0);
-    $s->close();
-} catch (Throwable $e) {}
-
-// Review jatuh tempo
-$due = 0;
-try {
-    $s = $conn->prepare("SELECT COUNT(*) n FROM reviews WHERE user_id = ? AND next_due <= CURDATE()");
-    $s->bind_param("i", $user_id); $s->execute();
-    $due = (int)($s->get_result()->fetch_assoc()['n'] ?? 0);
-    $s->close();
-} catch (Throwable $e) {}
-
-// Spotlight skill dari quest (1 roundtrip)
-$strongest = '—'; $attention = '—';
-try {
-    $s = $conn->prepare("SELECT q.week, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE (q.user_id IS NULL OR q.user_id = ?)");
+    $s = $conn->prepare("SELECT q.id, q.week, q.title, q.xp_reward, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE (q.user_id IS NULL OR q.user_id = ?) ORDER BY q.week ASC, q.id ASC");
     $s->bind_param("ii", $user_id, $user_id);
     $s->execute();
     $per = [];
@@ -57,7 +30,11 @@ try {
         $sk = skill_for_week((int)$r['week']);
         $per[$sk] = $per[$sk] ?? ['done' => 0, 'total' => 0];
         $per[$sk]['total']++;
-        if (!empty($r['done'])) $per[$sk]['done']++;
+        if (!empty($r['done'])) {
+            $per[$sk]['done']++;
+        } elseif (count($queue) < 3) {
+            $queue[] = ['title' => (string)$r['title'], 'xp' => (int)$r['xp_reward']];
+        }
     }
     $s->close();
     $best = -1; $most_left = -1;
@@ -107,7 +84,17 @@ require_once 'includes/navbar.php';
         </section>
         <section class="card skill-card" aria-label="Sorotan skill">
             <div class="skill-top"><span class="skill-icon" aria-hidden="true"><i class="fas fa-layer-group"></i></span><div class="skill-id"><strong>Terkuat: <?= htmlspecialchars($strongest) ?></strong><small>dari quest tuntas</small></div></div>
-            <div class="skill-meta"><span>Perlu perhatian: <strong><?= htmlspecialchars($attention) ?></strong></span></div>
+            <div class="skill-meta"><span>Perlu perhatian: <strong><?= htmlspecialchars($attention) ?></strong></span><span><a href="skills.php">Buka skill tree</a></span></div>
+        </section>
+        <section class="card skill-card" aria-label="Antrean quest berikutnya">
+            <div class="skill-top"><span class="skill-icon" aria-hidden="true"><i class="fas fa-list-check"></i></span><div class="skill-id"><strong>Berikutnya<?= count($queue) > 1 ? ' (' . count($queue) . ')' : '' ?></strong><small>rencana minggu ini</small></div></div>
+            <?php if ($queue): ?>
+            <div class="skill-meta" style="flex-direction:column;align-items:stretch;gap:4px;">
+                <?php foreach ($queue as $qi => $q): ?><span><?= $qi + 1 ?>. <a href="quests.php"><?= htmlspecialchars(mb_strimwidth($q['title'], 0, 50, '...')) ?></a> · +<?= (int)$q['xp'] ?> XP</span><?php endforeach; ?>
+            </div>
+            <?php else: ?>
+            <div class="skill-meta"><span class="text-success"><i class="fas fa-check me-1" aria-hidden="true"></i>Semua quest tuntas!</span></div>
+            <?php endif; ?>
         </section>
         <section class="card skill-card" aria-label="Antrean review">
             <div class="skill-top"><span class="skill-icon" aria-hidden="true"><i class="fas fa-rotate-right"></i></span><div class="skill-id"><strong><?= $due ?> review jatuh tempo</strong><small>jangan menumpuk</small></div></div>
