@@ -55,10 +55,12 @@ a:hover{color:var(--primary-hover);text-decoration:underline}
 .avatar-lg{width:36px;height:36px;font-size:.85rem;flex-shrink:0}
 .avatar-xl{width:56px;height:56px;font-size:1.3rem;flex-shrink:0}
 .avatar-sm{width:26px;height:26px;font-size:.68rem;flex-shrink:0}
-.avatar-circle.frame-ring{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary)}
-.avatar-circle.frame-ember{box-shadow:0 0 0 2px var(--surface),0 0 0 4px #e09a3c}
-.avatar-circle.frame-gold{box-shadow:0 0 0 2px var(--surface),0 0 0 4px #c9a13b}
-.avatar-circle.frame-legend{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary),0 0 14px rgba(99,179,155,.65)}
+.avatar-circle.frame-ring{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--primary),0 0 10px rgba(99,179,155,.35)}
+.avatar-circle.frame-ember{border:2px solid transparent;background:linear-gradient(var(--primary),var(--primary)) padding-box,conic-gradient(from 20deg,#f2c14e,#d0543a,#e09a3c,#f2c14e) border-box;box-shadow:0 0 12px rgba(224,154,60,.45)}
+.avatar-circle.frame-gold{border:2px solid transparent;background:linear-gradient(var(--primary),var(--primary)) padding-box,conic-gradient(from 20deg,#fff3c4,#c9a13b,#f2d57e,#c9a13b,#fff3c4) border-box;box-shadow:0 0 12px rgba(201,161,59,.45)}
+@property --frame-angle{syntax:'<angle>';initial-value:0deg;inherits:false}
+.avatar-circle.frame-legend{border:3px solid transparent;background:linear-gradient(var(--primary),var(--primary)) padding-box,conic-gradient(from var(--frame-angle),#63b39b,#c9a13b,#e09a3c,#7cc4ae,#63b39b) border-box;box-shadow:0 0 14px rgba(99,179,155,.55);animation:frame-spin 5s linear infinite}
+@keyframes frame-spin{to{--frame-angle:360deg}}
 .frame-pick{display:flex;flex-wrap:wrap;gap:8px;border:none;padding:0;margin:0}
 .frame-opt{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 6px;cursor:pointer;flex:1 1 88px;min-width:88px;color:var(--ink);font:inherit}
 .frame-opt:hover{border-color:var(--line-strong)}
