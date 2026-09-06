@@ -207,7 +207,7 @@ require_once 'includes/navbar.php';
     <div class="page-head">
         <div class="page-kicker"><?= $total_cards ?> kartu · <?= $due_count ?> jatuh tempo · kuota <span id="quizQuota">+<?= $quiz_quota_left ?> XP</span> hari ini</div>
         <h1 class="page-title">Kuis</h1>
-        <p class="page-desc">Uji ingatanmu satu kartu satu waktu. Tahu +2 XP — maks +<?= QUIZ_DAILY_XP_CAP ?> XP/hari, kartu tuntas tak muncul lagi.</p>
+        <p class="page-desc">Hafalan kilat satu kartu satu waktu. Tahu = +2 XP (maks +<?= QUIZ_DAILY_XP_CAP ?>/hari).</p>
         <div class="page-actions leaderboard-actions">
             <div class="segmented" role="group" aria-label="Mode kuis">
                 <a href="quiz.php?mode=latihan<?= $topic !== 'all' ? '&topic=' . urlencode($topic) : '' ?>" class="filter-pill <?= $mode === 'latihan' ? 'active' : '' ?>">Latihan acak</a>

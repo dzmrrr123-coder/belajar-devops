@@ -107,7 +107,7 @@ require_once 'includes/navbar.php';
     <div class="page-head">
         <div class="page-kicker"><?= $total_errors ?> catatan · <?= $solved_errors ?> ada solusi</div>
         <h1 class="page-title">Notes & solusi</h1>
-        <p class="page-desc">Simpan error dan solusi agar bisa dipakai lagi. Setiap catatan baru +5 XP.</p>
+        <p class="page-desc">Ketemu error? Catat + tulis solusinya. 1 catatan = +5 XP.</p>
     </div>
 
     <div class="row g-4">

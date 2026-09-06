@@ -76,7 +76,7 @@ require_once 'includes/navbar.php';
     <div class="page-head">
         <div class="page-kicker">Saldo: <?= (int)$me['xp'] ?> XP · freeze <?= (int)$me['freeze_tokens'] ?>/<?= SHOP_FREEZE_MAX ?></div>
         <h1 class="page-title">Toko XP</h1>
-        <p class="page-desc">Tukar XP hasil belajarmu. Semua tercatat di ledger.</p>
+        <p class="page-desc">Belanjakan XP: freeze penyelamat streak, flair nama, atau kocokan untung-untungan.</p>
     </div>
 
     <div class="skill-grid">

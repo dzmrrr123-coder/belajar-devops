@@ -98,7 +98,7 @@ require_once 'includes/navbar.php';
     <div class="page-head">
         <div class="page-kicker">Minggu <?= $selected_week ?> dari 12 · <?= count($quests) ?> quest</div>
         <h1 class="page-title"><?= !empty($quests) ? 'Fokus: ' . htmlspecialchars($quests[0]['title']) : 'Belum ada quest minggu ini' ?></h1>
-        <p class="page-desc">Selesaikan satu target kecil hari ini. Progres tersimpan otomatis.</p>
+        <p class="page-desc">Pilih satu target hari ini. Selesai = XP masuk otomatis.</p>
         <div class="page-actions overview-actions">
             <a href="timer.php" class="btn btn-cyber"><i class="fas fa-play me-1" aria-hidden="true"></i> Mulai sesi fokus</a>
             <a href="quests.php" class="page-actions-link">Lihat roadmap <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>

@@ -44,7 +44,7 @@ require_once 'includes/navbar.php';
     <div class="page-head">
         <div class="page-kicker">Referensi terkurasi · <?= $total_count ?> materi</div>
         <h1 class="page-title">Resources DevOps & backend</h1>
-        <p class="page-desc">Video, dokumentasi resmi, dan latihan pendamping setiap quest. <?= $video_count ?> video · <?= $docs_count ?> dokumen · <?= $practice_count ?> praktek.</p>
+        <p class="page-desc">Bahan belajar pendamping tiap minggu. (<?= $video_count ?> video · <?= $docs_count ?> dokumen · <?= $practice_count ?> praktek)</p>
     </div>
 
     <div class="mb-4">

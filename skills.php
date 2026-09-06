@@ -91,7 +91,7 @@ require_once 'includes/navbar.php';
     <div class="page-head">
         <div class="page-kicker">8 skill · <?= $total_points ?> poin · <?= $active ?>/8 aktif</div>
         <h1 class="page-title">Skill tree</h1>
-        <p class="page-desc">Poin skill = XP quest + 5 per catatan + 3 per pertanyaan.<?php if ($next_up !== null): ?> Dekat naik level: <strong><?= htmlspecialchars($next_up) ?></strong> <?= $next_up_pct ?>% — <?= $next_up_need ?> poin lagi.<?php endif; ?></p>
+        <p class="page-desc">Kekuatan tiap bidang dari quest + catatanmu. Naikkan lewat link "Lanjut" di tiap kartu.<?php if ($next_up !== null): ?> Paling dekat naik: <strong><?= htmlspecialchars($next_up) ?></strong> (<?= $next_up_need ?> poin lagi).<?php endif; ?></p>
     </div>
 
     <?php if ($total_points === 0 && $first_quest !== null): ?>

@@ -153,7 +153,7 @@ require_once 'includes/navbar.php';
     <div class="page-head">
         <div class="page-kicker"><?= count($questions) ?> pertanyaan ditampilkan</div>
         <h1 class="page-title">Questions</h1>
-        <p class="page-desc">Simpan hal yang belum jelas tanpa memutus fokus. Review kembali saat siap.</p>
+        <p class="page-desc">Hal yang belum paham, tampung di sini. Terjawab = pindah ke catatan +5 XP.</p>
     </div>
 
     <div class="row g-4 align-items-start">

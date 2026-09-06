@@ -94,7 +94,7 @@ require_once 'includes/navbar.php';
     <div class="page-head">
         <div class="page-kicker" id="reviewKicker"><?= $due_count ?> perlu direview hari ini</div>
         <h1 class="page-title">Review Inbox</h1>
-        <p class="page-desc">Satu kartu satu waktu. Jujur saja — lupa itu normal, sistem atur ulang otomatis (1-3-7-14-30 hari).</p>
+        <p class="page-desc">Kartu yang jatuh tempo hari ini. Tahu = ketemu lagi nanti, Lupa = ulang besok.</p>
         <div class="page-actions review-back">
             <a href="index.php" class="page-actions-link"><i class="fas fa-arrow-left" aria-hidden="true"></i>Dashboard</a>
         </div>

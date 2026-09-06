@@ -44,7 +44,7 @@ require_once 'includes/navbar.php';
     <div class="page-head">
         <div class="page-kicker">Opt-in · tanpa email<?= $my_rank ? ' · peringkat #' . $my_rank : '' ?></div>
         <h1 class="page-title">Leaderboard</h1>
-        <p class="page-desc">Hanya yang mengaktifkan “Tampil di leaderboard” di Profil.</p>
+        <p class="page-desc">Peringkat XP antar peserta. Ikut tampil? Aktifkan dari Profil.</p>
         <div class="page-actions leaderboard-actions">
             <div class="segmented" role="group" aria-label="Rentang leaderboard">
                 <a href="leaderboard.php?scope=total" class="filter-pill <?= $scope === 'total' ? 'active' : '' ?>">Total XP</a>
