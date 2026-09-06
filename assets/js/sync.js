@@ -75,6 +75,8 @@ window.LTOutbox = (function() {
         if (entry.type === 'subtask_set' || entry.type === 'subtask_delete') return 'subtask:' + entry.subtask_id;
         if (entry.type === 'review_answer') return 'review:' + entry.review_id;
         if (entry.type === 'quiz_answer') return 'quiz:' + entry.card_id;
+        if (entry.type === 'question_add') return 'question:' + String(entry.fields && entry.fields.title || '').slice(0, 40);
+        if (entry.type === 'error_add') return 'error:' + String(entry.fields && entry.fields.error_message || '').slice(0, 40);
         return null;
     }
 
@@ -89,6 +91,7 @@ window.LTOutbox = (function() {
         queue.push(entry);
         save(queue);
         render();
+        requestSync();
         if (navigator.onLine) flush();
     }
 
@@ -259,42 +262,87 @@ window.LTOutbox = (function() {
                 return 'retry';
             }).catch(() => 'retry');
         }
+        if (entry.type === 'question_add') {
+            const f = entry.fields || {};
+            if (!String(f.title || '').trim()) return Promise.resolve('done');
+            return postForm('questions.php', {
+                csrf_token: freshCsrf(entry.csrf),
+                action: 'create',
+                title: f.title || '',
+                description: f.description || '',
+                topic: f.topic || '',
+                priority: f.priority || 'medium',
+                quest_id: f.quest_id || '0',
+                reference_link: f.reference_link || ''
+            }, false).then((res) => {
+                if (res.status === 403) return 'auth';
+                if (res.ok) {
+                    showToast('Pertanyaan offline terkirim.', 'success');
+                    return 'done';
+                }
+                return 'retry';
+            }).catch(() => 'retry');
+        }
         return Promise.resolve('done');
     }
 
+    function requestSync() {
+        try {
+            if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                navigator.serviceWorker.ready.then((reg) => {
+                    if (reg.sync) reg.sync.register('lt-outbox').catch(() => {});
+                }).catch(() => {});
+            }
+        } catch (e) {}
+    }
+
+    function packFields(form, type) {
+        const fd = new FormData(form);
+        const csrf = String(fd.get('csrf_token') || '');
+        if (type === 'error_add') {
+            const msg = String(fd.get('error_message') || '').trim();
+            if (!msg) return null;
+            return { type, csrf, fields: { category: String(fd.get('category') || 'General'), error_message: msg, solution: String(fd.get('solution') || ''), reference_link: String(fd.get('reference_link') || '') } };
+        }
+        if (type === 'question_add') {
+            const title = String(fd.get('title') || '').trim();
+            if (!title) return null;
+            return { type, csrf, fields: { title, description: String(fd.get('description') || ''), topic: String(fd.get('topic') || ''), priority: String(fd.get('priority') || 'medium'), quest_id: String(fd.get('quest_id') || '0'), reference_link: String(fd.get('reference_link') || '') } };
+        }
+        return null;
+    }
+
     function interceptForms() {
-        document.querySelectorAll('form[data-outbox="error_add"]').forEach((form) => {
+        document.querySelectorAll('form[data-outbox]').forEach((form) => {
+            const type = form.getAttribute('data-outbox');
+            if (type !== 'error_add' && type !== 'question_add') return;
             form.addEventListener('submit', function(e) {
                 if (navigator.onLine) return;
                 e.preventDefault();
-                const fd = new FormData(form);
-                const msg = String(fd.get('error_message') || '').trim();
-                if (!msg) {
-                    showToast('Pesan error tidak boleh kosong.', 'warning');
+                const entry = packFields(form, type);
+                if (!entry) {
+                    showToast(type === 'error_add' ? 'Pesan error tidak boleh kosong.' : 'Judul pertanyaan tidak boleh kosong.', 'warning');
                     return;
                 }
-                enqueue({
-                    type: 'error_add',
-                    csrf: String(fd.get('csrf_token') || ''),
-                    fields: {
-                        category: String(fd.get('category') || 'General'),
-                        error_message: msg,
-                        solution: String(fd.get('solution') || ''),
-                        reference_link: String(fd.get('reference_link') || '')
-                    }
-                });
+                enqueue(entry);
                 form.reset();
-                showToast('Offline. Catatan masuk antrean.', 'warning');
+                showToast('Offline. Masuk antrean, terkirim otomatis saat online.', 'warning');
             });
         });
     }
 
-    window.addEventListener('online', flush);
+    window.addEventListener('online', () => { flush(); requestSync(); });
     window.addEventListener('offline', render);
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (ev) => {
+            if (ev.data && ev.data.type === 'lt-flush-outbox') flush();
+        });
+    }
     document.addEventListener('DOMContentLoaded', () => {
         interceptForms();
         render();
         flush();
+        requestSync();
     });
 
     return { enqueue, flush, count: () => load().length };

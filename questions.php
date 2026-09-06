@@ -165,7 +165,7 @@ require_once 'includes/navbar.php';
                 </summary>
                 <div class="collapsible-body">
                 <p class="text-secondary small mb-4">Tuliskan dengan konteks yang cukup agar mudah direview nanti.</p>
-                <form method="post" action="questions.php">
+                <form method="post" action="questions.php" data-outbox="question_add">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="create">
                     <div class="mb-3"><label class="form-label" for="question-title">Pertanyaan</label><input id="question-title" name="title" class="form-control" required maxlength="255" placeholder="Contoh: Kapan memakai LEFT JOIN?"></div>
