@@ -926,7 +926,8 @@ function avatar_frames() {
     ];
 }
 
-function avatar_unlocked($frame, $level, $best_streak, $badges) {
+function avatar_unlocked($frame, $level, $best_streak, $badges, $is_owner = false) {
+    if ($is_owner) return true;
     if ($frame === 'default') return true;
     if ($frame === 'ring') return $level >= 3;
     if ($frame === 'ember') return $best_streak >= 7;

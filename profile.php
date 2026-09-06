@@ -34,12 +34,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!isset($frames[$frame])) {
             set_flash('warning', 'Bingkai tidak dikenal.');
         } else {
-            $who = $conn->prepare("SELECT xp, best_streak FROM users WHERE id = ?");
+            $who = $conn->prepare("SELECT xp, best_streak, email FROM users WHERE id = ?");
             $who->bind_param("i", $user_id); $who->execute();
-            $wrow = $who->get_result()->fetch_assoc() ?: ['xp' => 0, 'best_streak' => 0];
+            $wrow = $who->get_result()->fetch_assoc() ?: ['xp' => 0, 'best_streak' => 0, 'email' => ''];
             $who->close();
             $wlv = calculate_level((int)$wrow['xp']);
-            if (!avatar_unlocked($frame, $wlv, (int)$wrow['best_streak'], user_badges($conn, $user_id))) {
+            $wowner = strtolower(trim((string)($wrow['email'] ?? ''))) === OWNER_ADMIN_EMAIL;
+            if (!avatar_unlocked($frame, $wlv, (int)$wrow['best_streak'], user_badges($conn, $user_id), $wowner)) {
                 set_flash('warning', 'Belum terbuka: ' . $frames[$frame]['hint'] . '.');
             } else {
                 $up = $conn->prepare("UPDATE users SET avatar_frame = ? WHERE id = ?");
@@ -205,7 +206,8 @@ require_once 'includes/navbar.php';
                 <form method="POST" action="profile.php" class="frame-pick">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="update_avatar">
-                    <?php foreach (avatar_frames() as $fkey => $fdef): $open = avatar_unlocked($fkey, $level, (int)($user['best_streak'] ?? 0), $badges_owned); $sel = (($user['avatar_frame'] ?? 'default') === $fkey); ?>
+                    <?php $pf_owner = strtolower(trim((string)($user['email'] ?? ''))) === OWNER_ADMIN_EMAIL; ?>
+                    <?php foreach (avatar_frames() as $fkey => $fdef): $open = avatar_unlocked($fkey, $level, (int)($user['best_streak'] ?? 0), $badges_owned, $pf_owner); $sel = (($user['avatar_frame'] ?? 'default') === $fkey); ?>
                     <button type="submit" name="frame" value="<?= htmlspecialchars($fkey) ?>" class="frame-opt<?= $open ? '' : ' locked' ?><?= $sel ? ' selected' : '' ?>" <?= $open ? '' : 'disabled' ?> title="<?= $open ? htmlspecialchars($fdef['name']) : 'Terkunci: ' . htmlspecialchars($fdef['hint']) ?>" aria-label="Bingkai <?= htmlspecialchars($fdef['name']) ?><?= $open ? '' : ' (terkunci)' ?>">
                         <span class="avatar-circle frame-<?= htmlspecialchars($fkey) ?>" aria-hidden="true"><?= strtoupper(substr($user['username'], 0, 1)) ?></span>
                         <strong><?= htmlspecialchars($fdef['name']) ?></strong>
