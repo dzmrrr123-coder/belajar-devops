@@ -131,7 +131,7 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 23);
+define('SCHEMA_VERSION', 24);
 
 // Auto-initialize schema & seed data safely without multi_query
 function ensure_database_schema($conn) {
@@ -319,6 +319,7 @@ function ensure_database_schema($conn) {
         @$conn->query("CREATE INDEX idx_daily_missions_user ON `daily_missions` (`user_id`, `mission_date`)");
         @$conn->query("CREATE INDEX idx_subtasks_quest ON `quest_subtasks` (`user_id`, `quest_id`)");
         @$conn->query("CREATE INDEX idx_resources_week ON `resources` (`week`)");
+        @$conn->query("CREATE INDEX idx_quests_week_user ON `quests` (`week`, `user_id`)");
         @$conn->query("CREATE INDEX idx_errors_user ON `errors` (`user_id`, `created_at`)");
         @$conn->query("CREATE INDEX idx_pomodoro_user ON `pomodoro_sessions` (`user_id`, `completed_at`)");
         @$conn->query("CREATE INDEX idx_questions_user ON `questions` (`user_id`, `status`, `created_at`)");
@@ -724,6 +725,17 @@ function apply_xp_multiplier($base, $mult) {
     return (int)ceil($base * $mult);
 }
 
+function xp_events_has_ref($conn) {
+    static $cached = null;
+    if ($cached !== null) return $cached;
+    try {
+        $chk = $conn->query("SHOW COLUMNS FROM `xp_events` LIKE 'ref_type'");
+        $cached = ($chk && $chk->num_rows > 0);
+        if ($chk) $chk->free();
+    } catch (Throwable $e) { $cached = false; }
+    return $cached;
+}
+
 function award_xp($conn, $user_id, $amount, $reason = 'other', $ref_type = null, $ref_id = null) {
     $amount = (int)$amount;
     if ($amount === 0) return;
@@ -732,13 +744,7 @@ function award_xp($conn, $user_id, $amount, $reason = 'other', $ref_type = null,
     $stmt->execute();
     $stmt->close();
     try {
-        $has_ref = false;
-        try {
-            $chk = $conn->query("SHOW COLUMNS FROM `xp_events` LIKE 'ref_type'");
-            $has_ref = ($chk && $chk->num_rows > 0);
-            if ($chk) $chk->free();
-        } catch (Throwable $e) {}
-        if ($has_ref) {
+        if (xp_events_has_ref($conn)) {
             $log = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason, ref_type, ref_id) VALUES (?, ?, ?, ?, ?)");
             $log->bind_param("iissi", $user_id, $amount, $reason, $ref_type, $ref_id);
             $log->execute();
@@ -771,19 +777,8 @@ function sync_user_xp($conn, $user_id) {
         if ($sum < $cur) {
             $diff = $cur - $sum;
             try {
-                $has_ref = false;
-                try {
-                    $chk = $conn->query("SHOW COLUMNS FROM `xp_events` LIKE 'ref_type'");
-                    $has_ref = ($chk && $chk->num_rows > 0);
-                    if ($chk) $chk->free();
-                } catch (Throwable $e) {}
-                if ($has_ref) {
-                    $b = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason) VALUES (?, ?, 'backfill')");
-                    $b->bind_param("ii", $user_id, $diff);
-                } else {
-                    $b = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason) VALUES (?, ?, 'backfill')");
-                    $b->bind_param("ii", $user_id, $diff);
-                }
+                $b = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason) VALUES (?, ?, 'backfill')");
+                $b->bind_param("ii", $user_id, $diff);
                 $b->execute(); $b->close();
             } catch (Throwable $e) {}
             return $cur;

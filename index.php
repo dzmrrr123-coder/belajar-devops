@@ -5,8 +5,8 @@ require_login();
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
 
-// Get user data
-$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+// Get user data (kolom eksplisit: jangan tarik hash password)
+$stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, freeze_tokens, best_streak, show_on_board, public_profile, flair, avatar_frame, role, created_at FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
@@ -47,15 +47,17 @@ $stmt->execute();
 $quests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-// Dashboard counts dalam 1 roundtrip (quest selesai + total quest + pomodoro hari ini)
-$stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id = uq.quest_id WHERE uq.user_id = ? AND (q.user_id IS NULL OR q.user_id = ?)) AS total_done, (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS total_cnt, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS pomo_today");
-$stmt->bind_param("iiii", $user_id, $user_id, $user_id, $user_id);
+// Dashboard counts dalam 1 roundtrip (quest + pomodoro + XP minggu ini + review jatuh tempo)
+$stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id = uq.quest_id WHERE uq.user_id = ? AND (q.user_id IS NULL OR q.user_id = ?)) AS total_done, (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS total_cnt, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS pomo_today, (SELECT COALESCE(SUM(amount),0) FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS xp_week, (SELECT COUNT(*) FROM reviews WHERE user_id = ? AND next_due <= CURDATE()) AS due_reviews");
+$stmt->bind_param("iiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id);
 $stmt->execute();
 $dash_counts = $stmt->get_result()->fetch_assoc() ?: [];
 $stmt->close();
 $total_completed = (int)($dash_counts['total_done'] ?? 0);
 $total_quests_cnt = (int)($dash_counts['total_cnt'] ?? 14);
 $pomodoro_today = (int)($dash_counts['pomo_today'] ?? 0);
+$xp_week = max(0, (int)($dash_counts['xp_week'] ?? 0));
+$due_reviews = (int)($dash_counts['due_reviews'] ?? 0);
 
 // Peti harian hari ini (sudah dibuka atau belum)
 $chest = null;
@@ -68,22 +70,16 @@ try {
 } catch (Throwable $e) {}
 $overall_quest_percent = $total_quests_cnt > 0 ? round(($total_completed / $total_quests_cnt) * 100) : 0;
 $missions = get_daily_mission_status($conn, $user_id);
-$xp_week = weekly_xp($conn, $user_id);
-$due_reviews = 0;
-try {
-    $dq = $conn->prepare("SELECT COUNT(*) c FROM reviews WHERE user_id = ? AND next_due <= CURDATE()");
-    if ($dq) { $dq->bind_param("i", $user_id); $dq->execute(); $due_reviews = (int)($dq->get_result()->fetch_assoc()['c'] ?? 0); $dq->close(); }
-} catch (Throwable $e) {}
 
 // Recent errors
-$stmt = $conn->prepare("SELECT * FROM errors WHERE user_id = ? ORDER BY created_at DESC LIMIT 4");
+$stmt = $conn->prepare("SELECT id, user_id, category, error_message, solution, created_at FROM errors WHERE user_id = ? ORDER BY created_at DESC LIMIT 4");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $recent_errors = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
 // Resources for selected week
-$stmt = $conn->prepare("SELECT * FROM resources WHERE week = ? ORDER BY type ASC, id ASC");
+$stmt = $conn->prepare("SELECT id, week, title, type, url FROM resources WHERE week = ? ORDER BY type ASC, id ASC");
 $stmt->bind_param("i", $selected_week);
 $stmt->execute();
 $resources = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
