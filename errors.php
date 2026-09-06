@@ -21,12 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_error']) || (iss
         $stmt->bind_param("issss", $user_id, $category, $error_message, $solution, $reference);
         if ($stmt->execute()) {
             $new_error_id = $stmt->insert_id;
-            $xp_gain = 0;
-            $quota_left = NOTE_DAILY_XP_CAP - daily_reason_xp($conn, $user_id, 'note');
-            if ($quota_left > 0) {
-                $xp_gain = min(apply_xp_multiplier(5, mission_multiplier($conn, $user_id)), $quota_left);
-                award_xp($conn, $user_id, $xp_gain, 'note', 'error', (int)$new_error_id);
-            }
+            $xp_gain = capped_xp_gain(apply_xp_multiplier(5, mission_multiplier($conn, $user_id)), daily_reason_xp($conn, $user_id, 'note'), NOTE_DAILY_XP_CAP);
+            if ($xp_gain > 0) award_xp($conn, $user_id, $xp_gain, 'note', 'error', (int)$new_error_id);
 
             update_user_streak($conn, $user_id);
             schedule_review($conn, $user_id, 'error', (int)$new_error_id, $error_message, $solution);

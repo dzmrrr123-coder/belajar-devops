@@ -750,6 +750,12 @@ function apply_xp_multiplier($base, $mult) {
 
 define('NOTE_DAILY_XP_CAP', 25);
 
+function capped_xp_gain($wanted, $today_sum, $cap) {
+    $left = max(0, (int)$cap - (int)$today_sum);
+    if ($left <= 0) return 0;
+    return min(max(0, (int)$wanted), $left);
+}
+
 function daily_reason_xp($conn, $user_id, $reason) {
     try {
         $q = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND reason = ? AND amount > 0 AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY");

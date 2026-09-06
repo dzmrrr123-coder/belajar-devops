@@ -79,8 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
                 $cap->execute();
                 $today_sum = (int)($cap->get_result()->fetch_assoc()['n'] ?? 0);
                 $cap->close();
-                if ($today_sum < QUIZ_DAILY_XP_CAP) {
-                    $gain = min(2, QUIZ_DAILY_XP_CAP - $today_sum);
+                $gain = capped_xp_gain(2, $today_sum, QUIZ_DAILY_XP_CAP);
+                if ($gain > 0) {
                     award_xp($conn, $user_id, $gain, 'quiz', 'quiz', $card_id);
                     $run['xp'] = ($run['xp'] ?? 0) + $gain;
                 }

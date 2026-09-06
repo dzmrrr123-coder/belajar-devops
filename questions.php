@@ -98,12 +98,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $up = $conn->prepare("UPDATE questions SET linked_error_id = ?, status = 'answered', answered_at = IF(answered_at IS NULL, NOW(), answered_at) WHERE id = ? AND user_id = ?");
                 $up->bind_param("iii", $eid, $question_id, $user_id);
                 $up->execute(); $up->close();
-                $xp_gain = 0;
-                $quota_left = NOTE_DAILY_XP_CAP - daily_reason_xp($conn, $user_id, 'note');
-                if ($quota_left > 0) {
-                    $xp_gain = min(apply_xp_multiplier(5, mission_multiplier($conn, $user_id)), $quota_left);
-                    award_xp($conn, $user_id, $xp_gain, 'note', 'error', (int)$eid);
-                }
+                $xp_gain = capped_xp_gain(apply_xp_multiplier(5, mission_multiplier($conn, $user_id)), daily_reason_xp($conn, $user_id, 'note'), NOTE_DAILY_XP_CAP);
+                if ($xp_gain > 0) award_xp($conn, $user_id, $xp_gain, 'note', 'error', (int)$eid);
                 update_user_streak($conn, $user_id);
                 schedule_review($conn, $user_id, 'error', (int)$eid, $emsg, $sol);
                 set_flash('success', $xp_gain > 0 ? "Dipindah ke Error Log! +{$xp_gain} XP." : "Dipindah ke Error Log. Kuota XP catatan harian tercapai.");
