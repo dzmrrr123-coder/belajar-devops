@@ -104,10 +104,16 @@ require_once 'includes/navbar.php';
         <div class="page-kicker">Area privat · admin saja</div>
         <h1 class="page-title">Kelola user</h1>
         <p class="page-desc"><?= $stat_all['users'] ?> user · <?= $stat_all['admins'] ?> admin · <?= number_format($stat_all['xp']) ?> total XP</p>
-        <form method="GET" action="kelola-p7x2qm.php" class="d-flex gap-2" role="search" style="max-width:420px">
-            <input name="q" class="form-control" placeholder="Cari username / email…" value="<?= htmlspecialchars($q) ?>" maxlength="100" aria-label="Cari user">
-            <button class="btn btn-cyber-outline flex-shrink-0" type="submit"><i class="fas fa-search" aria-hidden="true"></i></button>
-        </form>
+        <div class="d-flex gap-2 flex-wrap">
+            <form method="GET" action="kelola-p7x2qm.php" class="d-flex gap-2" role="search" style="max-width:420px">
+                <input name="q" class="form-control" placeholder="Cari username / email…" value="<?= htmlspecialchars($q) ?>" maxlength="100" aria-label="Cari user">
+                <button class="btn btn-cyber-outline flex-shrink-0" type="submit"><i class="fas fa-search" aria-hidden="true"></i></button>
+            </form>
+            <form method="POST" action="backup.php" class="m-0">
+                <?= csrf_field() ?>
+                <button class="btn btn-cyber btn-sm" type="submit"><i class="fas fa-database me-1" aria-hidden="true"></i>Backup DB (.sql)</button>
+            </form>
+        </div>
     </div>
 
     <div class="card p-2">
