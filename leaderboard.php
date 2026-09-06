@@ -27,7 +27,11 @@ try {
 $my_rank = null;
 $on_board = false;
 try {
-    $c = $conn->prepare("SELECT show_on_board, (SELECT COUNT(*) FROM users WHERE show_on_board = 1 AND xp > (SELECT xp FROM users WHERE id = ?)) + 1 AS r FROM users WHERE id = ?");
+    if ($scope === 'week') {
+        $c = $conn->prepare("SELECT show_on_board, (SELECT COUNT(*) FROM users WHERE show_on_board = 1 AND GREATEST(0, COALESCE((SELECT SUM(amount) FROM xp_events WHERE user_id = users.id AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0)) > (SELECT GREATEST(0, COALESCE(SUM(amount),0)) FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))) + 1 AS r FROM users WHERE id = ?");
+    } else {
+        $c = $conn->prepare("SELECT show_on_board, (SELECT COUNT(*) FROM users WHERE show_on_board = 1 AND xp > (SELECT xp FROM users WHERE id = ?)) + 1 AS r FROM users WHERE id = ?");
+    }
     $c->bind_param("ii", $user_id, $user_id); $c->execute();
     $me = $c->get_result()->fetch_assoc() ?: [];
     $c->close();
@@ -42,7 +46,7 @@ require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
     <div class="page-head">
-        <div class="page-kicker">Opt-in · tanpa email<?= $my_rank ? ' · peringkat #' . $my_rank : '' ?></div>
+        <div class="page-kicker">Opt-in · tanpa email<?= $my_rank ? ' · peringkat #' . $my_rank . ($scope === 'week' ? ' minggu ini' : '') : '' ?></div>
         <h1 class="page-title">Leaderboard</h1>
         <p class="page-desc">Peringkat XP antar peserta. Ikut tampil? Aktifkan dari Profil.</p>
         <div class="page-actions leaderboard-actions">
