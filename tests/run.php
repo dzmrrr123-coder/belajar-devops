@@ -71,6 +71,11 @@ foreach (quiz_bank_cards() as $c) {
     if (!is_array($c) || count($c) !== 3 || trim((string)$c[1]) === '' || trim((string)$c[2]) === '') { $bank_ok = false; break; }
 }
 check('bank format', $bank_ok, true);
+$topics_ok = true;
+foreach (quiz_bank_cards() as $c) {
+    if (!in_array($c[0], quiz_topics(), true)) { $topics_ok = false; break; }
+}
+check('bank topik valid', $topics_ok, true);
 
 echo "pass: {$pass}, fail: {$fail}" . PHP_EOL;
 exit($fail > 0 ? 1 : 0);

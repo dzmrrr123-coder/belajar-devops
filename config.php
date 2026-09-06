@@ -131,7 +131,11 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 26);
+define('SCHEMA_VERSION', 27);
+
+function quiz_topics() {
+    return ['Linux', 'Git', 'MySQL', 'PHP', 'Laravel', 'Docker', 'AWS', 'General'];
+}
 
 function quiz_bank_cards() {
     return [
@@ -177,14 +181,16 @@ function quiz_bank_cards() {
 function seed_quiz_bank($conn, $user_id) {
     $n = 0;
     try {
-        $ins = $conn->prepare("INSERT IGNORE INTO quiz_cards (user_id, source, source_id, question, answer) VALUES (?, 'bank', ?, ?, ?)");
+        try { @$conn->query("ALTER TABLE `quiz_cards` ADD COLUMN `topic` VARCHAR(32) NOT NULL DEFAULT 'General'"); } catch (Throwable $e) {}
+        $ins = $conn->prepare("INSERT INTO quiz_cards (user_id, source, source_id, question, answer, topic) VALUES (?, 'bank', ?, ?, ?, ?) ON DUPLICATE KEY UPDATE question = VALUES(question), answer = VALUES(answer), topic = VALUES(topic)");
         if (!$ins) return 0;
         foreach (quiz_bank_cards() as $i => $c) {
             $sid = $i + 1;
+            $t = mb_substr(trim((string)($c[0] ?? 'General')) ?: 'General', 0, 32);
             $q = mb_substr(trim((string)$c[1]), 0, 255);
             $a = mb_substr(trim((string)$c[2]), 0, 2000);
             if ($q === '' || $a === '') continue;
-            $ins->bind_param("iiss", $user_id, $sid, $q, $a);
+            $ins->bind_param("iisss", $user_id, $sid, $q, $a, $t);
             if ($ins->execute() && $ins->affected_rows > 0) $n++;
         }
         $ins->close();
@@ -380,6 +386,21 @@ function ensure_database_schema($conn) {
         @$conn->query("CREATE INDEX idx_resources_week ON `resources` (`week`)");
         @$conn->query("CREATE INDEX idx_quests_week_user ON `quests` (`week`, `user_id`)");
         @$conn->query("CREATE INDEX idx_users_board ON `users` (`show_on_board`, `xp`)");
+        @$conn->query("ALTER TABLE `quiz_cards` ADD COLUMN `topic` VARCHAR(32) NOT NULL DEFAULT 'General'");
+        @$conn->query("CREATE INDEX idx_quiz_cards_topic ON `quiz_cards` (`user_id`, `topic`)");
+        try {
+            $bank = quiz_bank_cards();
+            $up = $conn->prepare("UPDATE quiz_cards SET topic = ? WHERE source = 'bank' AND source_id = ? AND (topic = '' OR topic = 'General')");
+            if ($up) {
+                foreach ($bank as $i => $c) {
+                    $t = mb_substr(trim((string)($c[0] ?? 'General')) ?: 'General', 0, 32);
+                    $sid = $i + 1;
+                    $up->bind_param("si", $t, $sid);
+                    $up->execute();
+                }
+                $up->close();
+            }
+        } catch (Throwable $e) {}
         try {
             $ur = $conn->query("SELECT id FROM `users`");
             if ($ur) {

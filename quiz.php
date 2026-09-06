@@ -129,6 +129,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
 
 // Daftar kartu sesi ini
 $mode = ($_GET['mode'] ?? '') === 'review' ? 'review' : 'latihan';
+$quiz_topics = quiz_topics();
+$topic = in_array($_GET['topic'] ?? 'all', $quiz_topics, true) ? $_GET['topic'] : 'all';
+$topic_sql = $topic === 'all' ? '' : 'AND c.topic = ?';
 $done = !empty($_GET['done']);
 $ids = array_values(array_filter(array_map('intval', explode(',', (string)($_GET['ids'] ?? '')))));
 
@@ -160,15 +163,17 @@ $quiz_quota_left = max(0, QUIZ_DAILY_XP_CAP - $quiz_xp_today);
 if (!$done && empty($ids)) {
     if ($mode === 'review') {
         try {
-            $s = $conn->prepare("SELECT c.id FROM quiz_cards c JOIN reviews r ON r.source = 'quiz' AND r.source_id = c.id AND r.user_id = c.user_id WHERE c.user_id = ? AND r.next_due <= CURDATE() AND " . QUIZ_TODAY_DONE_SQL . " ORDER BY r.next_due ASC, c.id ASC LIMIT 20");
-            $s->bind_param("i", $user_id); $s->execute();
+            $s = $conn->prepare("SELECT c.id FROM quiz_cards c JOIN reviews r ON r.source = 'quiz' AND r.source_id = c.id AND r.user_id = c.user_id WHERE c.user_id = ? AND r.next_due <= CURDATE() " . $topic_sql . " AND " . QUIZ_TODAY_DONE_SQL . " ORDER BY r.next_due ASC, c.id ASC LIMIT 20");
+            if ($topic === 'all') { $s->bind_param("i", $user_id); } else { $s->bind_param("is", $user_id, $topic); }
+            $s->execute();
             foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $r) $ids[] = (int)$r['id'];
             $s->close();
         } catch (Throwable $e) {}
     } else {
         try {
-            $s = $conn->prepare("SELECT c.id FROM quiz_cards c WHERE c.user_id = ? AND " . QUIZ_TODAY_DONE_SQL . " ORDER BY RAND() LIMIT 10");
-            $s->bind_param("i", $user_id); $s->execute();
+            $s = $conn->prepare("SELECT c.id FROM quiz_cards c WHERE c.user_id = ? " . $topic_sql . " AND " . QUIZ_TODAY_DONE_SQL . " ORDER BY RAND() LIMIT 10");
+            if ($topic === 'all') { $s->bind_param("i", $user_id); } else { $s->bind_param("is", $user_id, $topic); }
+            $s->execute();
             foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $r) $ids[] = (int)$r['id'];
             $s->close();
         } catch (Throwable $e) {}
@@ -205,8 +210,14 @@ require_once 'includes/navbar.php';
         <p class="page-desc">Uji ingatanmu satu kartu satu waktu. Tahu +2 XP — maks +<?= QUIZ_DAILY_XP_CAP ?> XP/hari, kartu tuntas tak muncul lagi.</p>
         <div class="page-actions leaderboard-actions">
             <div class="segmented" role="group" aria-label="Mode kuis">
-                <a href="quiz.php?mode=latihan" class="filter-pill <?= $mode === 'latihan' ? 'active' : '' ?>">Latihan acak</a>
-                <a href="quiz.php?mode=review" class="filter-pill <?= $mode === 'review' ? 'active' : '' ?>">Review (<?= $due_count ?>)</a>
+                <a href="quiz.php?mode=latihan<?= $topic !== 'all' ? '&topic=' . urlencode($topic) : '' ?>" class="filter-pill <?= $mode === 'latihan' ? 'active' : '' ?>">Latihan acak</a>
+                <a href="quiz.php?mode=review<?= $topic !== 'all' ? '&topic=' . urlencode($topic) : '' ?>" class="filter-pill <?= $mode === 'review' ? 'active' : '' ?>">Review (<?= $due_count ?>)</a>
+            </div>
+            <div class="segmented" role="group" aria-label="Topik kuis">
+                <a href="quiz.php?mode=<?= $mode ?>" class="filter-pill <?= $topic === 'all' ? 'active' : '' ?>">Semua</a>
+                <?php foreach ($quiz_topics as $t): ?>
+                <a href="quiz.php?mode=<?= $mode ?>&topic=<?= urlencode($t) ?>" class="filter-pill <?= $topic === $t ? 'active' : '' ?>"><?= htmlspecialchars($t) ?></a>
+                <?php endforeach; ?>
             </div>
         </div>
     </div>
