@@ -433,6 +433,7 @@ section[aria-labelledby="continue-material-heading"] .list-meta,section[aria-lab
 [data-theme="dark"] .priority-high{background:#33201c;color:#e8a99d}
 [data-theme="dark"] .btn-close{filter:invert(1) grayscale(1)}
 [data-theme="dark"] .hud-streak i{color:#e09a3c}
+[data-theme="dark"] .lt-navbar .navbar-toggler-icon{background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28232, 237, 233, 0.85%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e")}
 .theme-toggle{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;font-size:.8rem}
 .theme-toggle:hover{color:var(--ink);border-color:var(--line-strong)}
 .lt-menu button.dropdown-item{background:none;border:none;width:100%;text-align:left;cursor:pointer;font:inherit}
