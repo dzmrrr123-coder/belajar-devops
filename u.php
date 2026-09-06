@@ -16,6 +16,49 @@ if (!$user || empty($user['public_profile'])) {
     exit();
 }
 $uid = (int)$user['id'];
+$me = (int)($_SESSION['user_id'] ?? 0);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $me > 0) {
+    verify_csrf();
+    $caction = $_POST['action'] ?? '';
+    if ($caction === 'cheer' && $me !== $uid) {
+        $body = cheer_clean($_POST['body'] ?? '');
+        if ($body === '') {
+            set_flash('warning', 'Tulis dukungan minimal 2 karakter.');
+        } else {
+            $rl = $conn->prepare("SELECT COUNT(*) c FROM cheers WHERE from_id = ? AND created_at >= CURDATE()");
+            $rl->bind_param("i", $me);
+            $rl->execute();
+            $today_n = (int)($rl->get_result()->fetch_assoc()['c'] ?? 0);
+            $rl->close();
+            if ($today_n >= 5) {
+                set_flash('warning', 'Batas 5 dukungan per hari tercapai.');
+            } else {
+                $ins = $conn->prepare("INSERT INTO cheers (profile_id, from_id, body) VALUES (?, ?, ?)");
+                $ins->bind_param("iis", $uid, $me, $body);
+                $ins->execute();
+                $ins->close();
+                set_flash('success', 'Dukungan terkirim.');
+            }
+        }
+        redirect('u.php?u=' . urlencode($user['username']));
+    }
+    if ($caction === 'cheer_delete') {
+        $cheer_id = (int)($_POST['cheer_id'] ?? 0);
+        $chk = $conn->prepare("SELECT id, profile_id, from_id FROM cheers WHERE id = ?");
+        $chk->bind_param("i", $cheer_id);
+        $chk->execute();
+        $crow = $chk->get_result()->fetch_assoc();
+        $chk->close();
+        if ($crow && ((int)$crow['from_id'] === $me || (int)$crow['profile_id'] === $me)) {
+            $del = $conn->prepare("DELETE FROM cheers WHERE id = ?");
+            $del->bind_param("i", $cheer_id);
+            $del->execute();
+            $del->close();
+            set_flash('info', 'Dukungan dihapus.');
+        }
+        redirect('u.php?u=' . urlencode($user['username']));
+    }
+}
 $level = calculate_level($user['xp']);
 $rank = get_user_rank($level);
 $owned = user_badges($conn, $uid);
@@ -64,6 +107,14 @@ try {
     arsort($agg);
     $top_skills = array_slice($agg, 0, 3, true);
 } catch (Throwable $e) {}
+$cheers = [];
+try {
+    $s = $conn->prepare("SELECT c.id, c.body, c.created_at, c.from_id, u.username FROM cheers c JOIN users u ON u.id = c.from_id WHERE c.profile_id = ? ORDER BY c.id DESC LIMIT 8");
+    $s->bind_param("i", $uid);
+    $s->execute();
+    $cheers = $s->get_result()->fetch_all(MYSQLI_ASSOC);
+    $s->close();
+} catch (Throwable $e) {}
 $conn->close();
 
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
@@ -109,11 +160,46 @@ require_once 'includes/header.php';
     <section class="card p-4">
         <h2 class="h5 fw-bold mb-3">Badge (<?= count($owned) ?>)</h2>
         <div class="badge-grid">
-            <?php foreach ($owned as $slug => $b): $d = $defs[$slug] ?? ['name' => $slug, 'icon' => 'fa-medal']; ?>
-            <div class="badge-item unlocked"><i class="fas <?= htmlspecialchars($d['icon']) ?>"></i><strong><?= htmlspecialchars($d['name']) ?></strong><span><?= date('M Y', strtotime($b['unlocked_at'])) ?></span></div>
+            <?php foreach ($owned as $slug => $b): $d = $defs[$slug] ?? ['name' => $slug, 'icon' => 'fa-medal']; $btext = badge_share_text($user['username'], $d['name']); ?>
+            <div class="badge-item unlocked"><i class="fas <?= htmlspecialchars($d['icon']) ?>"></i><strong><?= htmlspecialchars($d['name']) ?></strong><span><?= date('M Y', strtotime($b['unlocked_at'])) ?></span><span class="cheer-share"><a target="_blank" rel="noopener" href="https://wa.me/?text=<?= urlencode($btext . ' ' . $share_url) ?>" aria-label="Bagikan badge <?= htmlspecialchars($d['name']) ?> ke WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a><a target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=<?= urlencode($btext) ?>&url=<?= urlencode($share_url) ?>" aria-label="Bagikan badge <?= htmlspecialchars($d['name']) ?> ke X"><i class="fab fa-x-twitter" aria-hidden="true"></i></a></span></div>
             <?php endforeach; ?>
             <?php if (!$owned): ?><p class="small text-muted mb-0">Belum ada badge terbuka.</p><?php endif; ?>
         </div>
+    </section>
+
+    <section class="card p-4 mt-4" aria-label="Dukungan">
+        <h2 class="h5 fw-bold mb-1">Dukungan (<?= count($cheers) ?>)</h2>
+        <p class="text-secondary small mb-3">Semangati pemilik profil. Maks 5 per hari.</p>
+        <?php if ($cheers): ?>
+        <div class="d-flex flex-column gap-2 mb-3">
+            <?php foreach ($cheers as $ch): $can_del = ($me > 0 && ((int)$ch['from_id'] === $me || $me === $uid)); ?>
+            <div class="cheer-row">
+                <span class="avatar-circle avatar-sm" aria-hidden="true"><?= strtoupper(substr($ch['username'], 0, 1)) ?></span>
+                <div class="list-main"><p class="list-title"><?= htmlspecialchars($ch['username']) ?></p><p class="list-meta"><?= htmlspecialchars($ch['body']) ?> · <?= date('d M', strtotime($ch['created_at'])) ?></p></div>
+                <?php if ($can_del): ?>
+                <form method="POST" action="u.php?u=<?= urlencode($user['username']) ?>" class="m-0" onsubmit="return confirm('Hapus dukungan ini?')">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="cheer_delete">
+                    <input type="hidden" name="cheer_id" value="<?= (int)$ch['id'] ?>">
+                    <button type="submit" class="btn btn-cyber-danger btn-sm py-1" aria-label="Hapus dukungan"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                </form>
+                <?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <p class="text-secondary small mb-3">Belum ada dukungan. Jadilah yang pertama.</p>
+        <?php endif; ?>
+        <?php if ($me > 0 && $me !== $uid): ?>
+        <form method="POST" action="u.php?u=<?= urlencode($user['username']) ?>" class="d-flex gap-2">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="cheer">
+            <input name="body" class="form-control form-control-sm" maxlength="140" placeholder="Semangat, lanjutkan!" aria-label="Tulis dukungan" required>
+            <button type="submit" class="btn btn-cyber btn-sm flex-shrink-0">Kirim</button>
+        </form>
+        <?php elseif ($me === 0): ?>
+        <a href="login.php" class="btn btn-cyber-outline btn-sm">Masuk untuk memberi dukungan</a>
+        <?php endif; ?>
     </section>
 </main>
 <script>

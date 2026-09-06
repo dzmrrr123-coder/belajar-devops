@@ -178,11 +178,13 @@ require_once 'includes/navbar.php';
                 <h2 class="h5 fw-bold mb-1">Badge (<?= count($badges_owned) ?>/<?= count($badge_list) ?>)</h2>
                 <p class="text-secondary small mb-3">Otomatis terbuka saat target tercapai.</p>
                 <div class="badge-grid">
-                    <?php foreach ($badge_list as $slug => $b): $has = isset($badges_owned[$slug]); ?>
+                    <?php $scheme_pf = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http'; $pf_url = $scheme_pf . '://' . ($_SERVER['HTTP_HOST'] ?? '') . '/u.php?u=' . urlencode($user['username']); ?>
+                    <?php foreach ($badge_list as $slug => $b): $has = isset($badges_owned[$slug]); $ptext = badge_share_text($user['username'], $b['name']); ?>
                     <div class="badge-item <?= $has ? 'unlocked' : 'locked' ?>" title="<?= htmlspecialchars($b['desc']) ?>">
                         <i class="fas <?= htmlspecialchars($b['icon']) ?>" aria-hidden="true"></i>
                         <strong><?= htmlspecialchars($b['name']) ?></strong>
                         <span><?= $has ? date('d M', strtotime($badges_owned[$slug]['unlocked_at'])) : htmlspecialchars($b['desc']) ?></span>
+                        <?php if ($has): ?><span class="cheer-share"><a target="_blank" rel="noopener" href="https://wa.me/?text=<?= urlencode($ptext . ' ' . $pf_url) ?>" aria-label="Bagikan badge <?= htmlspecialchars($b['name']) ?> ke WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a><a target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=<?= urlencode($ptext) ?>&url=<?= urlencode($pf_url) ?>" aria-label="Bagikan badge <?= htmlspecialchars($b['name']) ?> ke X"><i class="fab fa-x-twitter" aria-hidden="true"></i></a></span><?php endif; ?>
                     </div>
                     <?php endforeach; ?>
                 </div>

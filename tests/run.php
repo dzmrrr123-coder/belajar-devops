@@ -103,6 +103,14 @@ check('blocker custom bebas', quest_blocker(['id' => 9, 'user_id' => 7, 'depends
 check('blocker done bebas', quest_blocker(['id' => 1, 'user_id' => null, 'depends_on' => null, 'completed_at' => '2026-01-01'], [], null), null);
 check('week stats', quest_week_stats([['completed_at' => 'x'], []]), ['done' => 1, 'total' => 2, 'pct' => 50]);
 check('next unlocked skip', quest_next_unlocked([['id' => 1, 'week' => 1, 'user_id' => null], ['id' => 2, 'week' => 2, 'user_id' => null]], [], [1 => null, 2 => 1])['id'], 1);
+check('week key format', (bool)preg_match('/^\d{4}-W\d{2}$/', challenge_week_key()), true);
+check('challenge target', challenge_for_week('2026-W01')['target_xp'] >= 80, true);
+check('challenge pct penuh', challenge_pct(150, 100), 100);
+check('challenge pct setengah', challenge_pct(50, 100), 50);
+check('cheer ok', cheer_clean('  Semangat ya!  '), 'Semangat ya!');
+check('cheer pendek', cheer_clean('a'), '');
+check('cheer panjang', mb_strlen(cheer_clean(str_repeat('x', 200))) <= 140, true);
+check('badge share', badge_share_text('budi', 'Quest Hunter 5'), 'budi meraih badge "Quest Hunter 5" di Learn Tracker DevOps');
 
 check('bank 42 kartu', count(quiz_bank_cards()), 42);
 $bank_ok = true;

@@ -3,6 +3,30 @@ require_once 'config.php';
 require_login();
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
+    $ch_action = $_POST['challenge_action'] ?? '';
+    if ($ch_action === 'join' || $ch_action === 'leave') {
+        $ch = ensure_weekly_challenge($conn);
+        if ($ch) {
+            $cid = (int)$ch['id'];
+            if ($ch_action === 'join') {
+                $j = $conn->prepare("INSERT IGNORE INTO challenge_joins (challenge_id, user_id) VALUES (?, ?)");
+                $j->bind_param("ii", $cid, $user_id);
+                $j->execute();
+                $j->close();
+                set_flash('success', 'Ikut tantangan: ' . $ch['title'] . '.');
+            } else {
+                $j = $conn->prepare("DELETE FROM challenge_joins WHERE challenge_id = ? AND user_id = ?");
+                $j->bind_param("ii", $cid, $user_id);
+                $j->execute();
+                $j->close();
+                set_flash('info', 'Keluar dari tantangan minggu ini.');
+            }
+        }
+        redirect('leaderboard.php?scope=' . urlencode($_POST['scope'] ?? 'total'));
+    }
+}
 $page = max(1, (int)($_GET['page'] ?? 1));
 $per = 20;
 $off = ($page - 1) * $per;
@@ -38,6 +62,32 @@ try {
     $on_board = !empty($me['show_on_board']);
     if ($on_board) $my_rank = (int)($me['r'] ?? 0);
 } catch (Throwable $e) {}
+$challenge = ensure_weekly_challenge($conn);
+$racers = [];
+$my_race = null;
+$joined = false;
+if ($challenge) {
+    $cid = (int)$challenge['id'];
+    try {
+        $j = $conn->prepare("SELECT 1 FROM challenge_joins WHERE challenge_id = ? AND user_id = ?");
+        $j->bind_param("ii", $cid, $user_id);
+        $j->execute();
+        $joined = (bool)$j->get_result()->fetch_assoc();
+        $j->close();
+        $r = $conn->prepare("SELECT u.id, u.username, u.avatar_frame, GREATEST(0, COALESCE(SUM(e.amount),0)) wxp FROM challenge_joins j JOIN users u ON u.id = j.user_id LEFT JOIN xp_events e ON e.user_id = u.id AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) WHERE j.challenge_id = ? GROUP BY u.id ORDER BY wxp DESC LIMIT 6");
+        $r->bind_param("i", $cid);
+        $r->execute();
+        $racers = $r->get_result()->fetch_all(MYSQLI_ASSOC);
+        $r->close();
+        if ($joined) {
+            $m = $conn->prepare("SELECT GREATEST(0, COALESCE(SUM(amount),0)) wxp FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
+            $m->bind_param("i", $user_id);
+            $m->execute();
+            $my_race = (int)($m->get_result()->fetch_assoc()['wxp'] ?? 0);
+            $m->close();
+        }
+    } catch (Throwable $e) {}
+}
 $conn->close();
 $pages = max(1, (int)ceil($total / $per));
 $page_title = 'Leaderboard';
@@ -57,6 +107,41 @@ require_once 'includes/navbar.php';
             <a href="profile.php" class="page-actions-link">Visibilitas <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
         </div>
     </div>
+    <?php if ($challenge): $chtarget = (int)$challenge['target_xp']; ?>
+    <section class="card p-4 mb-3" aria-label="Tantangan mingguan">
+        <div class="ana-head">
+            <div>
+                <h2><?= htmlspecialchars($challenge['title']) ?></h2>
+                <p>Target <?= $chtarget ?> XP minggu ini · <?= count($racers) ?> peserta · reset tiap Senin</p>
+            </div>
+        </div>
+        <?php if ($joined && $my_race !== null): $mypct = challenge_pct($my_race, $chtarget); ?>
+        <div class="ana-row" style="grid-template-columns:1fr auto;"><span class="ana-lbl">Progresmu: +<?= $my_race ?> XP</span><span class="ana-val"><?= $mypct ?>%<?= $mypct >= 100 ? ' · tuntas!' : '' ?></span></div>
+        <div class="ana-track mb-2" role="progressbar" aria-valuenow="<?= $mypct ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres tantangan <?= $mypct ?> persen"><span class="ana-fill" style="width:<?= $mypct ?>%"></span></div>
+        <?php endif; ?>
+        <?php if ($racers): ?>
+        <div class="race-list">
+            <?php $rp = 0; foreach ($racers as $rc): $rp++; $rwx = (int)$rc['wxp']; $rpct = challenge_pct($rwx, $chtarget); $isme = ((int)$rc['id'] === $user_id); ?>
+            <div class="race-row<?= $isme ? ' me' : '' ?>">
+                <span class="race-rank">#<?= $rp ?></span>
+                <span class="avatar-circle avatar-sm frame-<?= htmlspecialchars($rc['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($rc['username'], 0, 1)) ?></span>
+                <span class="race-name"><?= htmlspecialchars($rc['username']) ?><?= $isme ? ' (kamu)' : '' ?></span>
+                <span class="ana-track"><span class="ana-fill" style="width:<?= $rpct ?>%"></span></span>
+                <span class="ana-val">+<?= $rwx ?></span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <p class="text-secondary small mb-2">Belum ada peserta. Jadilah yang pertama.</p>
+        <?php endif; ?>
+        <form method="POST" action="leaderboard.php" class="m-0 mt-2">
+            <?= csrf_field() ?>
+            <input type="hidden" name="scope" value="<?= htmlspecialchars($scope) ?>">
+            <input type="hidden" name="challenge_action" value="<?= $joined ? 'leave' : 'join' ?>">
+            <button type="submit" class="btn <?= $joined ? 'btn-cyber-outline' : 'btn-cyber' ?> btn-sm w-100"><?= $joined ? 'Keluar tantangan' : 'Ikut tantangan minggu ini' ?></button>
+        </form>
+    </section>
+    <?php endif; ?>
     <div class="card p-2">
         <?php if (!$rows): ?><p class="text-secondary small p-3 mb-0">Belum ada peserta. Jadilah yang pertama dari Profil.</p><?php endif; ?>
         <?php $rank = $off; foreach ($rows as $r): $rank++; $lv = calculate_level($r['xp']); ?>

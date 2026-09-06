@@ -116,6 +116,16 @@ main.container{flex:1}
 .week-block-head .rule{flex:1;height:1px;background:var(--line)}
 .week-progress{height:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;overflow:hidden;margin-bottom:12px}
 .week-progress>span{display:block;height:100%;background:var(--primary);border-radius:99px}
+.race-list{display:flex;flex-direction:column;gap:8px;margin-bottom:4px}
+.race-row{display:grid;grid-template-columns:34px 26px 1fr 90px auto;align-items:center;gap:8px;font-size:.82rem;min-height:36px}
+.race-row.me{background:var(--primary-soft);border-radius:8px;padding:2px 6px;margin:0 -6px}
+.race-rank{font-weight:800;font-variant-numeric:tabular-nums;color:var(--muted)}
+.race-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cheer-row{display:flex;align-items:flex-start;gap:10px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.cheer-share{display:flex;gap:10px;font-size:.85rem}
+.cheer-share a{color:var(--faint);padding:6px;min-width:32px;min-height:32px;display:inline-flex;align-items:center;justify-content:center}
+.cheer-share a:hover{color:var(--primary)}
+@media(max-width:767.98px){.race-row{grid-template-columns:30px 26px 1fr 64px auto}}
 .quest-item.completed .quest-title{text-decoration:line-through;color:var(--muted)}
 .quest-badge-xp{background:transparent;border:none;color:var(--muted);font-size:.78rem;font-weight:600;padding:0;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .quest-done{display:inline-flex;align-items:center;gap:6px;color:var(--success);font-size:.78rem;font-weight:600}

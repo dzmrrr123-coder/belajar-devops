@@ -131,7 +131,7 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 30);
+define('SCHEMA_VERSION', 31);
 
 function quiz_topics() {
     return ['Linux', 'Git', 'MySQL', 'PHP', 'Laravel', 'Docker', 'AWS', 'Networking', 'General'];
@@ -449,6 +449,30 @@ function ensure_database_schema($conn) {
         @$conn->query("CREATE INDEX idx_reviews_skill_due ON `reviews` (`user_id`, `skill`, `next_due`)");
         @$conn->query("ALTER TABLE `quests` ADD COLUMN `depends_on` INT NULL");
         @$conn->query("CREATE INDEX idx_quests_depends ON `quests` (`depends_on`)");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `challenges` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `week_key` VARCHAR(16) NOT NULL UNIQUE,
+            `title` VARCHAR(120) NOT NULL,
+            `target_xp` INT NOT NULL DEFAULT 100,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `challenge_joins` (
+            `challenge_id` INT NOT NULL,
+            `user_id` INT NOT NULL,
+            `joined_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `uq_challenge_join` UNIQUE (`challenge_id`, `user_id`),
+            CONSTRAINT `fk_challenge_join_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `cheers` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `profile_id` INT NOT NULL,
+            `from_id` INT NOT NULL,
+            `body` VARCHAR(140) NOT NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `fk_cheers_profile` FOREIGN KEY (`profile_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+            CONSTRAINT `fk_cheers_from` FOREIGN KEY (`from_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("CREATE INDEX idx_cheers_profile ON `cheers` (`profile_id`, `created_at`)");
 
         // 8. Seed default quests and resources if quests table is empty
         $checkQuests = $conn->query("SELECT COUNT(*) AS total FROM `quests`");
@@ -1217,6 +1241,55 @@ function quest_next_unlocked($quests_sorted, $done_ids, $prev_map) {
         if ($b === null) return $q;
     }
     return null;
+}
+
+function challenge_week_key($ts = null) {
+    return date('o-\\WW', $ts ?? time());
+}
+
+function challenge_for_week($week_key) {
+    $n = 0;
+    if (preg_match('/W(\d{1,2})$/', (string)$week_key, $m)) $n = (int)$m[1];
+    $tiers = [
+        ['Sprint 80 XP', 80],
+        ['Sprint 100 XP', 100],
+        ['Sprint 120 XP', 120],
+        ['Sprint 150 XP', 150],
+    ];
+    $pick = $tiers[$n % 4];
+    return ['title' => 'Tantangan minggu ini: ' . $pick[0], 'target_xp' => $pick[1]];
+}
+
+function challenge_pct($xp, $target) {
+    $target = max(1, (int)$target);
+    return min(100, (int)round(max(0, (int)$xp) / $target * 100));
+}
+
+function cheer_clean($body) {
+    $t = trim(preg_replace('/\s+/', ' ', (string)$body));
+    if (mb_strlen($t) < 2) return '';
+    return mb_substr($t, 0, 140);
+}
+
+function badge_share_text($username, $badge_name) {
+    return trim((string)$username) . ' meraih badge "' . trim((string)$badge_name) . '" di Learn Tracker DevOps';
+}
+
+function ensure_weekly_challenge($conn) {
+    $key = challenge_week_key();
+    $def = challenge_for_week($key);
+    try {
+        $ins = $conn->prepare("INSERT IGNORE INTO challenges (week_key, title, target_xp) VALUES (?, ?, ?)");
+        $ins->bind_param("ssi", $key, $def['title'], $def['target_xp']);
+        $ins->execute();
+        $ins->close();
+        $s = $conn->prepare("SELECT id, week_key, title, target_xp FROM challenges WHERE week_key = ?");
+        $s->bind_param("s", $key);
+        $s->execute();
+        $row = $s->get_result()->fetch_assoc();
+        $s->close();
+        return $row ?: null;
+    } catch (Throwable $e) { return null; }
 }
 
 function review_skill_for($source, $title, $detail) {
