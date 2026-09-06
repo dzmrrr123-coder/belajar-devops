@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+      - name: Lint PHP
+        run: |
+          fail=0
+          for f in $(git ls-files '*.php'); do
+            php -l "$f" > /dev/null || fail=1
+          done
+          exit $fail
+      - name: Unit tests
+        run: php tests/run.php
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check JS
+        run: |
+          for f in assets/js/*.js sw.js; do
+            node --check "$f"
+          done

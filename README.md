@@ -116,6 +116,7 @@ http://localhost/learn-tracker/
   - Sesi Pomodoro (25 menit fokus): **+10 XP**
   - Catat Error & Solusi: **+5 XP**, maks **+25 XP/hari**
   - Kuis: **+2 XP** per kartu Tahu, maks **+20 XP/hari** (kartu tuntas tak muncul lagi hari itu)
+  - Bank **36 kartu kuis** bawaan (Linux, Git, MySQL, PHP, Docker, AWS) otomatis masuk tiap akun baru
   - Klaim Misi Harian: **+5 XP** per misi (3/hari)
   - Review pertama per kartu: **+5 XP**
   - Question → Error Log: **+5 XP** (masuk kuota catatan harian)
@@ -134,6 +135,16 @@ http://localhost/learn-tracker/
   - Lv 10: *Site Reliability Engineer*
   - Lv 11: *Cloud Guru*
   - Lv 12: *DevOps Legend*
+
+---
+
+## ✅ Testing & CI
+
+```bash
+php tests/run.php   # 50 assert logika murni (level, XP, review, skill)
+```
+
+Setiap push ke `main` menjalankan GitHub Actions: `php -l` semua file PHP, `php tests/run.php`, dan `node --check` semua file JS.
 
 ---
 
