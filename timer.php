@@ -655,25 +655,31 @@ const Lofi = (function() {
         o.stop(t + 1.8);
     }
     function schedule() {
-        while (nextBar < ctx.currentTime + 1.0) {
+        if (!ctx || !playing) return;
+        if (nextBar < ctx.currentTime - BAR * 2) nextBar = ctx.currentTime + 0.1;
+        while (nextBar < ctx.currentTime + 2.0) {
             pad(CHORDS[step % CHORDS.length], nextBar);
             if (step % 2 === 1) pluck(PENTA[Math.floor(Math.random() * PENTA.length)], nextBar + BAR / 2);
             step++;
             nextBar += BAR;
         }
     }
+    function wantOn() {
+        try { return localStorage.getItem('lt_lofi_on') === '1'; } catch (e) { return false; }
+    }
     function paint() {
         const btn = document.getElementById('lofiToggle');
         if (!btn) return;
         btn.classList.toggle('active', playing);
         btn.setAttribute('aria-pressed', playing ? 'true' : 'false');
-        btn.querySelector('span').textContent = playing ? 'Stop' : 'Lofi';
+        btn.querySelector('span').textContent = playing ? 'Stop' : (wantOn() ? 'Lanjut' : 'Lofi');
     }
     return {
         toggle: function() {
             if (!ensure()) { showToast('Browser tidak mendukung audio.', 'warning'); return; }
             if (ctx.state === 'suspended') ctx.resume();
             playing = !playing;
+            try { localStorage.setItem('lt_lofi_on', playing ? '1' : '0'); } catch (e) {}
             if (playing) {
                 master.gain.cancelScheduledValues(ctx.currentTime);
                 master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
@@ -698,12 +704,33 @@ const Lofi = (function() {
                 master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
                 master.gain.linearRampToValueAtTime(volume(), ctx.currentTime + 0.1);
             }
-        }
+        },
+        resync: function() {
+            if (playing) {
+                if (ctx && ctx.state === 'suspended') ctx.resume();
+                schedule();
+            }
+        },
+        wantsResume: function() { return wantOn(); },
+        refresh: function() { paint(); }
     };
 })();
 
+Lofi.refresh();
 document.getElementById('lofiToggle')?.addEventListener('click', () => Lofi.toggle());
 document.getElementById('lofiVol')?.addEventListener('input', () => Lofi.setVolume());
+document.addEventListener('visibilitychange', () => { if (!document.hidden) Lofi.resync(); });
+// Lanjut otomatis saat kembali ke halaman: mulai pada interaksi pertama (aturan autoplay browser)
+if (Lofi.wantsResume()) {
+    const resumeOnce = function(e) {
+        if (e && e.target && e.target.closest && e.target.closest('#lofiToggle')) return;
+        document.removeEventListener('pointerdown', resumeOnce);
+        document.removeEventListener('keydown', resumeOnce);
+        Lofi.toggle();
+    };
+    document.addEventListener('pointerdown', resumeOnce);
+    document.addEventListener('keydown', resumeOnce);
+}
 </script>
 
 <?php require_once 'includes/footer.php'; ?>

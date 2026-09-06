@@ -55,11 +55,21 @@ foreach ($skills as $name => &$sk) {
     $sk['points'] = $sk['quest_xp'] + $sk['notes'] * 5 + $sk['asks'] * 3;
     $sk['level'] = calculate_level($sk['points']);
     $sk['pct'] = level_progress_percent($sk['points']);
+    $sk['need'] = max(0, xp_to_next_level($sk['points']) - $sk['points']);
 }
 unset($sk);
 uasort($skills, fn($a, $b) => $b['points'] <=> $a['points']);
-$top = array_key_first($skills);
+$names = array_keys($skills);
+$top = $names[0] ?? '—';
 $total_points = array_sum(array_column($skills, 'points'));
+$active = count(array_filter($skills, fn($s) => $s['points'] > 0));
+$next_up = null;
+foreach ($skills as $name => $sk) {
+    if ($sk['points'] <= 0) continue;
+    if ($next_up === null || $sk['pct'] > $skills[$next_up]['pct']) $next_up = $name;
+}
+$feat = $skills[$top];
+unset($skills[$top]);
 $conn->close();
 
 $page_title = 'Skill Tree';
@@ -68,19 +78,31 @@ require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
     <div class="page-head">
-        <div class="page-kicker">8 skill · <?= $total_points ?> poin · terkuat: <?= htmlspecialchars($top) ?></div>
+        <div class="page-kicker">8 skill · <?= $total_points ?> poin · <?= $active ?>/8 aktif</div>
         <h1 class="page-title">Skill tree</h1>
-        <p class="page-desc">Poin skill = XP quest + 5 per catatan + 3 per pertanyaan. Kerjakan quest, catat error, banyak tanya.</p>
+        <p class="page-desc">Poin skill = XP quest + 5 per catatan + 3 per pertanyaan.<?php if ($next_up !== null): ?> Dekat naik level: <strong><?= htmlspecialchars($next_up) ?></strong> <?= $skills[$next_up]['pct'] ?>% — <?= $skills[$next_up]['need'] ?> poin lagi.<?php endif; ?></p>
     </div>
 
+    <section class="card skill-hero" aria-label="Skill terkuat <?= htmlspecialchars($top) ?>">
+        <span class="skill-rank rank-1" aria-hidden="true">#1</span>
+        <span class="skill-icon skill-icon-lg" aria-hidden="true"><i class="<?= htmlspecialchars($feat['icon']) ?>"></i></span>
+        <div class="skill-hero-main">
+            <div class="skill-hero-id"><strong><?= htmlspecialchars($top) ?></strong><span class="skill-lv">Lv <?= $feat['level'] ?></span></div>
+            <small><?= htmlspecialchars($feat['desc']) ?></small>
+            <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= $feat['pct'] ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres <?= htmlspecialchars($top) ?> menuju level berikutnya"><div class="xp-progress-fill" style="width: <?= $feat['pct'] ?>%;"></div></div>
+            <div class="skill-meta"><span><strong><?= $feat['points'] ?></strong> poin</span><span><?= $feat['quest_done'] ?>/<?= $feat['quest_total'] ?> quest</span><span><?= $feat['notes'] ?> catatan</span><span><?= $feat['asks'] ?> tanya</span></div>
+        </div>
+    </section>
+
     <div class="skill-grid">
-        <?php foreach ($skills as $name => $sk): ?>
-        <section class="card skill-card" aria-label="Skill <?= htmlspecialchars($name) ?>">
+        <?php $rank = 1; foreach ($skills as $name => $sk): $rank++; $touched = $sk['points'] > 0; ?>
+        <section class="card skill-card <?= $touched ? '' : 'untouched' ?>" aria-label="Skill <?= htmlspecialchars($name) ?>">
             <div class="skill-top">
+                <span class="skill-rank" aria-hidden="true">#<?= $rank ?></span>
                 <span class="skill-icon" aria-hidden="true"><i class="<?= htmlspecialchars($sk['icon']) ?>"></i></span>
                 <div class="skill-id">
                     <strong><?= htmlspecialchars($name) ?></strong>
-                    <small><?= htmlspecialchars($sk['desc']) ?></small>
+                    <small><?= $touched ? htmlspecialchars($sk['desc']) : 'Belum mulai' ?></small>
                 </div>
                 <span class="skill-lv">Lv <?= $sk['level'] ?></span>
             </div>
