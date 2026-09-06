@@ -103,9 +103,9 @@ require_once 'includes/navbar.php';
         <div class="page-kicker">Minggu <?= $selected_week ?> dari 12 · <?= count($quests) ?> quest</div>
         <h1 class="page-title"><?= !empty($quests) ? 'Fokus: ' . htmlspecialchars($quests[0]['title']) : 'Belum ada quest minggu ini' ?></h1>
         <p class="page-desc">Selesaikan satu target kecil hari ini. Progres tersimpan otomatis.</p>
-        <div class="page-actions">
+        <div class="page-actions overview-actions">
             <a href="timer.php" class="btn btn-cyber"><i class="fas fa-play me-1" aria-hidden="true"></i> Mulai sesi fokus</a>
-            <a href="quests.php" class="btn btn-cyber-outline">Lihat roadmap</a>
+            <a href="quests.php" class="page-actions-link">Lihat roadmap <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
         </div>
     </div>
 
@@ -122,35 +122,49 @@ require_once 'includes/navbar.php';
         </div>
     </section>
 
+    <?php
+    $mission_claimed = count(array_filter($missions, fn($m) => !empty($m['claimed'])));
+    $mission_all_done = count(array_filter($missions, fn($m) => !empty($m['done']))) === 3;
+    ?>
     <section class="mission-strip" aria-label="Misi harian">
-        <div class="quest-section-head">
-            <div><h2>Misi hari ini</h2><p>Selesaikan lalu klaim, masing-masing +5 XP.<?php $all_done = count(array_filter($missions, fn($m) => !empty($m['done']))) === 3; if ($all_done): ?> <strong class="text-success">Multiplier x1.5 aktif!</strong><?php endif; ?></p></div>
-            <span class="small text-secondary"><?= count(array_filter($missions, fn($m) => !empty($m['claimed']))) ?>/3 diklaim</span>
-        </div>
-        <div class="mission-row">
-            <?php foreach ($missions as $mkey => $m): ?>
-            <div class="mission-card <?= !empty($m['claimed']) ? 'claimed' : (!empty($m['done']) ? 'ready' : '') ?>">
-                <i class="fas <?= htmlspecialchars($m['icon']) ?>" aria-hidden="true"></i>
-                <div class="mission-main"><strong><?= htmlspecialchars($m['label']) ?></strong><span>+<?= (int)$m['xp'] ?> XP</span></div>
-                <?php if (!empty($m['claimed'])): ?>
-                    <span class="quest-done"><i class="fas fa-check" aria-hidden="true"></i>Diklaim</span>
-                <?php elseif (!empty($m['done'])): ?>
-                    <form method="POST" action="claim_mission.php" class="mission-claim-form m-0">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="mission_key" value="<?= htmlspecialchars($mkey) ?>">
-                        <button type="submit" class="btn btn-cyber btn-sm">Klaim</button>
-                    </form>
-                <?php else: ?>
-                    <span class="small text-muted">Belum</span>
+        <details class="mission-details" id="missionDetails" open>
+            <summary class="mission-summary">
+                <span class="mission-summary-text">
+                    <strong>Misi hari ini</strong>
+                    <small><?= $mission_claimed ?>/3 diklaim · +5 XP tiap klaim<?php if ($mission_all_done): ?> · <span class="text-success fw-bold">x1.5 aktif!</span><?php endif; ?></small>
+                </span>
+                <span class="mission-summary-count" aria-hidden="true"><?= $mission_claimed ?>/3</span>
+                <i class="fas fa-chevron-down mission-summary-chev" aria-hidden="true"></i>
+            </summary>
+            <div class="mission-body">
+                <?php if ($due_reviews > 0): ?>
+                <a class="review-banner" href="review.php"><i class="fas fa-rotate-right" aria-hidden="true"></i><span><strong><?= $due_reviews ?> review</strong> jatuh tempo hari ini — 2 menit saja.</span><i class="fas fa-chevron-right" aria-hidden="true"></i></a>
                 <?php endif; ?>
+                <div class="mission-row">
+                    <?php foreach ($missions as $mkey => $m): ?>
+                    <div class="mission-card <?= !empty($m['claimed']) ? 'claimed' : (!empty($m['done']) ? 'ready' : '') ?>">
+                        <i class="fas <?= htmlspecialchars($m['icon']) ?>" aria-hidden="true"></i>
+                        <div class="mission-main"><strong><?= htmlspecialchars($m['label']) ?></strong><span>+<?= (int)$m['xp'] ?> XP</span></div>
+                        <?php if (!empty($m['claimed'])): ?>
+                            <span class="quest-done"><i class="fas fa-check" aria-hidden="true"></i>Diklaim</span>
+                        <?php elseif (!empty($m['done'])): ?>
+                            <form method="POST" action="claim_mission.php" class="mission-claim-form m-0">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="mission_key" value="<?= htmlspecialchars($mkey) ?>">
+                                <button type="submit" class="btn btn-cyber btn-sm">Klaim</button>
+                            </form>
+                        <?php else: ?>
+                            <span class="small text-muted">Belum</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
-            <?php endforeach; ?>
-        </div>
+        </details>
+        <script>
+        (function(){var d=document.getElementById('missionDetails');if(d&&matchMedia('(max-width:767.98px)').matches){d.removeAttribute('open');}})();
+        </script>
     </section>
-
-    <?php if ($due_reviews > 0): ?>
-    <a class="review-banner" href="review.php"><i class="fas fa-rotate-right" aria-hidden="true"></i><span><strong><?= $due_reviews ?> review</strong> jatuh tempo hari ini — 2 menit saja.</span><i class="fas fa-chevron-right" aria-hidden="true"></i></a>
-    <?php endif; ?>
 
     <!-- Main Content Area -->
     <div class="row g-4">
