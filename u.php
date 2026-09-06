@@ -21,6 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $me > 0) {
     verify_csrf();
     $caction = $_POST['action'] ?? '';
     if ($caction === 'cheer' && $me !== $uid) {
+        if (rate_limit_hit('cheer_post', 10, 60)) {
+            set_flash('warning', 'Terlalu cepat. Tunggu sebentar.');
+            redirect('u.php?u=' . urlencode($user['username']));
+        }
         $body = cheer_clean($_POST['body'] ?? '');
         if ($body === '') {
             set_flash('warning', 'Tulis dukungan minimal 2 karakter.');

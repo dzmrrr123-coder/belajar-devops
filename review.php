@@ -14,6 +14,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $is_ajax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
         || (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false);
     $rid = (int)($_POST['review_id'] ?? 0);
+    if (rate_limit_hit('review_grade', 40, 60)) {
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Terlalu cepat. Tunggu sebentar.']);
+            exit();
+        }
+        set_flash('warning', 'Terlalu cepat. Tunggu sebentar.');
+        redirect('review.php');
+    }
     $grade = strtolower(trim((string)($_POST['result'] ?? $_POST['grade'] ?? '')));
     if ($rid > 0 && in_array($grade, $valid_grades, true)) {
         $grade = $grade_map[$grade] ?? $grade;

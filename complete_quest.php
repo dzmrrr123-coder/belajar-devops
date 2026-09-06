@@ -21,6 +21,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
     }
 
     $quest_id = (int)$_POST['quest_id'];
+    if (rate_limit_hit('quest_toggle', 30, 60)) {
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Terlalu cepat. Tunggu sebentar.']);
+            exit();
+        }
+        set_flash('warning', 'Terlalu cepat. Tunggu sebentar.');
+        redirect('quests.php');
+    }
     if ($quest_id <= 0) {
         if ($is_ajax) {
             header('Content-Type: application/json');

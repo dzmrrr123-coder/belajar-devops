@@ -39,11 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             award_xp($conn, $user_id, -$price, 'shop_flair');
             $msg = 'Flair dipasang: ' . $flair;
         } elseif ($action === 'buy_reroll') {
+            if (rate_limit_hit('shop_reroll', 10, 60)) throw new Exception('Pelan-pelan. Maks 10 kocokan per menit.');
             if ($balance < SHOP_REROLL_PRICE) throw new Exception('XP kurang. Butuh ' . SHOP_REROLL_PRICE . ' XP.');
             try { $r = random_int(1, 100); } catch (Throwable $e) { $r = 50; }
-            if ($r <= 60) { try { $win = random_int(5, 10); } catch (Throwable $e) { $win = 7; } }
-            elseif ($r <= 90) { try { $win = random_int(11, 20); } catch (Throwable $e) { $win = 15; } }
-            else { try { $win = random_int(21, 30); } catch (Throwable $e) { $win = 25; } }
+            if ($r <= 60) { try { $w = random_int(5, 10); } catch (Throwable $e) { $w = 7; } }
+            elseif ($r <= 90) { try { $w = random_int(11, 20); } catch (Throwable $e) { $w = 15; } }
+            else { try { $w = random_int(21, 30); } catch (Throwable $e) { $w = 25; } }
+            $win = shop_reroll_win($r, $w);
             award_xp($conn, $user_id, -SHOP_REROLL_PRICE, 'shop_reroll');
             award_xp($conn, $user_id, $win, 'shop_reroll_win');
             $msg = 'Kocokan: +' . $win . ' XP! (modal ' . SHOP_REROLL_PRICE . ' XP)';

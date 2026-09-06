@@ -7,6 +7,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     $ch_action = $_POST['challenge_action'] ?? '';
     if ($ch_action === 'join' || $ch_action === 'leave') {
+        if (rate_limit_hit('challenge_flip', 10, 60)) {
+            set_flash('warning', 'Terlalu cepat. Tunggu sebentar.');
+            redirect('leaderboard.php?scope=' . urlencode($_POST['scope'] ?? 'total'));
+        }
         $ch = ensure_weekly_challenge($conn);
         if ($ch) {
             $cid = (int)$ch['id'];

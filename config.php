@@ -97,6 +97,33 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('X-Frame-Options: SAMEORIGIN');
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+}
+
+function rate_limit_hit($key, $max, $window_sec) {
+    $max = max(1, (int)$max);
+    $window = max(1, (int)$window_sec);
+    if (session_status() !== PHP_SESSION_ACTIVE) return false;
+    $now = time();
+    $rl = isset($_SESSION['rl']) && is_array($_SESSION['rl']) ? $_SESSION['rl'] : [];
+    $slot = $rl[$key] ?? null;
+    if (!is_array($slot) || ($now - (int)($slot[0] ?? 0)) >= $window) $slot = [$now, 0];
+    $slot[1] = (int)($slot[1] ?? 0) + 1;
+    $rl[$key] = $slot;
+    $_SESSION['rl'] = array_slice($rl, -20, 20, true);
+    return $slot[1] > $max;
+}
+
+function shop_reroll_win($roll, $draw) {
+    $roll = max(1, min(100, (int)$roll));
+    $draw = (int)$draw;
+    if ($roll <= 60) return max(5, min(10, $draw));
+    if ($roll <= 90) return max(11, min(20, $draw));
+    return max(21, min(30, $draw));
+}
+
+function shop_reroll_ev() {
+    return 0.6 * 7.5 + 0.3 * 15.5 + 0.1 * 25.5;
 }
 
 // 3. Resolve Database configuration (Supports standard, Railway native, and URL connection strings)
