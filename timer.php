@@ -346,7 +346,7 @@ function applyPomodoroResult(data, minutes) {
     const hudLevel = document.getElementById('hudLevel');
     if (hudLevel) hudLevel.textContent = 'Lv. ' + data.level;
     const hudStreak = document.getElementById('hudStreak');
-    if (hudStreak) hudStreak.textContent = data.streak + ' hari';
+    if (hudStreak) hudStreak.textContent = data.streak;
     const sc = document.getElementById('todaySessionsCount');
     if (sc) sc.textContent = data.today_sessions;
     const mc = document.getElementById('todayMinutesCount');

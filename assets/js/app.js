@@ -261,7 +261,7 @@ function applyQuestResponse(data, form) {
     if (hudLevel) hudLevel.textContent = 'Lv. ' + data.level;
 
     const hudStreak = document.getElementById('hudStreak');
-    if (hudStreak) hudStreak.textContent = data.streak + ' hari';
+    if (hudStreak) hudStreak.textContent = data.streak;
 
     const statTotalXp = document.getElementById('statTotalXp');
     if (statTotalXp) statTotalXp.textContent = data.xp;
