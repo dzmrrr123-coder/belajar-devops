@@ -542,9 +542,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('visibilitychange', function() { if (!document.hidden) Lofi.resync(); });
     if (document.body.classList.contains('has-tabbar') && Lofi.wantsResume()) {
         const resumeOnce = function(e) {
-            if (e && e.target && e.target.closest && e.target.closest('.js-lofi-toggle')) return;
             document.removeEventListener('pointerdown', resumeOnce);
             document.removeEventListener('keydown', resumeOnce);
+            if (e && e.target && e.target.closest && e.target.closest('.js-lofi-toggle')) return;
             Lofi.toggle();
         };
         document.addEventListener('pointerdown', resumeOnce);
