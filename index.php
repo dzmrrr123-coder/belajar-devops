@@ -56,6 +56,16 @@ $stmt->close();
 $total_completed = (int)($dash_counts['total_done'] ?? 0);
 $total_quests_cnt = (int)($dash_counts['total_cnt'] ?? 14);
 $pomodoro_today = (int)($dash_counts['pomo_today'] ?? 0);
+
+// Peti harian hari ini (sudah dibuka atau belum)
+$chest = null;
+try {
+    $stmt = $conn->prepare("SELECT xp, `freeze` FROM daily_chests WHERE user_id = ? AND chest_date = CURDATE()");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $chest = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+} catch (Throwable $e) {}
 $overall_quest_percent = $total_quests_cnt > 0 ? round(($total_completed / $total_quests_cnt) * 100) : 0;
 $missions = get_daily_mission_status($conn, $user_id);
 $xp_week = weekly_xp($conn, $user_id);
@@ -97,6 +107,20 @@ require_once 'includes/navbar.php';
             <a href="timer.php" class="btn btn-cyber"><i class="fas fa-play me-1" aria-hidden="true"></i> Mulai sesi fokus</a>
             <a href="quests.php" class="page-actions-link">Lihat roadmap <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
         </div>
+    </div>
+
+    <div class="chest-card<?= $chest ? ' opened' : '' ?>" id="dailyChest">
+        <?php if ($chest): ?>
+            <span class="chest-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
+            <span class="chest-text"><strong>+<?= (int)$chest['xp'] ?> XP<?= !empty($chest['freeze']) ? ' + 1 freeze' : '' ?></strong><small>peti hari ini sudah dibuka · kembali besok</small></span>
+        <?php else: ?>
+            <span class="chest-icon closed" aria-hidden="true"><i class="fas fa-gift"></i></span>
+            <span class="chest-text"><strong>Peti harian menunggumu</strong><small>3–15 XP + kesempatan freeze · gratis tiap hari</small></span>
+            <form method="POST" action="claim_chest.php" class="chest-form m-0 flex-shrink-0">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn btn-cyber btn-sm">Buka</button>
+            </form>
+        <?php endif; ?>
     </div>
 
     <?php $streak_risk = ((int)$user['streak'] > 0) && empty($missions['quest1']['done']) && empty($missions['focus1']['done']) && empty($missions['note1']['done']); ?>
@@ -350,5 +374,46 @@ require_once 'includes/navbar.php';
         </div>
     </div>
 </main>
+
+<script>
+document.querySelector('.chest-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const card = document.getElementById('dailyChest');
+    const btn = this.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; }
+    card.classList.add('opening');
+    let data = null;
+    try {
+        const res = await fetch('claim_chest.php', {
+            method: 'POST',
+            body: new FormData(this),
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        data = await res.json();
+    } catch (err) { this.submit(); return; }
+    if (!data || data.status !== 'success') {
+        card.classList.remove('opening');
+        if (btn) btn.disabled = false;
+        showToast((data && data.message) || 'Gagal membuka peti.', 'warning');
+        return;
+    }
+    setTimeout(function() {
+        card.classList.remove('opening');
+        card.classList.add('opened');
+        card.innerHTML = '<span class="chest-icon" aria-hidden="true"><i class="fas fa-box-open"></i></span>'
+            + '<span class="chest-text"><span class="chest-reward">+' + data.xp + ' XP' + (data.freeze > 0 ? ' + 1 freeze' : '') + '</span>'
+            + '<small>peti hari ini sudah dibuka · kembali besok</small></span>';
+        const xpEl = document.getElementById('statTotalXp');
+        if (xpEl) xpEl.textContent = (parseInt(xpEl.textContent, 10) || 0) + (parseInt(data.xp, 10) || 0);
+        showToast(data.message, 'success');
+        if (data.rare) {
+            try { triggerConfetti(true); } catch (err) {}
+            try { if (window.SoundEffects) SoundEffects.levelUp(); } catch (err) {}
+        } else {
+            try { if (window.SoundEffects) SoundEffects.questComplete(); } catch (err) {}
+        }
+    }, 650);
+});
+</script>
 
 <?php require_once 'includes/footer.php'; ?>

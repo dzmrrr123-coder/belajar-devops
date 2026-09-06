@@ -13,10 +13,11 @@ if (is_logged_in()) {
             'xp' => $user['xp'],
             'streak' => $user['streak'],
             'last_login_at' => $user['last_login_at'] ?? null,
+            'avatar_frame' => $user['avatar_frame'] ?? 'default',
         ];
     } else {
         $nav_conn = db_connect();
-        $stmt = $nav_conn->prepare("SELECT id, username, email, xp, streak, last_login_at FROM users WHERE id = ?");
+        $stmt = $nav_conn->prepare("SELECT id, username, email, xp, streak, last_login_at, avatar_frame FROM users WHERE id = ?");
         $stmt->bind_param("i", $u_id);
         $stmt->execute();
         $hud_user = $stmt->get_result()->fetch_assoc();
@@ -29,7 +30,7 @@ if (is_logged_in()) {
     }
 }
 
-$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'skills.php', 'digest.php', 'leaderboard.php'], true);
+$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'skills.php', 'digest.php', 'shop.php', 'leaderboard.php'], true);
 ?>
 <nav class="lt-navbar navbar navbar-expand-lg" aria-label="Navigasi Utama">
     <div class="container lt-navbar-inner">
@@ -47,7 +48,7 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
 
             <div class="dropdown">
                 <button class="avatar-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu pengguna">
-                    <span class="avatar-circle" aria-hidden="true"><?= strtoupper(substr($hud_user['username'], 0, 1)) ?></span>
+                    <span class="avatar-circle frame-<?= htmlspecialchars($hud_user['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($hud_user['username'], 0, 1)) ?></span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end lt-menu p-2">
                     <li class="lt-menu-head">
@@ -87,6 +88,7 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
                         <li><a class="dropdown-item <?= $current_script === 'quiz.php' ? 'active' : '' ?>" href="quiz.php"><i class="fas fa-brain"></i>Kuis</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'skills.php' ? 'active' : '' ?>" href="skills.php"><i class="fas fa-layer-group"></i>Skill tree</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'digest.php' ? 'active' : '' ?>" href="digest.php"><i class="fas fa-calendar-week"></i>Ringkasan</a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'shop.php' ? 'active' : '' ?>" href="shop.php"><i class="fas fa-store"></i>Toko XP</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'leaderboard.php' ? 'active' : '' ?>" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a></li>
                     </ul>
                 </li>

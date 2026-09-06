@@ -131,7 +131,7 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 22);
+define('SCHEMA_VERSION', 23);
 
 // Auto-initialize schema & seed data safely without multi_query
 function ensure_database_schema($conn) {
@@ -334,6 +334,18 @@ function ensure_database_schema($conn) {
             CONSTRAINT `fk_quiz_cards_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         @$conn->query("CREATE INDEX idx_quiz_cards_user ON `quiz_cards` (`user_id`)");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `daily_chests` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `chest_date` DATE NOT NULL,
+            `xp` INT NOT NULL DEFAULT 0,
+            `freeze` TINYINT NOT NULL DEFAULT 0,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `uq_daily_chest` UNIQUE (`user_id`, `chest_date`),
+            CONSTRAINT `fk_daily_chests_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `flair` VARCHAR(24) NULL DEFAULT NULL");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `avatar_frame` VARCHAR(16) NOT NULL DEFAULT 'default'");
 
         // 8. Seed default quests and resources if quests table is empty
         $checkQuests = $conn->query("SELECT COUNT(*) AS total FROM `quests`");
@@ -901,6 +913,26 @@ function normalize_skill($topic) {
         if (strtolower($skill) === $t) return $skill;
     }
     return 'General';
+}
+
+// Bingkai avatar unlockable (kunci berbasis progres, awet karena pakai best_streak)
+function avatar_frames() {
+    return [
+        'default' => ['name' => 'Polos', 'hint' => 'Untuk semua orang'],
+        'ring' => ['name' => 'Cincin', 'hint' => 'Capai Level 3'],
+        'ember' => ['name' => 'Bara', 'hint' => 'Streak terbaik 7 hari'],
+        'gold' => ['name' => 'Emas', 'hint' => 'Capai Level 5'],
+        'legend' => ['name' => 'Legenda', 'hint' => 'Badge Roadmap Tuntas / Level 8'],
+    ];
+}
+
+function avatar_unlocked($frame, $level, $best_streak, $badges) {
+    if ($frame === 'default') return true;
+    if ($frame === 'ring') return $level >= 3;
+    if ($frame === 'ember') return $best_streak >= 7;
+    if ($frame === 'gold') return $level >= 5;
+    if ($frame === 'legend') return $level >= 8 || isset($badges['quest-all']);
+    return false;
 }
 
 // Flash messages

@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS users (
     best_streak INT NOT NULL DEFAULT 0,
     show_on_board TINYINT NOT NULL DEFAULT 0,
     public_profile TINYINT NOT NULL DEFAULT 0,
+    flair VARCHAR(24) NULL DEFAULT NULL,
+    avatar_frame VARCHAR(16) NOT NULL DEFAULT 'default',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_users_xp (xp)
@@ -176,6 +178,17 @@ CREATE TABLE IF NOT EXISTS quiz_cards (
     CONSTRAINT uq_quiz_card UNIQUE (user_id, source, source_id),
     CONSTRAINT fk_quiz_cards_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_quiz_cards_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS daily_chests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    chest_date DATE NOT NULL,
+    xp INT NOT NULL DEFAULT 0,
+    freeze TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_daily_chest UNIQUE (user_id, chest_date),
+    CONSTRAINT fk_daily_chests_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS schema_meta (

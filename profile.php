@@ -28,6 +28,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect('profile.php');
     }
+    if ($action === 'update_avatar') {
+        $frame = $_POST['frame'] ?? 'default';
+        $frames = avatar_frames();
+        if (!isset($frames[$frame])) {
+            set_flash('warning', 'Bingkai tidak dikenal.');
+        } else {
+            $who = $conn->prepare("SELECT xp, best_streak FROM users WHERE id = ?");
+            $who->bind_param("i", $user_id); $who->execute();
+            $wrow = $who->get_result()->fetch_assoc() ?: ['xp' => 0, 'best_streak' => 0];
+            $who->close();
+            $wlv = calculate_level((int)$wrow['xp']);
+            if (!avatar_unlocked($frame, $wlv, (int)$wrow['best_streak'], user_badges($conn, $user_id))) {
+                set_flash('warning', 'Belum terbuka: ' . $frames[$frame]['hint'] . '.');
+            } else {
+                $up = $conn->prepare("UPDATE users SET avatar_frame = ? WHERE id = ?");
+                $up->bind_param("si", $frame, $user_id);
+                $up->execute(); $up->close();
+                set_flash('success', 'Bingkai avatar diganti: ' . $frames[$frame]['name'] . '.');
+            }
+        }
+        redirect('profile.php');
+    }
     if ($action === 'visibility') {
         $board = !empty($_POST['show_on_board']) ? 1 : 0;
         $pub = !empty($_POST['public_profile']) ? 1 : 0;
@@ -78,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, freeze_tokens, best_streak, show_on_board, public_profile, created_at FROM users WHERE id = ?");
+$stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, freeze_tokens, best_streak, show_on_board, public_profile, flair, avatar_frame, created_at FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
@@ -137,7 +159,10 @@ require_once 'includes/navbar.php';
 <main class="container py-4" role="main">
     <div class="page-head">
         <div class="page-kicker">Level <?= $level ?> · <?= htmlspecialchars($rank) ?></div>
-        <h1 class="page-title"><?= htmlspecialchars($user['username']) ?></h1>
+        <div class="d-flex align-items-center gap-3 mb-2">
+            <span class="avatar-circle avatar-xl frame-<?= htmlspecialchars($user['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($user['username'], 0, 1)) ?></span>
+            <h1 class="page-title mb-0"><?= htmlspecialchars($user['username']) ?><?php if (!empty($user['flair'])): ?> <span class="flair-badge"><?= htmlspecialchars($user['flair']) ?></span><?php endif; ?></h1>
+        </div>
         <div class="profile-stats">
             <span><strong><?= (int)$user['xp'] ?></strong> XP</span>
             <span><strong><?= (int)$user['streak'] ?></strong> hari <small>(terbaik <?= (int)($user['best_streak'] ?? 0) ?>)</small></span>
@@ -174,6 +199,21 @@ require_once 'includes/navbar.php';
                     <?php endforeach; ?>
                 </div>
             </section>
+            <section class="card p-4" aria-label="Bingkai avatar">
+                <h2 class="h5 fw-bold mb-1">Bingkai avatar</h2>
+                <p class="text-secondary small mb-3">Terbuka permanen lewat progres. Dipakai di navigasi &amp; profil.</p>
+                <form method="POST" action="profile.php" class="frame-pick">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="update_avatar">
+                    <?php foreach (avatar_frames() as $fkey => $fdef): $open = avatar_unlocked($fkey, $level, (int)($user['best_streak'] ?? 0), $badges_owned); $sel = (($user['avatar_frame'] ?? 'default') === $fkey); ?>
+                    <button type="submit" name="frame" value="<?= htmlspecialchars($fkey) ?>" class="frame-opt<?= $open ? '' : ' locked' ?><?= $sel ? ' selected' : '' ?>" <?= $open ? '' : 'disabled' ?> title="<?= $open ? htmlspecialchars($fdef['name']) : 'Terkunci: ' . htmlspecialchars($fdef['hint']) ?>" aria-label="Bingkai <?= htmlspecialchars($fdef['name']) ?><?= $open ? '' : ' (terkunci)' ?>">
+                        <span class="avatar-circle frame-<?= htmlspecialchars($fkey) ?>" aria-hidden="true"><?= strtoupper(substr($user['username'], 0, 1)) ?></span>
+                        <strong><?= htmlspecialchars($fdef['name']) ?></strong>
+                        <small><?= $open ? ($sel ? 'Dipakai' : 'Buka') : htmlspecialchars($fdef['hint']) ?></small>
+                    </button>
+                    <?php endforeach; ?>
+                </form>
+            </section>
             <section class="card p-4" aria-label="Tanya dan catatan">
                 <h2 class="h5 fw-bold mb-1">Lanjutan</h2>
                 <p class="text-secondary small mb-3">Questions sekarang menyatu dengan Notes agar tab bawah tetap 5.</p>
@@ -186,6 +226,7 @@ require_once 'includes/navbar.php';
                     <a class="list-row" href="quiz.php"><div class="list-main"><p class="list-title">Kuis</p><p class="list-meta">Uji ingatan +2 XP</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
                     <a class="list-row" href="skills.php"><div class="list-main"><p class="list-title">Skill tree</p><p class="list-meta">Penguasaan per topik</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
                     <a class="list-row" href="digest.php"><div class="list-main"><p class="list-title">Ringkasan mingguan</p><p class="list-meta">Refleksi 7 hari terakhir</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
+                    <a class="list-row" href="shop.php"><div class="list-main"><p class="list-title">Toko XP</p><p class="list-meta">Freeze, flair &amp; kocokan</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
                     <a class="list-row" href="review.php"><div class="list-main"><p class="list-title">Review</p><p class="list-meta">Pengulangan terjadwal</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
                     <a class="list-row" href="leaderboard.php"><div class="list-main"><p class="list-title">Leaderboard</p><p class="list-meta">Peringkat XP global</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
                     <a class="list-row" href="export.php"><div class="list-main"><p class="list-title">Export CV</p><p class="list-meta">Unduh portofolio belajar</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
