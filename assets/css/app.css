@@ -152,6 +152,10 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding:18px 0;backgroun
 .timer-pill.done{background:var(--primary,#2f6b5e)}
 .timer-pill-time{font-variant-numeric:tabular-nums}
 .timer-pill-label{font-weight:400;opacity:.75}
+.timer-pill{touch-action:none;user-select:none;-webkit-user-select:none}
+.timer-pill.dragging{opacity:.92;cursor:grabbing;box-shadow:0 12px 28px rgba(0,0,0,.45)}
+.timer-pill-close{border:none;background:rgba(255,255,255,.16);color:#fff;width:22px;height:22px;border-radius:50%;font-size:.62rem;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0}
+.timer-pill-close:hover{background:rgba(255,255,255,.32)}
 body.has-tabbar .timer-pill{bottom:calc(76px + env(safe-area-inset-bottom))}
 @media(min-width:992px){.timer-pill{bottom:20px}}
 .quest-item.pending{opacity:.65}

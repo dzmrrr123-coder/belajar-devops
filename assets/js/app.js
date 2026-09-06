@@ -523,9 +523,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Persistent timer pill (reads lt_timer_v1 written by timer.php)
     (function ltTimerPill() {
         const KEY = 'lt_timer_v1';
+        const POS_KEY = 'lt_pill_pos';
+        const DONE_TTL = 30 * 60 * 1000;
+        const RECORDED_TTL = 2 * 60 * 1000;
+        const STALE_TTL = 24 * 3600 * 1000;
         if (location.pathname.endsWith('timer.php')) return;
+        if (!document.body.classList.contains('has-tabbar')) return;
         let el = null;
         function read() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+        function clear() { try { localStorage.removeItem(KEY); } catch (e) {} }
+        function readPos() { try { return JSON.parse(localStorage.getItem(POS_KEY) || 'null'); } catch (e) { return null; } }
         function fmt(sec) {
             sec = Math.max(0, sec);
             return String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
@@ -536,11 +543,65 @@ document.addEventListener('DOMContentLoaded', function() {
             el.id = 'ltTimerPill';
             el.className = 'timer-pill';
             el.href = 'timer.php';
-            el.innerHTML = '<i class="fas fa-clock" aria-hidden="true"></i><span class="timer-pill-time"></span><span class="timer-pill-label"></span>';
+            el.innerHTML = '<i class="fas fa-clock" aria-hidden="true"></i><span class="timer-pill-time"></span><span class="timer-pill-label"></span><button type="button" class="timer-pill-close" aria-label="Tutup bubble timer"><i class="fas fa-xmark" aria-hidden="true"></i></button>';
+            el.querySelector('.timer-pill-close').addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                clear();
+                drop();
+            });
+            const pos = readPos();
+            if (pos && typeof pos.left === 'number' && typeof pos.top === 'number') {
+                el.style.left = Math.max(0, Math.min(window.innerWidth - 60, pos.left)) + 'px';
+                el.style.top = Math.max(0, Math.min(window.innerHeight - 60, pos.top)) + 'px';
+                el.style.right = 'auto';
+                el.style.bottom = 'auto';
+            }
+            enableDrag(el);
             document.body.appendChild(el);
             return el;
         }
         function drop() { if (el) { el.remove(); el = null; } }
+        function enableDrag(node) {
+            let sx = 0, sy = 0, ox = 0, oy = 0, dragging = false, pid = null;
+            node.addEventListener('pointerdown', function(e) {
+                if (e.target.closest('.timer-pill-close')) return;
+                pid = e.pointerId;
+                sx = e.clientX; sy = e.clientY;
+                const r = node.getBoundingClientRect();
+                ox = sx - r.left; oy = sy - r.top;
+                dragging = false;
+                try { node.setPointerCapture(e.pointerId); } catch (err) {}
+            });
+            node.addEventListener('pointermove', function(e) {
+                if (e.pointerId !== pid) return;
+                if (!dragging && Math.hypot(e.clientX - sx, e.clientY - sy) < 6) return;
+                dragging = true;
+                node.dataset.moved = '1';
+                node.classList.add('dragging');
+                node.style.left = Math.max(0, Math.min(window.innerWidth - 40, e.clientX - ox)) + 'px';
+                node.style.top = Math.max(0, Math.min(window.innerHeight - 40, e.clientY - oy)) + 'px';
+                node.style.right = 'auto';
+                node.style.bottom = 'auto';
+            });
+            function end(e) {
+                if (e.pointerId !== pid) return;
+                pid = null;
+                node.classList.remove('dragging');
+                if (dragging) {
+                    dragging = false;
+                    try {
+                        const r = node.getBoundingClientRect();
+                        localStorage.setItem(POS_KEY, JSON.stringify({ left: r.left, top: r.top }));
+                    } catch (err) {}
+                }
+            }
+            node.addEventListener('pointerup', end);
+            node.addEventListener('pointercancel', end);
+            node.addEventListener('click', function(e) {
+                if (node.dataset.moved === '1') { e.preventDefault(); e.stopPropagation(); node.dataset.moved = '0'; }
+            }, true);
+        }
         function finishRemote(s) {
             const mode = s.mode || 'focus';
             try {
@@ -548,7 +609,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (e) {}
             render();
             if (mode === 'focus') {
-                showToast('Sesi fokus selesai! Buka Focus untuk mencatat +10 XP.', 'success');
+                showToast('Sesi fokus selesai! Istirahat sejenak, XP +10 tercatat saat buka Focus.', 'success');
                 try { if (window.SoundEffects) SoundEffects.pomodoroAlarm(); } catch (e) {}
             } else {
                 showToast('Istirahat selesai. Waktunya kembali fokus.', 'info');
@@ -562,13 +623,17 @@ document.addEventListener('DOMContentLoaded', function() {
         function render() {
             const s = read();
             if (!s) { drop(); return; }
+            const age = Date.now() - (s.ts || Date.now());
             if (s.finished) {
+                if (s.recorded && age > RECORDED_TTL) { clear(); drop(); return; }
+                if (!s.recorded && age > DONE_TTL) { clear(); drop(); return; }
                 const b = ensure();
                 b.classList.add('done');
-                b.querySelector('.timer-pill-time').textContent = s.recorded ? 'Selesai' : 'Selesai';
-                b.querySelector('.timer-pill-label').textContent = s.recorded ? '' : 'ketuk untuk catat';
+                b.querySelector('.timer-pill-time').textContent = 'Selesai';
+                b.querySelector('.timer-pill-label').textContent = s.recorded ? '' : 'ketuk · istirahat dulu';
                 return;
             }
+            if (!s.running && age > STALE_TTL) { clear(); drop(); return; }
             let rem = (typeof s.remainingSec === 'number') ? s.remainingSec : 0;
             if (s.running && s.endsAt) {
                 rem = Math.max(0, Math.ceil((s.endsAt - Date.now()) / 1000));
