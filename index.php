@@ -198,11 +198,11 @@ require_once 'includes/navbar.php';
                                     </form>
 
                                     <!-- Quest Info -->
-                                    <div class="flex-grow-1">
-                                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-                                            <h3 class="h6 fw-bold mb-0 quest-title"><?= htmlspecialchars($q['title']) ?></h3>
+                                    <div class="flex-grow-1 min-w-0">
+                                        <div class="quest-title-row">
+                                            <h3 class="h6 fw-bold quest-title"><?= htmlspecialchars($q['title']) ?></h3>
                                             <span class="quest-badge-xp">
-                                                <i class="fas fa-bolt"></i> +<?= (int)$q['xp_reward'] ?> XP
+                                                <i class="fas fa-bolt" aria-hidden="true"></i> +<?= (int)$q['xp_reward'] ?> XP
                                             </span>
                                         </div>
                                         <p class="text-secondary small mb-2"><?= htmlspecialchars($q['description']) ?></p>
