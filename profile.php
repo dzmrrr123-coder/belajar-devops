@@ -128,6 +128,7 @@ for ($i = 83; $i >= 0; $i--) {
 }
 $badges_owned = user_badges($conn, $user_id);
 $badge_list = badge_defs();
+$is_admin_me = is_admin($conn, $user_id);
 $conn->close();
 $page_title = 'Profil & Statistik';
 require_once 'includes/header.php';
@@ -174,6 +175,9 @@ require_once 'includes/navbar.php';
                 <h2 class="h5 fw-bold mb-1">Lanjutan</h2>
                 <p class="text-secondary small mb-3">Questions sekarang menyatu dengan Notes agar tab bawah tetap 5.</p>
                 <div>
+                    <?php if (!empty($is_admin_me)): ?>
+                    <a class="list-row" href="kelola-p7x2qm.php"><div class="list-main"><p class="list-title">Kelola user <span class="quest-pending">Admin</span></p><p class="list-meta">Area privat · role, XP, streak</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
+                    <?php endif; ?>
                     <a class="list-row" href="errors.php"><div class="list-main"><p class="list-title">Notes</p><p class="list-meta"><?= $stats['notes'] ?> catatan error &amp; solusi</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
                     <a class="list-row" href="questions.php"><div class="list-main"><p class="list-title">Questions</p><p class="list-meta"><?= $stats['q_open'] ?> diskusi terbuka</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
                     <a class="list-row" href="review.php"><div class="list-main"><p class="list-title">Review</p><p class="list-meta">Pengulangan terjadwal</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>

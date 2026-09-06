@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(100) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    role VARCHAR(16) NOT NULL DEFAULT 'user',
     xp INT NOT NULL DEFAULT 0 CHECK (xp >= 0),
     streak INT NOT NULL DEFAULT 0 CHECK (streak >= 0),
     last_active_date DATE NULL,

@@ -131,7 +131,7 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 20);
+define('SCHEMA_VERSION', 21);
 
 // Auto-initialize schema & seed data safely without multi_query
 function ensure_database_schema($conn) {
@@ -244,6 +244,7 @@ function ensure_database_schema($conn) {
             `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT `fk_remember_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `role` VARCHAR(16) NOT NULL DEFAULT 'user'");
         @$conn->query("ALTER TABLE `users` ADD COLUMN `last_login_at` DATETIME NULL");
         @$conn->query("ALTER TABLE `users` ADD COLUMN `freeze_tokens` INT NOT NULL DEFAULT 1");
         @$conn->query("ALTER TABLE `users` ADD COLUMN `best_streak` INT NOT NULL DEFAULT 0");
@@ -531,6 +532,30 @@ function get_user_rank($level) {
 // Check if user is logged in
 function is_logged_in() {
     return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+}
+
+// Admin dikunci ke satu akun pemilik. Perbandingan live dari DB agar
+// perubahan email/role langsung berlaku tanpa perlu logout.
+define('OWNER_ADMIN_EMAIL', 'dzmrrr123@gmail.com');
+function is_admin($conn, $user_id) {
+    try {
+        $s = $conn->prepare("SELECT email FROM users WHERE id = ?");
+        if (!$s) return false;
+        $s->bind_param("i", $user_id);
+        $s->execute();
+        $r = $s->get_result()->fetch_assoc();
+        $s->close();
+        return strtolower(trim((string)($r['email'] ?? ''))) === OWNER_ADMIN_EMAIL;
+    } catch (Throwable $e) { return false; }
+}
+
+// Gate for private admin pages: 404 (not 403) so the URL stays undiscoverable
+function require_admin($conn) {
+    if (!is_logged_in() || !is_admin($conn, (int)($_SESSION['user_id'] ?? 0))) {
+        http_response_code(404);
+        require __DIR__ . '/404.php';
+        exit();
+    }
 }
 
 // Require login
