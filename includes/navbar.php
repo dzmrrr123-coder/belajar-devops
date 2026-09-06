@@ -29,7 +29,7 @@ if (is_logged_in()) {
     }
 }
 
-$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'skills.php', 'leaderboard.php'], true);
+$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'skills.php', 'digest.php', 'leaderboard.php'], true);
 ?>
 <nav class="lt-navbar navbar navbar-expand-lg" aria-label="Navigasi Utama">
     <div class="container lt-navbar-inner">
@@ -87,6 +87,7 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
                         <li><a class="dropdown-item <?= $current_script === 'questions.php' ? 'active' : '' ?>" href="questions.php"><i class="fas fa-circle-question"></i>Questions</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'quiz.php' ? 'active' : '' ?>" href="quiz.php"><i class="fas fa-brain"></i>Kuis</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'skills.php' ? 'active' : '' ?>" href="skills.php"><i class="fas fa-layer-group"></i>Skill tree</a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'digest.php' ? 'active' : '' ?>" href="digest.php"><i class="fas fa-calendar-week"></i>Ringkasan</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'leaderboard.php' ? 'active' : '' ?>" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a></li>
                     </ul>
                 </li>

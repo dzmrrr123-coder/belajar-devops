@@ -15,9 +15,9 @@ $scope = ($_GET['scope'] ?? 'total') === 'week' ? 'week' : 'total';
 $rows = [];
 try {
     if ($scope === 'week') {
-        $s = $conn->prepare("SELECT u.username, u.xp, u.streak, GREATEST(0, COALESCE((SELECT SUM(e.amount) FROM xp_events e WHERE e.user_id = u.id AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0)) wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = u.id) qd FROM users u WHERE u.show_on_board = 1 ORDER BY wxp DESC, u.streak DESC LIMIT ? OFFSET ?");
+        $s = $conn->prepare("SELECT u.username, u.xp, u.streak, u.public_profile, GREATEST(0, COALESCE((SELECT SUM(e.amount) FROM xp_events e WHERE e.user_id = u.id AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0)) wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = u.id) qd FROM users u WHERE u.show_on_board = 1 ORDER BY wxp DESC, u.streak DESC LIMIT ? OFFSET ?");
     } else {
-        $s = $conn->prepare("SELECT username, xp, streak, xp AS wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = users.id) qd FROM users WHERE show_on_board = 1 ORDER BY xp DESC, streak DESC LIMIT ? OFFSET ?");
+        $s = $conn->prepare("SELECT username, xp, streak, public_profile, xp AS wxp, (SELECT COUNT(*) FROM user_quests WHERE user_id = users.id) qd FROM users WHERE show_on_board = 1 ORDER BY xp DESC, streak DESC LIMIT ? OFFSET ?");
     }
     $s->bind_param("ii", $per, $off);
     $s->execute();
@@ -64,7 +64,7 @@ require_once 'includes/navbar.php';
         <?php $rank = $off; foreach ($rows as $r): $rank++; $lv = calculate_level($r['xp']); ?>
         <div class="list-row">
             <strong class="me-1" style="min-width:36px">#<?= $rank ?></strong>
-            <div class="list-main"><p class="list-title"><?= htmlspecialchars($r['username']) ?> · Lv <?= $lv ?></p><p class="list-meta"><?= $scope === 'week' ? (int)$r['wxp'] . ' XP minggu ini · ' : '' ?><?= (int)$r['xp'] ?> XP · <?= (int)$r['streak'] ?> streak · <?= (int)$r['qd'] ?> quest</p></div>
+            <div class="list-main"><p class="list-title"><?php if (!empty($r['public_profile'])): ?><a class="board-link" href="u.php?u=<?= urlencode($r['username']) ?>"><?= htmlspecialchars($r['username']) ?></a> · Lv <?= $lv ?><?php else: ?><?= htmlspecialchars($r['username']) ?> · Lv <?= $lv ?><?php endif; ?></p><p class="list-meta"><?= $scope === 'week' ? (int)$r['wxp'] . ' XP minggu ini · ' : '' ?><?= (int)$r['xp'] ?> XP · <?= (int)$r['streak'] ?> streak · <?= (int)$r['qd'] ?> quest</p></div>
         </div>
         <?php endforeach; ?>
     </div>

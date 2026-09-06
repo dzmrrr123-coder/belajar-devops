@@ -99,6 +99,48 @@ require_once 'includes/navbar.php';
         </div>
     </div>
 
+    <?php
+    $claimable_xp = 0; $claimable_n = 0;
+    foreach ($missions as $m) if (!empty($m['done']) && empty($m['claimed'])) { $claimable_n++; $claimable_xp += (int)$m['xp']; }
+    $next_quest = null;
+    foreach ($quests as $q) if (empty($q['completed_at'])) { $next_quest = $q; break; }
+    ?>
+    <?php if ($claimable_n > 0): ?>
+    <div class="next-action">
+        <span class="next-action-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
+        <span class="next-action-text"><strong>Klaim +<?= $claimable_xp ?> XP</strong><small><?= $claimable_n ?> misi selesai menunggumu</small></span>
+        <form method="POST" action="claim_mission.php" class="m-0 flex-shrink-0">
+            <?= csrf_field() ?>
+            <input type="hidden" name="mission_key" value="all">
+            <button type="submit" class="btn btn-cyber btn-sm">Klaim</button>
+        </form>
+    </div>
+    <?php elseif ($due_reviews > 0): ?>
+    <a class="next-action" href="review.php">
+        <span class="next-action-icon" aria-hidden="true"><i class="fas fa-rotate-right"></i></span>
+        <span class="next-action-text"><strong>Sikat <?= $due_reviews ?> review</strong><small>cuma 2 menit, biar tak menumpuk</small></span>
+        <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
+    </a>
+    <?php elseif ($pomodoro_today === 0): ?>
+    <a class="next-action" href="timer.php">
+        <span class="next-action-icon" aria-hidden="true"><i class="fas fa-play"></i></span>
+        <span class="next-action-text"><strong>Mulai sesi fokus</strong><small>25 menit · +10 XP · lanjutkan quest minggu ini</small></span>
+        <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
+    </a>
+    <?php elseif ($next_quest): ?>
+    <a class="next-action" href="quests.php">
+        <span class="next-action-icon" aria-hidden="true"><i class="fas fa-map"></i></span>
+        <span class="next-action-text"><strong>Lanjutkan: <?= htmlspecialchars(mb_strimwidth($next_quest['title'], 0, 60, '...')) ?></strong><small>+<?= (int)$next_quest['xp_reward'] ?> XP menanti</small></span>
+        <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
+    </a>
+    <?php else: ?>
+    <a class="next-action" href="digest.php">
+        <span class="next-action-icon" aria-hidden="true"><i class="fas fa-calendar-week"></i></span>
+        <span class="next-action-text"><strong>Minggu ini beres!</strong><small>lihat ringkasan &amp; rencanakan berikutnya</small></span>
+        <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
+    </a>
+    <?php endif; ?>
+
     <section class="progress-strip" aria-label="Ringkasan progres belajar">
         <div class="strip-main">
             <div class="strip-level"><strong>Level <?= $level ?></strong><span><?= htmlspecialchars($rank_title) ?></span></div>
