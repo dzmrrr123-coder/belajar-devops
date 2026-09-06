@@ -51,8 +51,9 @@ $flash = get_flash();
     <!-- Bootstrap 5.3 JS Bundle -->
     <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script defer src="assets/js/app.js?v=<?= filemtime(__DIR__ . '/../assets/js/app.js') ?>"></script>
-    <script defer src="assets/js/sync.js?v=<?= filemtime(__DIR__ . '/../assets/js/sync.js') ?>"></script>
+    <?php foreach (['core.js', 'lofi.js', 'quests.js', 'cards.js', 'site.js', 'sync.js'] as $js): ?>
+    <script defer src="assets/js/<?= $js ?>?v=<?= filemtime(__DIR__ . '/../assets/js/' . $js) ?>"></script>
+    <?php endforeach; ?>
 
     <script>
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
