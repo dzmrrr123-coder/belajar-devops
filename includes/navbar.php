@@ -61,6 +61,7 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
                     <li><a class="dropdown-item" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a></li>
                     <li><a class="dropdown-item" href="export.php"><i class="fas fa-file-export"></i>Export CV</a></li>
                     <li><button type="button" class="dropdown-item ltThemeToggle"><i class="fas fa-moon" aria-hidden="true"></i><span class="theme-toggle-label">Mode gelap</span></button></li>
+                    <li><button type="button" class="dropdown-item js-lofi-toggle"><i class="fas fa-headphones" aria-hidden="true"></i><span class="js-lofi-label">Lofi</span></button></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item is-danger" href="logout.php"><i class="fas fa-arrow-right-from-bracket"></i>Keluar</a></li>
                 </ul>

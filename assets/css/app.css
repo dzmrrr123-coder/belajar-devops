@@ -479,6 +479,7 @@ section[aria-labelledby="continue-material-heading"] .list-meta,section[aria-lab
 .share-row .btn{flex:0 0 auto}
 .board-link{color:var(--ink);font-weight:700}
 .board-link:hover{color:var(--primary)}
+.flex-preview{width:100%;max-width:280px;border-radius:12px;border:1px solid var(--line)}
 .streak-banner{display:flex;align-items:center;gap:10px;background:var(--warning-soft);border:1px solid #e6dcc0;border-radius:var(--r-md);padding:12px 14px;margin-bottom:12px;color:var(--ink);font-size:.88rem}
 .streak-banner:hover{text-decoration:none;border-color:var(--warning)}
 .streak-banner .fa-fire{color:var(--warning)}

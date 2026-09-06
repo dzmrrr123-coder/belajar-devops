@@ -145,6 +145,9 @@ require_once 'includes/navbar.php';
             <span>sejak <?= date('M Y', strtotime($user['created_at'])) ?></span>
         </div>
         <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= $pct ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres menuju level berikutnya"><div class="xp-progress-fill" style="width:<?= $pct ?>%"></div></div>
+        <div class="page-actions mt-3">
+            <button type="button" class="btn btn-cyber-outline btn-sm" onclick="openFlexCard()"><i class="fas fa-share-nodes me-1" aria-hidden="true"></i>Flex ke story</button>
+        </div>
     </div>
     <div class="row g-4 align-items-start">
         <div class="col-lg-7 d-flex flex-column gap-4">
@@ -237,4 +240,111 @@ require_once 'includes/navbar.php';
         </div>
     </div>
 </main>
+<div class="modal fade" id="flexModal" tabindex="-1" aria-labelledby="flexModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-bottom">
+        <div class="modal-content">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h6 fw-bold mb-0" id="flexModalLabel">Kartu flex 9:16</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="flexPreview" class="flex-preview" alt="Pratinjau kartu progres">
+            </div>
+            <div class="modal-footer border-top sticky-bottom-bar">
+                <button type="button" class="btn btn-cyber-outline" id="flexDownload"><i class="fas fa-download me-1" aria-hidden="true"></i>Unduh</button>
+                <button type="button" class="btn btn-cyber" id="flexShare"><i class="fas fa-share-nodes me-1" aria-hidden="true"></i>Bagikan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const FLEX_DATA = <?= json_encode(['username' => $user['username'], 'level' => $level, 'rank' => $rank, 'xp' => (int)$user['xp'], 'streak' => (int)$user['streak'], 'quests_done' => $stats['quest_done'], 'quests_total' => $stats['quest_total'], 'badges' => count($badges_owned)], JSON_UNESCAPED_UNICODE) ?>;
+let flexCanvas = null;
+function drawFlexCard() {
+    const W = 1080, H = 1920;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    x.fillStyle = '#101514';
+    x.fillRect(0, 0, W, H);
+    x.globalAlpha = 0.16;
+    x.fillStyle = '#63b39b';
+    x.beginPath(); x.arc(W - 60, 240, 420, 0, Math.PI * 2); x.fill();
+    x.globalAlpha = 0.1;
+    x.beginPath(); x.arc(80, H - 200, 360, 0, Math.PI * 2); x.fill();
+    x.globalAlpha = 1;
+    const F = "'DM Sans', system-ui, sans-serif";
+    x.textAlign = 'center';
+    x.fillStyle = '#63b39b';
+    x.font = "700 40px " + F;
+    try { x.letterSpacing = '8px'; } catch (e) {}
+    x.fillText('LEARN TRACKER · DEVOPS', W / 2, 220);
+    try { x.letterSpacing = '0px'; } catch (e) {}
+    let nameSize = 110;
+    x.font = "700 " + nameSize + "px " + F;
+    while (x.measureText(FLEX_DATA.username).width > W - 160 && nameSize > 48) {
+        nameSize -= 6;
+        x.font = "700 " + nameSize + "px " + F;
+    }
+    x.fillStyle = '#f2f5f3';
+    x.fillText(FLEX_DATA.username, W / 2, 360);
+    x.fillStyle = '#a9b5ad';
+    x.font = "500 44px " + F;
+    x.fillText('Level ' + FLEX_DATA.level + ' · ' + FLEX_DATA.rank, W / 2, 430);
+    const rows = [
+        [String(FLEX_DATA.streak), 'HARI STREAK'],
+        [String(FLEX_DATA.xp), 'TOTAL XP'],
+        [FLEX_DATA.quests_done + '/' + FLEX_DATA.quests_total, 'QUEST TUNTAS'],
+        [String(FLEX_DATA.badges), 'BADGE']
+    ];
+    let y = 700;
+    rows.forEach(function(r, idx) {
+        x.fillStyle = idx === 0 ? '#63b39b' : '#f2f5f3';
+        x.font = "800 130px " + F;
+        x.fillText(r[0], W / 2, y);
+        x.fillStyle = '#8b958d';
+        x.font = "600 36px " + F;
+        try { x.letterSpacing = '6px'; } catch (e) {}
+        x.fillText(r[1], W / 2, y + 62);
+        try { x.letterSpacing = '0px'; } catch (e) {}
+        y += 290;
+    });
+    x.fillStyle = '#8b958d';
+    x.font = "500 34px " + F;
+    x.fillText('Level up setiap hari.', W / 2, H - 140);
+    flexCanvas = c;
+    document.getElementById('flexPreview').src = c.toDataURL('image/png');
+}
+function openFlexCard() {
+    try {
+        if (document.fonts && document.fonts.ready) { document.fonts.ready.then(drawFlexCard); }
+        else drawFlexCard();
+    } catch (e) { drawFlexCard(); }
+    new bootstrap.Modal(document.getElementById('flexModal')).show();
+}
+document.getElementById('flexDownload')?.addEventListener('click', function() {
+    if (!flexCanvas) return;
+    const a = document.createElement('a');
+    a.download = 'flex-' + FLEX_DATA.username + '.png';
+    a.href = flexCanvas.toDataURL('image/png');
+    a.click();
+});
+document.getElementById('flexShare')?.addEventListener('click', function() {
+    if (!flexCanvas) return;
+    flexCanvas.toBlob(async function(blob) {
+        const file = new File([blob], 'flex-' + FLEX_DATA.username + '.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try { await navigator.share({ files: [file], title: 'Progres belajarku' }); } catch (e) {}
+        } else {
+            const a = document.createElement('a');
+            a.download = file.name;
+            a.href = URL.createObjectURL(blob);
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        }
+    }, 'image/png');
+});
+</script>
+
 <?php require_once 'includes/footer.php'; ?>
