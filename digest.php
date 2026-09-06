@@ -63,12 +63,16 @@ $verdict28 = analytics_streak_verdict($score28);
 $strongest = '—'; $attention = '—'; $queue = []; $skill_rows = [];
 $total_cnt = 0; $total_done = 0;
 try {
-    $s = $conn->prepare("SELECT q.id, q.week, q.title, q.xp_reward, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE (q.user_id IS NULL OR q.user_id = ?) ORDER BY q.week ASC, q.id ASC");
+    $s = $conn->prepare("SELECT q.id, q.user_id AS owner, q.week, q.title, q.xp_reward, q.depends_on, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE (q.user_id IS NULL OR q.user_id = ?) ORDER BY q.week ASC, q.id ASC");
     $s->bind_param("ii", $user_id, $user_id);
     $s->execute();
+    $allq = $s->get_result()->fetch_all(MYSQLI_ASSOC);
+    $s->close();
+    $pmap = quest_prev_map(array_map(fn($r) => ['id' => $r['id'], 'week' => $r['week'], 'user_id' => $r['owner']], $allq));
+    $doneset = [];
+    foreach ($allq as $r) if (!empty($r['done'])) $doneset[(int)$r['id']] = true;
     $per = [];
-    foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
-        $total_cnt++;
+    foreach ($allq as $r) {
         $sk = skill_for_week((int)$r['week']);
         $per[$sk] = $per[$sk] ?? ['done' => 0, 'total' => 0];
         $per[$sk]['total']++;
@@ -76,10 +80,10 @@ try {
             $total_done++;
             $per[$sk]['done']++;
         } elseif (count($queue) < 3) {
-            $queue[] = ['title' => (string)$r['title'], 'xp' => (int)$r['xp_reward']];
+            $blk = quest_blocker(['id' => $r['id'], 'user_id' => $r['owner'], 'depends_on' => $r['depends_on']], $doneset, $pmap[(int)$r['id']] ?? null);
+            if ($blk === null) $queue[] = ['title' => (string)$r['title'], 'xp' => (int)$r['xp_reward']];
         }
     }
-    $s->close();
     $best = -1; $most_left = -1;
     foreach ($per as $name => $p) {
         $pct = $p['total'] > 0 ? (int)round($p['done'] / $p['total'] * 100) : 0;

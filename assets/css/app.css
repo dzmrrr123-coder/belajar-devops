@@ -106,6 +106,16 @@ main.container{flex:1}
 .quest-item{padding:14px 16px;display:flex;gap:12px;border-left:3px solid var(--line-strong)}
 .quest-item:hover{border-color:var(--line-strong)}
 .quest-item.completed{border-left-color:var(--success);background:#f4f7f4}
+.quest-item.locked{opacity:.72;border-left-style:dashed}
+.quest-item.locked .quest-check-btn{cursor:not-allowed;color:var(--faint)}
+.quest-locked{display:inline-flex;align-items:center;gap:6px;color:var(--warning);font-size:.78rem;font-weight:600}
+.quest-next{background:var(--primary-soft);color:var(--primary);border:1px solid var(--line)}
+.week-block-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.week-tag{font-weight:800;font-size:.9rem}
+.week-count{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.week-block-head .rule{flex:1;height:1px;background:var(--line)}
+.week-progress{height:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;overflow:hidden;margin-bottom:12px}
+.week-progress>span{display:block;height:100%;background:var(--primary);border-radius:99px}
 .quest-item.completed .quest-title{text-decoration:line-through;color:var(--muted)}
 .quest-badge-xp{background:transparent;border:none;color:var(--muted);font-size:.78rem;font-weight:600;padding:0;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .quest-done{display:inline-flex;align-items:center;gap:6px;color:var(--success);font-size:.78rem;font-weight:600}

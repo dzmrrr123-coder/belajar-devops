@@ -92,6 +92,17 @@ check('sm2 map know', sm2_grade_to_int('know'), 4);
 check('sm2 map forgot', sm2_grade_to_int('forgot'), 0);
 check('sm2 ease batas', sm2_next(1.2, 5, 30, 'good')['ease'] >= 1.3, true);
 check('skill review docker', review_skill_for('quiz', 'Dockerfile build error', ''), 'Docker');
+$chain = [['id' => 1, 'week' => 1, 'user_id' => null], ['id' => 2, 'week' => 2, 'user_id' => null], ['id' => 9, 'week' => 2, 'user_id' => 7]];
+check('prev pertama null', quest_prev_map($chain)[1], null);
+check('prev kedua', quest_prev_map($chain)[2], 1);
+check('prev custom null', quest_prev_map($chain)[9], null);
+check('blocker awal', quest_blocker(['id' => 2, 'user_id' => null, 'depends_on' => null], [], 1), 1);
+check('blocker lolos', quest_blocker(['id' => 2, 'user_id' => null, 'depends_on' => null], [1 => true], 1), null);
+check('blocker eksplisit', quest_blocker(['id' => 5, 'user_id' => null, 'depends_on' => 3], [1 => true], 1), 3);
+check('blocker custom bebas', quest_blocker(['id' => 9, 'user_id' => 7, 'depends_on' => null], [], 1), null);
+check('blocker done bebas', quest_blocker(['id' => 1, 'user_id' => null, 'depends_on' => null, 'completed_at' => '2026-01-01'], [], null), null);
+check('week stats', quest_week_stats([['completed_at' => 'x'], []]), ['done' => 1, 'total' => 2, 'pct' => 50]);
+check('next unlocked skip', quest_next_unlocked([['id' => 1, 'week' => 1, 'user_id' => null], ['id' => 2, 'week' => 2, 'user_id' => null]], [], [1 => null, 2 => 1])['id'], 1);
 
 check('bank 42 kartu', count(quiz_bank_cards()), 42);
 $bank_ok = true;

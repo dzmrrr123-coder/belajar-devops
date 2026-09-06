@@ -131,7 +131,7 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 29);
+define('SCHEMA_VERSION', 30);
 
 function quiz_topics() {
     return ['Linux', 'Git', 'MySQL', 'PHP', 'Laravel', 'Docker', 'AWS', 'Networking', 'General'];
@@ -447,6 +447,8 @@ function ensure_database_schema($conn) {
         @$conn->query("ALTER TABLE `reviews` ADD COLUMN `reps` INT NOT NULL DEFAULT 0");
         @$conn->query("ALTER TABLE `reviews` ADD COLUMN `skill` VARCHAR(32) NOT NULL DEFAULT 'General'");
         @$conn->query("CREATE INDEX idx_reviews_skill_due ON `reviews` (`user_id`, `skill`, `next_due`)");
+        @$conn->query("ALTER TABLE `quests` ADD COLUMN `depends_on` INT NULL");
+        @$conn->query("CREATE INDEX idx_quests_depends ON `quests` (`depends_on`)");
 
         // 8. Seed default quests and resources if quests table is empty
         $checkQuests = $conn->query("SELECT COUNT(*) AS total FROM `quests`");
@@ -1172,6 +1174,49 @@ function sm2_labels() {
         'good' => ['label' => 'Bisa', 'hint' => 'sesuai jadwal', 'key' => '3'],
         'easy' => ['label' => 'Mudah', 'hint' => 'lama', 'key' => '4'],
     ];
+}
+
+function quest_prev_map($quests) {
+    $sorted = array_values($quests);
+    usort($sorted, fn($a, $b) => ((int)($a['week'] ?? 0) <=> (int)($b['week'] ?? 0)) ?: ((int)($a['id'] ?? 0) <=> (int)($b['id'] ?? 0)));
+    $prev = null;
+    $map = [];
+    foreach ($sorted as $q) {
+        $id = (int)($q['id'] ?? 0);
+        if ($id <= 0) continue;
+        if (!empty($q['user_id'])) {
+            $map[$id] = null;
+            continue;
+        }
+        $map[$id] = $prev;
+        $prev = $id;
+    }
+    return $map;
+}
+
+function quest_blocker($quest, $done_ids, $prev_id = null) {
+    if (!empty($quest['completed_at'])) return null;
+    if (!empty($quest['user_id'])) return null;
+    $dep = isset($quest['depends_on']) && (int)$quest['depends_on'] > 0 ? (int)$quest['depends_on'] : $prev_id;
+    if ($dep === null || $dep <= 0) return null;
+    if ((int)$dep === (int)($quest['id'] ?? 0)) return null;
+    return isset($done_ids[$dep]) ? null : (int)$dep;
+}
+
+function quest_week_stats($week_quests) {
+    $total = count($week_quests);
+    $done = 0;
+    foreach ($week_quests as $q) if (!empty($q['completed_at'])) $done++;
+    return ['done' => $done, 'total' => $total, 'pct' => $total > 0 ? (int)round($done / $total * 100) : 0];
+}
+
+function quest_next_unlocked($quests_sorted, $done_ids, $prev_map) {
+    foreach ($quests_sorted as $q) {
+        if (!empty($q['completed_at'])) continue;
+        $b = quest_blocker($q, $done_ids, $prev_map[(int)($q['id'] ?? 0)] ?? null);
+        if ($b === null) return $q;
+    }
+    return null;
 }
 
 function review_skill_for($source, $title, $detail) {

@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Get all quests with user completion status (global + milik sendiri)
 $stmt = $conn->prepare("
-    SELECT q.id, q.user_id, q.week, q.title, q.description, q.xp_reward, q.is_custom, uq.completed_at
+    SELECT q.id, q.user_id, q.week, q.title, q.description, q.xp_reward, q.is_custom, q.depends_on, uq.completed_at
     FROM quests q
     LEFT JOIN user_quests uq ON q.id = uq.quest_id AND uq.user_id = ?
     WHERE (q.user_id IS NULL OR q.user_id = ?)
@@ -63,6 +63,20 @@ $total_xp_possible = 0;
 $xp_earned = 0;
 
 $quests_by_week = [];
+$titles_by_id = [];
+$done_ids = [];
+foreach ($all_quests as $q) {
+    $titles_by_id[(int)$q['id']] = (string)$q['title'];
+    if (!empty($q['completed_at'])) $done_ids[(int)$q['id']] = true;
+}
+$prev_map = quest_prev_map($all_quests);
+$blocker_by_id = [];
+foreach ($all_quests as $q) {
+    $b = quest_blocker($q, $done_ids, $prev_map[(int)$q['id']] ?? null);
+    if ($b !== null) $blocker_by_id[(int)$q['id']] = $b;
+}
+$next_up = quest_next_unlocked($all_quests, $done_ids, $prev_map);
+$next_up_id = $next_up ? (int)$next_up['id'] : 0;
 foreach ($all_quests as $q) {
     $total_xp_possible += (int)$q['xp_reward'];
     if (!empty($q['completed_at'])) {
@@ -117,34 +131,45 @@ require_once 'includes/navbar.php';
     </div>
 
     <div id="questsContainer">
-        <?php foreach ($quests_by_week as $week_num => $week_quests): ?>
+        <?php foreach ($quests_by_week as $week_num => $week_quests): $wstat = quest_week_stats($week_quests); ?>
             <section class="week-block week-section" data-week="<?= $week_num ?>" aria-label="Minggu <?= $week_num ?>">
                     <div class="week-block-head">
                         <span class="week-tag">Minggu <?= $week_num ?></span>
-                        <span class="week-count"><?= count($week_quests) ?> quest</span>
+                        <span class="week-count"><?= $wstat['done'] ?>/<?= $wstat['total'] ?> quest</span>
                         <span class="rule" aria-hidden="true"></span>
                         <a href="resources.php?week=<?= $week_num ?>" class="small text-secondary text-decoration-none">Materi</a>
                     </div>
+                    <div class="week-progress" role="progressbar" aria-valuenow="<?= $wstat['pct'] ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres minggu <?= $week_num ?> <?= $wstat['pct'] ?> persen"><span style="width:<?= $wstat['pct'] ?>%"></span></div>
 
                     <div class="d-flex flex-column gap-2">
-                        <?php foreach ($week_quests as $q): 
+                        <?php foreach ($week_quests as $q):
                             $is_done = !empty($q['completed_at']);
+                            $qid = (int)$q['id'];
+                            $blocker = $blocker_by_id[$qid] ?? null;
+                            $blocker_title = $blocker ? ($titles_by_id[$blocker] ?? 'quest sebelumnya') : '';
+                            $is_next = ($qid === $next_up_id && !$is_done);
                         ?>
-                            <div class="quest-item <?= $is_done ? 'completed' : '' ?>" data-status="<?= $is_done ? 'done' : 'todo' ?>">
+                            <div class="quest-item <?= $is_done ? 'completed' : ($blocker ? 'locked' : '') ?>" data-status="<?= $is_done ? 'done' : 'todo' ?>">
                                 <div class="d-flex align-items-start gap-3">
                                     <!-- Interactive Checkbox Form -->
                                     <form method="POST" action="complete_quest.php" class="quest-toggle-form m-0">
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="quest_id" value="<?= $q['id'] ?>">
+                                        <?php if ($blocker): ?>
+                                        <button type="submit" class="quest-check-btn" disabled title="Terkunci — selesaikan <?= htmlspecialchars($blocker_title) ?> dulu" aria-label="Quest terkunci: <?= htmlspecialchars($q['title']) ?>. Selesaikan <?= htmlspecialchars($blocker_title) ?> dulu.">
+                                            <i class="fas fa-lock"></i>
+                                        </button>
+                                        <?php else: ?>
                                         <button type="submit" class="quest-check-btn" title="<?= $is_done ? 'Batalkan selesai' : 'Tandai selesai (+'.$q['xp_reward'].' XP)' ?>" aria-label="<?= $is_done ? 'Batalkan quest selesai: ' : 'Tandai quest selesai: ' ?><?= htmlspecialchars($q['title']) ?>">
                                             <i class="fas <?= $is_done ? 'fa-check' : 'fa-circle' ?>"></i>
                                         </button>
+                                        <?php endif; ?>
                                     </form>
 
                                     <!-- Quest Info -->
                                     <div class="flex-grow-1 min-w-0">
                                         <div class="quest-title-row">
-                                            <h2 class="h6 fw-bold quest-title"><?= htmlspecialchars($q['title']) ?> <?php if (!empty($q['is_custom'])): ?><span class="quest-pending">Custom</span><?php endif; ?></h2>
+                                            <h2 class="h6 fw-bold quest-title"><?= htmlspecialchars($q['title']) ?> <?php if (!empty($q['is_custom'])): ?><span class="quest-pending">Custom</span><?php endif; ?><?php if ($is_next): ?><span class="quest-pending quest-next">Berikutnya</span><?php endif; ?></h2>
                                             <span class="quest-badge-xp">
                                                 <i class="fas fa-bolt" aria-hidden="true"></i> +<?= (int)$q['xp_reward'] ?> XP
                                             </span>
@@ -155,6 +180,10 @@ require_once 'includes/navbar.php';
                                             <?php if ($is_done): ?>
                                                 <span class="quest-done">
                                                     <i class="fas fa-check" aria-hidden="true"></i>Selesai <?= date('d M Y', strtotime($q['completed_at'])) ?>
+                                                </span>
+                                            <?php elseif ($blocker): ?>
+                                                <span class="quest-locked">
+                                                    <i class="fas fa-lock" aria-hidden="true"></i>Terkunci · selesaikan <?= htmlspecialchars(mb_strimwidth($blocker_title, 0, 45, '...')) ?> dulu
                                                 </span>
                                             <?php endif; ?>
                                             <?php if ($subs): ?><span class="small text-muted"><?= $sdone ?>/<?= count($subs) ?> langkah</span><?php endif; ?>

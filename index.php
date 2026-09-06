@@ -47,6 +47,25 @@ $stmt->execute();
 $quests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
+$lock_done = [];
+$lock_prev = [];
+try {
+    $ld = $conn->prepare("SELECT quest_id FROM user_quests WHERE user_id = ?");
+    $ld->bind_param("i", $user_id);
+    $ld->execute();
+    foreach ($ld->get_result()->fetch_all(MYSQLI_ASSOC) as $lr) $lock_done[(int)$lr['quest_id']] = true;
+    $ld->close();
+    $lg = $conn->prepare("SELECT id FROM quests WHERE user_id IS NULL ORDER BY week ASC, id ASC");
+    $lg->execute();
+    $pg = null;
+    foreach ($lg->get_result()->fetch_all(MYSQLI_ASSOC) as $gr) {
+        $gid = (int)$gr['id'];
+        $lock_prev[$gid] = $pg;
+        $pg = $gid;
+    }
+    $lg->close();
+} catch (Throwable $e) {}
+
 // Dashboard counts dalam 1 roundtrip (quest + pomodoro + XP minggu ini + review jatuh tempo)
 $stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id = uq.quest_id WHERE uq.user_id = ? AND (q.user_id IS NULL OR q.user_id = ?)) AS total_done, (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS total_cnt, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS pomo_today, (SELECT COALESCE(SUM(amount),0) FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS xp_week, (SELECT COUNT(*) FROM reviews WHERE user_id = ? AND next_due <= CURDATE()) AS due_reviews");
 $stmt->bind_param("iiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id);
@@ -132,7 +151,12 @@ require_once 'includes/navbar.php';
     $claimable_xp = 0; $claimable_n = 0;
     foreach ($missions as $m) if (!empty($m['done']) && empty($m['claimed'])) { $claimable_n++; $claimable_xp += (int)$m['xp']; }
     $next_quest = null;
-    foreach ($quests as $q) if (empty($q['completed_at'])) { $next_quest = $q; break; }
+    foreach ($quests as $q) {
+        if (!empty($q['completed_at'])) continue;
+        if (quest_blocker($q, $lock_done, $lock_prev[(int)$q['id']] ?? null) !== null) continue;
+        $next_quest = $q;
+        break;
+    }
     ?>
     <?php if ($claimable_n > 0): ?>
     <div class="next-action">

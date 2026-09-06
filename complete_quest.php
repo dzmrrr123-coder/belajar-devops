@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
     $conn->begin_transaction();
     try {
     // Fetch quest info (global atau milik sendiri saja)
-    $stmt = $conn->prepare("SELECT id, title, xp_reward FROM quests WHERE id = ? AND (user_id IS NULL OR user_id = ?)");
+    $stmt = $conn->prepare("SELECT id, user_id, week, title, xp_reward, depends_on FROM quests WHERE id = ? AND (user_id IS NULL OR user_id = ?)");
     $stmt->bind_param("ii", $quest_id, $user_id);
     $stmt->execute();
     $q_res = $stmt->get_result();
@@ -60,6 +60,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
     $stmt->execute();
     $existing = $stmt->get_result()->fetch_assoc();
     $stmt->close();
+
+    $done_ids = [];
+    $dq = $conn->prepare("SELECT quest_id FROM user_quests WHERE user_id = ?");
+    $dq->bind_param("i", $user_id);
+    $dq->execute();
+    foreach ($dq->get_result()->fetch_all(MYSQLI_ASSOC) as $dr) $done_ids[(int)$dr['quest_id']] = true;
+    $dq->close();
+
+    $prev_global = null;
+    if (empty($quest['user_id'])) {
+        $pq = $conn->prepare("SELECT id FROM quests WHERE user_id IS NULL AND (week < ? OR (week = ? AND id < ?)) ORDER BY week DESC, id DESC LIMIT 1");
+        $qw = (int)$quest['week'];
+        $pq->bind_param("iii", $qw, $qw, $quest_id);
+        $pq->execute();
+        $pr = $pq->get_result()->fetch_assoc();
+        $pq->close();
+        $prev_global = $pr ? (int)$pr['id'] : null;
+    }
+
+    if (!$existing) {
+        $blocker = quest_blocker(['id' => $quest_id, 'user_id' => $quest['user_id'], 'depends_on' => $quest['depends_on']], $done_ids, $prev_global);
+        if ($blocker !== null) {
+            $bt = $conn->prepare("SELECT title FROM quests WHERE id = ?");
+            $bt->bind_param("i", $blocker);
+            $bt->execute();
+            $brow = $bt->get_result()->fetch_assoc();
+            $bt->close();
+            $btitle = (string)($brow['title'] ?? 'quest sebelumnya');
+            $conn->rollback();
+            if ($is_ajax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Terkunci. Selesaikan "' . $btitle . '" dulu.']);
+                exit();
+            }
+            set_flash('warning', 'Quest terkunci. Selesaikan "' . $btitle . '" dulu.');
+            redirect('quests.php');
+        }
+    }
 
     $action = '';
     $leveled_up = false;
@@ -145,6 +183,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
     }
 
     if ($action === 'completed') $new_badges = check_and_unlock_badges($conn, $user_id);
+    $newly_unlocked = [];
+    if ($action === 'completed') {
+        $gq = $conn->prepare("SELECT id, user_id, week, title, depends_on FROM quests WHERE user_id IS NULL ORDER BY week ASC, id ASC");
+        $gq->execute();
+        $globals = $gq->get_result()->fetch_all(MYSQLI_ASSOC);
+        $gq->close();
+        $pmap = quest_prev_map($globals);
+        $done_ids[$quest_id] = true;
+        foreach ($globals as $g) {
+            $gid = (int)$g['id'];
+            if ($gid === $quest_id || isset($done_ids[$gid])) continue;
+            $eff = isset($g['depends_on']) && (int)$g['depends_on'] > 0 ? (int)$g['depends_on'] : ($pmap[$gid] ?? null);
+            if ($eff === $quest_id) $newly_unlocked[] = ['id' => $gid, 'title' => (string)$g['title']];
+        }
+        if (!empty($newly_unlocked) && !$is_ajax) {
+            $names = array_map(fn($u) => '"' . $u['title'] . '"', array_slice($newly_unlocked, 0, 2));
+            $msg .= ' Terbuka: ' . implode(', ', $names) . '.';
+        }
+    }
     $conn->commit();
     } catch (Throwable $e) {
         $conn->rollback();
@@ -177,6 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
             'quests_done' => $quests_done,
             'quests_total' => $quests_total,
             'new_badges' => $new_badges,
+            'newly_unlocked' => $newly_unlocked ?? [],
             'message' => $msg . (!empty($new_badges) ? ' Badge baru: ' . implode(', ', $new_badges) . '!' : '')
         ]);
         exit();

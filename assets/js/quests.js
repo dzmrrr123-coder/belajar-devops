@@ -101,6 +101,10 @@ function applyQuestResponse(data, form) {
     if (data.new_badges && data.new_badges.length && data.action !== 'completed') {
         setTimeout(() => showToast('Badge baru: ' + data.new_badges.join(', ') + '!', 'success'), 600);
     }
+    if (data.action === 'completed' && Array.isArray(data.newly_unlocked) && data.newly_unlocked.length) {
+        const names = data.newly_unlocked.slice(0, 2).map(u => u.title).join(', ');
+        setTimeout(() => showToast('Quest terbuka: ' + names + '!', 'info'), 1200);
+    }
 }
 
 /* Quest toggle */
