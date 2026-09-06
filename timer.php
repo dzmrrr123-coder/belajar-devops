@@ -73,7 +73,7 @@ require_once 'includes/navbar.php';
         <!-- Main Timer Card -->
         <div class="col-lg-8">
             <div class="timer-container focus-workspace">
-                <div class="d-flex justify-content-center gap-2 mb-4">
+                <div class="d-flex justify-content-center gap-2 mb-4 timer-modes" role="group" aria-label="Mode timer">
                     <button type="button" class="btn btn-cyber-outline btn-sm timer-mode-btn active" data-mode="focus" data-time="25">
                         <i class="fas fa-brain me-1 text-primary"></i> Fokus (25m)
                     </button>
@@ -107,7 +107,7 @@ require_once 'includes/navbar.php';
                 </div>
 
                 <!-- Controls -->
-                <div class="d-flex justify-content-center align-items-center gap-3 mb-4">
+                <div class="d-flex justify-content-center align-items-center flex-wrap gap-3 mb-4">
                     <button type="button" class="btn btn-cyber px-4 py-2 fs-5" id="startBtn" onclick="toggleTimer()">
                         <i class="fas fa-play me-2"></i> <span id="startBtnText">Mulai</span>
                     </button>
@@ -122,8 +122,8 @@ require_once 'includes/navbar.php';
                 <p class="text-secondary small text-center mb-3 mx-auto" style="max-width: 480px;">Selesaikan satu sesi fokus 25 menit untuk +10 XP.</p>
                 <div class="mx-auto" style="max-width: 480px;">
                     <div class="row g-2 mb-3">
-                        <div class="col-7"><label class="form-label" for="focusNote">Fokus saat ini (opsional)</label><input id="focusNote" class="form-control" maxlength="255" placeholder="Contoh: CRUD produk + prepared statement"></div>
-                        <div class="col-5"><label class="form-label" for="customMinutes">Fokus custom (mnt)</label><div class="d-flex gap-2"><input id="customMinutes" type="number" min="5" max="120" value="25" class="form-control"><button type="button" class="btn btn-cyber-outline flex-shrink-0" onclick="setCustomFocus()" title="Pakai durasi custom" aria-label="Pakai durasi custom"><i class="fas fa-check"></i></button></div></div>
+                        <div class="col-12 col-md-7"><label class="form-label" for="focusNote">Fokus saat ini (opsional)</label><input id="focusNote" class="form-control" maxlength="255" placeholder="Contoh: CRUD produk + prepared statement"></div>
+                        <div class="col-12 col-md-5"><label class="form-label" for="customMinutes">Fokus custom (mnt)</label><div class="d-flex gap-2"><input id="customMinutes" type="number" min="5" max="120" value="25" class="form-control"><button type="button" class="btn btn-cyber-outline flex-shrink-0" onclick="setCustomFocus()" title="Pakai durasi custom" aria-label="Pakai durasi custom"><i class="fas fa-check"></i></button></div></div>
                     </div>
                 </div>
             </div>
@@ -150,9 +150,9 @@ require_once 'includes/navbar.php';
                         </div>
                     </div>
                 </div>
-                <div class="d-flex justify-content-between text-secondary small pt-2 border-top">
+                <div class="d-flex justify-content-between total-row text-secondary small pt-2 border-top">
                     <span>Total Sepanjang Waktu:</span>
-                    <strong class="text-white"><?= (int)$all_stats['total_sessions'] ?> sesi (<?= round((int)$all_stats['total_minutes'] / 60, 1) ?> jam)</strong>
+                    <strong class="text-white text-nowrap"><?= (int)$all_stats['total_sessions'] ?> sesi (<?= round((int)$all_stats['total_minutes'] / 60, 1) ?> jam)</strong>
                 </div>
             </div>
 
@@ -183,12 +183,12 @@ require_once 'includes/navbar.php';
                 <div id="recentSessionsList" class="d-flex flex-column gap-2">
                     <?php if (!empty($recent_sessions)): ?>
                         <?php foreach ($recent_sessions as $sess): ?>
-                            <div class="session-row p-2 px-3 d-flex justify-content-between align-items-center">
-                                <div class="d-flex align-items-center gap-2 small">
-                                    <i class="fas fa-check-circle text-emerald"></i>
-                                    <span><?= (int)$sess['duration_minutes'] ?> Menit Selesai<?= !empty($sess['focus_note']) ? ' · ' . htmlspecialchars(mb_strimwidth($sess['focus_note'], 0, 40, '...')) : '' ?></span>
+                            <div class="session-row session-item p-2 px-3 d-flex justify-content-between align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-2 small min-w-0 flex-grow-1">
+                                    <i class="fas fa-check-circle text-emerald flex-shrink-0" aria-hidden="true"></i>
+                                    <span class="session-note"><?= (int)$sess['duration_minutes'] ?> Menit Selesai<?= !empty($sess['focus_note']) ? ' · ' . htmlspecialchars(mb_strimwidth($sess['focus_note'], 0, 40, '...')) : '' ?></span>
                                 </div>
-                                <span class="text-muted small"><?= date('H:i, d M', strtotime($sess['completed_at'])) ?></span>
+                                <span class="text-muted small session-time"><?= date('H:i, d M', strtotime($sess['completed_at'])) ?></span>
                             </div>
                         <?php endforeach; ?>
                     <?php else: ?>

@@ -374,3 +374,14 @@ section[aria-labelledby="continue-material-heading"] .list-meta,section[aria-lab
 .review-card{padding:18px 16px}
 .review-progress{font-size:.72rem}
 }
+.session-item{min-width:0}
+.session-item .flex-grow-1{flex:1 1 0}
+.session-note{min-width:0;overflow-wrap:break-word}
+.session-time{flex-shrink:0;white-space:nowrap;font-variant-numeric:tabular-nums}
+.total-row{flex-wrap:wrap;gap:2px 8px}
+@media(max-width:767.98px){
+.timer-modes{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}
+.timer-modes .timer-mode-btn{flex:0 0 auto;white-space:nowrap}
+.session-note{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.timer-container .row .form-label{min-height:0}
+}
