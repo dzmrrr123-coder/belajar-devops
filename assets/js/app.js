@@ -543,7 +543,7 @@ document.addEventListener('DOMContentLoaded', function() {
             el.id = 'ltTimerPill';
             el.className = 'timer-pill';
             el.href = 'timer.php';
-            el.innerHTML = '<i class="fas fa-clock" aria-hidden="true"></i><span class="timer-pill-time"></span><span class="timer-pill-label"></span><button type="button" class="timer-pill-close" aria-label="Tutup bubble timer"><i class="fas fa-xmark" aria-hidden="true"></i></button>';
+            el.innerHTML = '<i class="fas fa-grip-vertical timer-pill-handle" aria-hidden="true" title="Geser untuk memindah"></i><i class="fas fa-clock" aria-hidden="true"></i><span class="timer-pill-time"></span><span class="timer-pill-label"></span><button type="button" class="timer-pill-close" aria-label="Tutup bubble timer"><i class="fas fa-xmark" aria-hidden="true"></i></button>';
             el.querySelector('.timer-pill-close').addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -564,43 +564,73 @@ document.addEventListener('DOMContentLoaded', function() {
         function drop() { if (el) { el.remove(); el = null; } }
         function enableDrag(node) {
             let sx = 0, sy = 0, ox = 0, oy = 0, dragging = false, pid = null;
+            function clampPos(x, y) {
+                const w = node.offsetWidth || 140, h = node.offsetHeight || 40;
+                return {
+                    x: Math.max(8, Math.min(window.innerWidth - w - 8, x)),
+                    y: Math.max(8, Math.min(window.innerHeight - h - 8, y))
+                };
+            }
+            function place(x, y) {
+                const p = clampPos(x, y);
+                node.style.left = p.x + 'px';
+                node.style.top = p.y + 'px';
+                node.style.right = 'auto';
+                node.style.bottom = 'auto';
+                return p;
+            }
+            function save(x, y) {
+                try { localStorage.setItem(POS_KEY, JSON.stringify({ left: x, top: y })); } catch (err) {}
+            }
             node.addEventListener('pointerdown', function(e) {
                 if (e.target.closest('.timer-pill-close')) return;
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
                 pid = e.pointerId;
                 sx = e.clientX; sy = e.clientY;
                 const r = node.getBoundingClientRect();
                 ox = sx - r.left; oy = sy - r.top;
                 dragging = false;
-                try { node.setPointerCapture(e.pointerId); } catch (err) {}
+                node.classList.remove('snap');
             });
-            node.addEventListener('pointermove', function(e) {
-                if (e.pointerId !== pid) return;
+            window.addEventListener('pointermove', function(e) {
+                if (pid === null || e.pointerId !== pid) return;
                 if (!dragging && Math.hypot(e.clientX - sx, e.clientY - sy) < 6) return;
-                dragging = true;
-                node.dataset.moved = '1';
-                node.classList.add('dragging');
-                node.style.left = Math.max(0, Math.min(window.innerWidth - 40, e.clientX - ox)) + 'px';
-                node.style.top = Math.max(0, Math.min(window.innerHeight - 40, e.clientY - oy)) + 'px';
-                node.style.right = 'auto';
-                node.style.bottom = 'auto';
-            });
+                if (!dragging) { dragging = true; node.dataset.moved = '1'; node.classList.add('dragging'); }
+                if (e.cancelable) e.preventDefault();
+                place(e.clientX - ox, e.clientY - oy);
+            }, { passive: false });
             function end(e) {
-                if (e.pointerId !== pid) return;
+                if (pid === null || e.pointerId !== pid) return;
                 pid = null;
                 node.classList.remove('dragging');
-                if (dragging) {
-                    dragging = false;
-                    try {
-                        const r = node.getBoundingClientRect();
-                        localStorage.setItem(POS_KEY, JSON.stringify({ left: r.left, top: r.top }));
-                    } catch (err) {}
-                }
+                if (!dragging) return;
+                dragging = false;
+                const r = node.getBoundingClientRect();
+                const snapX = (r.left + r.width / 2 < window.innerWidth / 2) ? 12 : window.innerWidth - r.width - 12;
+                node.classList.add('snap');
+                const p = place(snapX, r.top);
+                save(p.x, p.y);
             }
-            node.addEventListener('pointerup', end);
-            node.addEventListener('pointercancel', end);
+            window.addEventListener('pointerup', end);
+            window.addEventListener('pointercancel', end);
             node.addEventListener('click', function(e) {
                 if (node.dataset.moved === '1') { e.preventDefault(); e.stopPropagation(); node.dataset.moved = '0'; }
             }, true);
+            node.addEventListener('keydown', function(e) {
+                const step = e.shiftKey ? 2 : 16;
+                let dx = 0, dy = 0;
+                if (e.key === 'ArrowLeft') dx = -step;
+                else if (e.key === 'ArrowRight') dx = step;
+                else if (e.key === 'ArrowUp') dy = -step;
+                else if (e.key === 'ArrowDown') dy = step;
+                else return;
+                e.preventDefault();
+                const r = node.getBoundingClientRect();
+                node.classList.add('snap');
+                const p = place(r.left + dx, r.top + dy);
+                save(p.x, p.y);
+                setTimeout(function() { node.classList.remove('snap'); }, 220);
+            });
         }
         function finishRemote(s) {
             const mode = s.mode || 'focus';
