@@ -5,13 +5,23 @@ $hud_level = 1;
 $hud_rank = '';
 
 if (is_logged_in()) {
-    $nav_conn = db_connect();
     $u_id = (int)$_SESSION['user_id'];
-    $stmt = $nav_conn->prepare("SELECT id, username, email, xp, streak, last_login_at FROM users WHERE id = ?");
-    $stmt->bind_param("i", $u_id);
-    $stmt->execute();
-    $hud_user = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    if (isset($user) && is_array($user) && (int)($user['id'] ?? 0) === $u_id && isset($user['username'], $user['xp'], $user['streak'])) {
+        $hud_user = [
+            'username' => $user['username'],
+            'email' => $user['email'] ?? '',
+            'xp' => $user['xp'],
+            'streak' => $user['streak'],
+            'last_login_at' => $user['last_login_at'] ?? null,
+        ];
+    } else {
+        $nav_conn = db_connect();
+        $stmt = $nav_conn->prepare("SELECT id, username, email, xp, streak, last_login_at FROM users WHERE id = ?");
+        $stmt->bind_param("i", $u_id);
+        $stmt->execute();
+        $hud_user = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+    }
 
     if ($hud_user) {
         $hud_level = calculate_level($hud_user['xp']);

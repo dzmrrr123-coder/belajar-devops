@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->close();
 
     // Count today's sessions
-    $stmt = $conn->prepare("SELECT COUNT(*) as today_sessions, SUM(duration_minutes) as today_minutes FROM pomodoro_sessions WHERE user_id = ? AND DATE(completed_at) = CURDATE()");
+    $stmt = $conn->prepare("SELECT COUNT(*) as today_sessions, SUM(duration_minutes) as today_minutes FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $stats = $stmt->get_result()->fetch_assoc();

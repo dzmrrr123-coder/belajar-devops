@@ -85,7 +85,7 @@ $resources = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
 // Today pomodoro count
-$stmt = $conn->prepare("SELECT COUNT(*) as pomodoro_today FROM pomodoro_sessions WHERE user_id = ? AND DATE(completed_at) = CURDATE()");
+$stmt = $conn->prepare("SELECT COUNT(*) as pomodoro_today FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $pomodoro_today = (int)($stmt->get_result()->fetch_assoc()['pomodoro_today'] ?? 0);

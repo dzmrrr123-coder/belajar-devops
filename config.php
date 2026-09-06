@@ -779,15 +779,15 @@ function get_daily_mission_status($conn, $user_id) {
     $out = [];
     foreach ($defs as $k => $d) $out[$k] = ['done' => false, 'claimed' => false] + $d;
     try {
-        $q = $conn->prepare("SELECT COUNT(*) c FROM user_quests WHERE user_id=? AND DATE(completed_at)=CURDATE()");
+        $q = $conn->prepare("SELECT COUNT(*) c FROM user_quests WHERE user_id=? AND completed_at=CURDATE()");
         $q->bind_param("i", $user_id); $q->execute();
         $out['quest1']['done'] = ((int)($q->get_result()->fetch_assoc()['c'] ?? 0)) > 0;
         $q->close();
-        $q = $conn->prepare("SELECT COUNT(*) c FROM pomodoro_sessions WHERE user_id=? AND DATE(completed_at)=CURDATE()");
+        $q = $conn->prepare("SELECT COUNT(*) c FROM pomodoro_sessions WHERE user_id=? AND completed_at>=CURDATE() AND completed_at<CURDATE() + INTERVAL 1 DAY");
         $q->bind_param("i", $user_id); $q->execute();
         $out['focus1']['done'] = ((int)($q->get_result()->fetch_assoc()['c'] ?? 0)) > 0;
         $q->close();
-        $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM errors WHERE user_id=? AND DATE(created_at)=CURDATE()) + (SELECT COUNT(*) FROM questions WHERE user_id=? AND DATE(created_at)=CURDATE()) AS c");
+        $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM errors WHERE user_id=? AND created_at>=CURDATE() AND created_at<CURDATE() + INTERVAL 1 DAY) + (SELECT COUNT(*) FROM questions WHERE user_id=? AND created_at>=CURDATE() AND created_at<CURDATE() + INTERVAL 1 DAY) AS c");
         $q->bind_param("ii", $user_id, $user_id); $q->execute();
         $out['note1']['done'] = ((int)($q->get_result()->fetch_assoc()['c'] ?? 0)) > 0;
         $q->close();

@@ -9,7 +9,7 @@ $user_id = (int)$_SESSION['user_id'];
 $stmt = $conn->prepare("
     SELECT COUNT(*) as today_sessions, COALESCE(SUM(duration_minutes), 0) as today_minutes 
     FROM pomodoro_sessions 
-    WHERE user_id = ? AND DATE(completed_at) = CURDATE()
+    WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY
 ");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
@@ -43,7 +43,7 @@ $daily_target = 2;
 $target_done = 0;
 $weekly = [];
 try {
-    $q = $conn->prepare("SELECT COUNT(*) c FROM pomodoro_sessions WHERE user_id = ? AND DATE(completed_at) = CURDATE() AND duration_minutes >= 25 AND mode = 'focus'");
+    $q = $conn->prepare("SELECT COUNT(*) c FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY AND duration_minutes >= 25 AND mode = 'focus'");
     $q->bind_param("i", $user_id); $q->execute();
     $target_done = (int)($q->get_result()->fetch_assoc()['c'] ?? 0);
     $q->close();
