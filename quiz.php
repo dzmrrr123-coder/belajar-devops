@@ -16,12 +16,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
     $source_id = (int)($_POST['source_id'] ?? 0);
     $question = mb_substr(trim(clean($_POST['question'] ?? '')), 0, 255);
     $answer = mb_substr(trim(clean($_POST['answer'] ?? '')), 0, 2000);
+    $qtopic = in_array($_POST['topic'] ?? '', quiz_topics(), true) ? $_POST['topic'] : 'General';
     $back = ($_POST['back'] ?? '') === 'questions.php' ? 'questions.php' : 'errors.php';
     if ($question === '' || $answer === '' || $source_id <= 0) {
         set_flash('warning', 'Pertanyaan, jawaban, dan sumber wajib diisi.');
     } else {
-        $ins = $conn->prepare("INSERT INTO quiz_cards (user_id, source, source_id, question, answer) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE question = VALUES(question), answer = VALUES(answer)");
-        $ins->bind_param("isiss", $user_id, $source, $source_id, $question, $answer);
+        $ins = $conn->prepare("INSERT INTO quiz_cards (user_id, source, source_id, question, answer, topic) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE question = VALUES(question), answer = VALUES(answer), topic = VALUES(topic)");
+        $ins->bind_param("isssss", $user_id, $source, $source_id, $question, $answer, $qtopic);
         if ($ins->execute()) {
             $cid = $source_id > 0 ? (int)$conn->insert_id : 0;
             if ($cid <= 0) {

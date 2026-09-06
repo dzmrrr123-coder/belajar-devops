@@ -213,7 +213,7 @@ require_once 'includes/navbar.php';
                                 </div>
 
                                 <div class="d-flex align-items-center gap-1">
-                                    <button type="button" class="btn btn-cyber-outline btn-sm py-1 px-2 text-secondary" title="Jadikan kartu kuis" aria-label="Jadikan kartu kuis" onclick="openQuizModal(<?= (int)$err['id'] ?>, <?= htmlspecialchars(json_encode(mb_strimwidth($err['error_message'], 0, 255))) ?>, <?= htmlspecialchars(json_encode($err['solution'] ?? '')) ?>)">
+                                    <button type="button" class="btn btn-cyber-outline btn-sm py-1 px-2 text-secondary" title="Jadikan kartu kuis" aria-label="Jadikan kartu kuis" onclick="openQuizModal(<?= (int)$err['id'] ?>, <?= htmlspecialchars(json_encode(mb_strimwidth($err['error_message'], 0, 255))) ?>, <?= htmlspecialchars(json_encode($err['solution'] ?? '')) ?>, <?= htmlspecialchars(json_encode($category_val)) ?>)">
                                         <i class="fas fa-brain"></i>
                                     </button>
                                     <!-- Edit Button -->
@@ -292,6 +292,7 @@ require_once 'includes/navbar.php';
                     <input type="hidden" name="source" value="error">
                     <input type="hidden" name="source_id" id="quizSourceId">
                     <input type="hidden" name="back" value="errors.php">
+                    <div class="mb-3"><label class="form-label" for="quizTopic">Topik</label><select name="topic" id="quizTopic" class="form-select"><?php foreach (quiz_topics() as $t): ?><option value="<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($t) ?></option><?php endforeach; ?></select></div>
                     <div class="mb-3"><label class="form-label" for="quizQuestion">Pertanyaan</label><textarea name="question" id="quizQuestion" class="form-control" rows="2" required maxlength="255"></textarea></div>
                     <div class="mb-1"><label class="form-label" for="quizAnswer">Jawaban</label><textarea name="answer" id="quizAnswer" class="form-control" rows="3" required></textarea></div>
                 </div>
@@ -360,10 +361,13 @@ require_once 'includes/navbar.php';
 let activeCat = 'all';
 let activeSolved = 'all';
 
-function openQuizModal(id, question, answer) {
+const QUIZ_TOPICS = <?= json_encode(quiz_topics()) ?>;
+function openQuizModal(id, question, answer, topic) {
     document.getElementById('quizSourceId').value = id;
     document.getElementById('quizQuestion').value = question || '';
     document.getElementById('quizAnswer').value = answer || '';
+    const ts = document.getElementById('quizTopic');
+    if (ts) ts.value = QUIZ_TOPICS.includes(topic) ? topic : 'General';
     new bootstrap.Modal(document.getElementById('quizModal')).show();
 }
 

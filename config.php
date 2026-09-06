@@ -131,10 +131,10 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 27);
+define('SCHEMA_VERSION', 28);
 
 function quiz_topics() {
-    return ['Linux', 'Git', 'MySQL', 'PHP', 'Laravel', 'Docker', 'AWS', 'General'];
+    return ['Linux', 'Git', 'MySQL', 'PHP', 'Laravel', 'Docker', 'AWS', 'Networking', 'General'];
 }
 
 function quiz_bank_cards() {
@@ -175,6 +175,12 @@ function quiz_bank_cards() {
         ['AWS', 'Perintah koneksi SSH ke EC2?', 'ssh -i kunci.pem ubuntu@<ip-publik>'],
         ['AWS', 'Tool gratis sertifikat SSL?', "Let's Encrypt via Certbot"],
         ['AWS', 'Apa itu reverse proxy (Nginx)?', 'Server perantara yang meneruskan request ke aplikasi di belakangnya + terminasi SSL'],
+        ['Networking', 'Apa itu alamat IP dan subnet?', 'IP identitas host di jaringan; subnet membagi jaringan jadi blok (misal 192.168.1.0/24)'],
+        ['Networking', 'Bedanya HTTP dan HTTPS?', 'HTTPS = HTTP + enkripsi TLS; wajib untuk login & data sensitif'],
+        ['Networking', 'Apa fungsi DNS?', 'Menerjemahkan nama domain (contoh.com) jadi alamat IP'],
+        ['Networking', 'Port umum: 80, 443, 22, 3306?', '80 HTTP, 443 HTTPS, 22 SSH, 3306 MySQL'],
+        ['Networking', 'Apa itu ping dan kapan dipakai?', 'Menguji konektivitas & latency ke host: ping 8.8.8.8'],
+        ['Networking', 'Bedanya TCP dan UDP?', 'TCP andal berurutan (web, SSH); UDP cepat tanpa jaminan (video, DNS)'],
     ];
 }
 
@@ -404,7 +410,9 @@ function ensure_database_schema($conn) {
         try {
             $ur = $conn->query("SELECT id FROM `users`");
             if ($ur) {
-                while ($u = $ur->fetch_assoc()) seed_quiz_bank($conn, (int)$u['id']);
+                while ($u = $ur->fetch_assoc()) {
+                    seed_quiz_bank($conn, (int)$u['id']);
+                }
                 $ur->free();
             }
         } catch (Throwable $e) {}
