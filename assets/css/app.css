@@ -435,6 +435,16 @@ section[aria-labelledby="continue-material-heading"] .list-meta,section[aria-lab
 [data-theme="dark"] .hud-streak i{color:#e09a3c}
 .theme-toggle{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;font-size:.8rem}
 .theme-toggle:hover{color:var(--ink);border-color:var(--line-strong)}
+.lt-menu button.dropdown-item{background:none;border:none;width:100%;text-align:left;cursor:pointer;font:inherit}
+.theme-toggle-label{font-size:.86rem}
+@media(max-width:991.98px){
+.lt-navbar-inner{gap:8px}
+.lt-navbar .navbar-brand{font-size:.92rem;gap:8px}
+.brand-mark{width:26px;height:26px;font-size:.64rem}
+.hud-streak{font-size:.78rem}
+.avatar-circle{width:28px;height:28px}
+.lt-navbar .navbar-toggler{min-height:38px;min-width:38px;padding:6px 8px}
+}
 .quiz-page .quiz-card{border-left:3px solid var(--primary)}
 .skill-grid{display:grid;grid-template-columns:1fr;gap:10px}
 .skill-card{padding:14px;display:flex;flex-direction:column;gap:10px}

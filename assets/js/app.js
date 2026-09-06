@@ -343,24 +343,30 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    // Theme Toggle (dark / light, persisted)
-    const themeToggle = document.getElementById('ltThemeToggle');
+    // Theme Toggle (dark / light, persisted; may appear in navbar and/or user menu)
+    const themeToggles = document.querySelectorAll('.ltThemeToggle');
     function paintThemeIcon() {
         const dark = document.documentElement.dataset.theme === 'dark';
-        if (themeToggle) themeToggle.innerHTML = dark ? '<i class="fas fa-sun" aria-hidden="true"></i>' : '<i class="fas fa-moon" aria-hidden="true"></i>';
+        themeToggles.forEach(function(btn) {
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = dark ? 'fas fa-sun' : 'fas fa-moon';
+            const label = btn.querySelector('.theme-toggle-label');
+            if (label) label.textContent = dark ? 'Mode terang' : 'Mode gelap';
+            btn.setAttribute('aria-label', dark ? 'Ganti ke tema terang' : 'Ganti ke tema gelap');
+        });
         const meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute('content', dark ? '#121614' : '#2f6b5e');
     }
     paintThemeIcon();
-    if (themeToggle) {
-        themeToggle.addEventListener('click', function() {
+    themeToggles.forEach(function(btn) {
+        btn.addEventListener('click', function() {
             const dark = document.documentElement.dataset.theme !== 'dark';
             if (dark) document.documentElement.dataset.theme = 'dark';
             else document.documentElement.removeAttribute('data-theme');
             try { localStorage.setItem('lt_theme', dark ? 'dark' : 'light'); } catch (e) {}
             paintThemeIcon();
         });
-    }
+    });
     // Sound Toggle Button listener
     const soundToggle = document.getElementById('ltSoundToggle');
     if (soundToggle) {

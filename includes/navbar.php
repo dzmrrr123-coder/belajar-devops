@@ -40,9 +40,6 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
 
         <?php if (is_logged_in() && $hud_user): ?>
         <div class="d-flex align-items-center gap-2 ms-auto order-lg-2">
-            <button id="ltThemeToggle" class="theme-toggle" type="button" title="Mode gelap / terang" aria-label="Ganti tema gelap atau terang">
-                <i class="fas fa-moon" aria-hidden="true"></i>
-            </button>
             <span class="hud-streak" title="Streak belajar">
                 <i class="fas fa-fire" aria-hidden="true"></i>
                 <span id="hudStreak"><?= (int)$hud_user['streak'] ?></span>
@@ -63,6 +60,7 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
                     <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user"></i>Profil &amp; badge</a></li>
                     <li><a class="dropdown-item" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a></li>
                     <li><a class="dropdown-item" href="export.php"><i class="fas fa-file-export"></i>Export CV</a></li>
+                    <li><button type="button" class="dropdown-item ltThemeToggle"><i class="fas fa-moon" aria-hidden="true"></i><span class="theme-toggle-label">Mode gelap</span></button></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item is-danger" href="logout.php"><i class="fas fa-arrow-right-from-bracket"></i>Keluar</a></li>
                 </ul>
@@ -99,7 +97,7 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
         </div>
         <?php else: ?>
         <div class="ms-auto d-flex align-items-center gap-2">
-            <button id="ltThemeToggle" class="theme-toggle" type="button" title="Mode gelap / terang" aria-label="Ganti tema gelap atau terang">
+            <button class="theme-toggle ltThemeToggle" type="button" title="Mode gelap / terang" aria-label="Ganti tema gelap atau terang">
                 <i class="fas fa-moon" aria-hidden="true"></i>
             </button>
             <a href="login.php" class="btn btn-cyber-outline btn-sm">Masuk</a>
