@@ -29,6 +29,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet"></noscript>
     <link href="assets/css/app.css?v=<?= filemtime(__DIR__ . '/../assets/css/app.css') ?>" rel="stylesheet">
+    <script>try{var _lt=localStorage.getItem('lt_theme');if(_lt==='dark'||(!_lt&&matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.dataset.theme='dark';}}catch(e){}</script>
 </head>
 <body class="<?= is_logged_in() ? 'has-tabbar' : '' ?>">
 <a class="skip-link" href="#main">Lewati ke konten utama</a>

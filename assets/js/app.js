@@ -343,6 +343,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    // Theme Toggle (dark / light, persisted)
+    const themeToggle = document.getElementById('ltThemeToggle');
+    function paintThemeIcon() {
+        const dark = document.documentElement.dataset.theme === 'dark';
+        if (themeToggle) themeToggle.innerHTML = dark ? '<i class="fas fa-sun" aria-hidden="true"></i>' : '<i class="fas fa-moon" aria-hidden="true"></i>';
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', dark ? '#121614' : '#2f6b5e');
+    }
+    paintThemeIcon();
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+            const dark = document.documentElement.dataset.theme !== 'dark';
+            if (dark) document.documentElement.dataset.theme = 'dark';
+            else document.documentElement.removeAttribute('data-theme');
+            try { localStorage.setItem('lt_theme', dark ? 'dark' : 'light'); } catch (e) {}
+            paintThemeIcon();
+        });
+    }
     // Sound Toggle Button listener
     const soundToggle = document.getElementById('ltSoundToggle');
     if (soundToggle) {

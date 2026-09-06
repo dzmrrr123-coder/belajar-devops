@@ -91,7 +91,14 @@ require_once 'includes/navbar.php';
                     <span class="review-due"><?= htmlspecialchars($due_label) ?> · interval <?= (int)$current['interval_day'] ?> hari</span>
                 </div>
                 <h2 class="h5 fw-bold review-title"><?= htmlspecialchars($current['title']) ?></h2>
-                <?php if (!empty($current['detail'])): ?><p class="text-secondary"><?= nl2br(htmlspecialchars(mb_strimwidth($current['detail'], 0, 400, '...'))) ?></p><?php endif; ?>
+                <?php if (!empty($current['detail'])): ?>
+                    <?php if (($current['source'] ?? '') === 'quiz'): ?>
+                    <details class="quiz-answer">
+                        <summary class="quiz-answer-toggle"><i class="fas fa-eye me-1" aria-hidden="true"></i>Lihat jawaban</summary>
+                        <div class="code-solution"><?= nl2br(htmlspecialchars(mb_strimwidth($current['detail'], 0, 400, '...'))) ?></div>
+                    </details>
+                    <?php else: ?><p class="text-secondary"><?= nl2br(htmlspecialchars(mb_strimwidth($current['detail'], 0, 400, '...'))) ?></p><?php endif; ?>
+                <?php endif; ?>
                 <form method="POST" action="review.php" class="review-actions">
                     <?= csrf_field() ?>
                     <input type="hidden" name="review_id" value="<?= (int)$current['id'] ?>">

@@ -131,7 +131,7 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 21);
+define('SCHEMA_VERSION', 22);
 
 // Auto-initialize schema & seed data safely without multi_query
 function ensure_database_schema($conn) {
@@ -322,6 +322,18 @@ function ensure_database_schema($conn) {
         @$conn->query("CREATE INDEX idx_errors_user ON `errors` (`user_id`, `created_at`)");
         @$conn->query("CREATE INDEX idx_pomodoro_user ON `pomodoro_sessions` (`user_id`, `completed_at`)");
         @$conn->query("CREATE INDEX idx_questions_user ON `questions` (`user_id`, `status`, `created_at`)");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `quiz_cards` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `user_id` INT NOT NULL,
+            `source` VARCHAR(16) NOT NULL DEFAULT 'error',
+            `source_id` INT NOT NULL DEFAULT 0,
+            `question` VARCHAR(255) NOT NULL,
+            `answer` TEXT NOT NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT `uq_quiz_card` UNIQUE (`user_id`, `source`, `source_id`),
+            CONSTRAINT `fk_quiz_cards_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("CREATE INDEX idx_quiz_cards_user ON `quiz_cards` (`user_id`)");
 
         // 8. Seed default quests and resources if quests table is empty
         $checkQuests = $conn->query("SELECT COUNT(*) AS total FROM `quests`");
@@ -847,6 +859,48 @@ function schedule_review($conn, $user_id, $source, $source_id, $title, $detail =
         $stmt->execute();
         $stmt->close();
     } catch (Throwable $e) {}
+}
+
+// Skill tree: 8 skill sejajar kategori catatan, minggu roadmap dipetakan ke skill
+function skill_defs() {
+    return [
+        'Linux' => ['icon' => 'fas fa-terminal', 'desc' => 'VPS, terminal & jaringan'],
+        'Git' => ['icon' => 'fas fa-code-branch', 'desc' => 'Version control & GitHub'],
+        'MySQL' => ['icon' => 'fas fa-database', 'desc' => 'Database & relasi'],
+        'PHP' => ['icon' => 'fas fa-file-code', 'desc' => 'Native, OOP & security'],
+        'Laravel' => ['icon' => 'fa-brands fa-laravel', 'desc' => 'Framework & middleware'],
+        'Docker' => ['icon' => 'fa-brands fa-docker', 'desc' => 'Container & registry'],
+        'AWS' => ['icon' => 'fa-brands fa-aws', 'desc' => 'Cloud & deploy'],
+        'General' => ['icon' => 'fas fa-layer-group', 'desc' => 'Lainnya'],
+    ];
+}
+
+function skill_for_week($week) {
+    $map = [1 => 'MySQL', 2 => 'PHP', 3 => 'PHP', 4 => 'PHP', 5 => 'Laravel', 6 => 'Laravel', 7 => 'Docker', 8 => 'Docker', 9 => 'AWS', 10 => 'Linux', 11 => 'Git', 12 => 'General'];
+    return $map[max(1, min(12, (int)$week))] ?? 'General';
+}
+
+function normalize_skill($topic) {
+    $t = strtolower(trim((string)$topic));
+    if ($t === '') return '';
+    $aliases = [
+        'MySQL' => ['mysql', 'database', 'db', 'sql', 'mariadb', 'relasi'],
+        'PHP' => ['php', 'oop', 'solid', 'composer'],
+        'Laravel' => ['laravel', 'eloquent', 'blade', 'middleware'],
+        'Docker' => ['docker', 'container', 'dockerfile', 'image'],
+        'Linux' => ['linux', 'ubuntu', 'bash', 'terminal', 'vps', 'nginx', 'ssl', 'domain', 'server'],
+        'Git' => ['git', 'github', 'version'],
+        'AWS' => ['aws', 'cloud', 'ec2', 'deploy'],
+    ];
+    foreach ($aliases as $skill => $keys) {
+        foreach ($keys as $k) {
+            if (strpos($t, $k) !== false) return $skill;
+        }
+    }
+    foreach (array_keys(skill_defs()) as $skill) {
+        if (strtolower($skill) === $t) return $skill;
+    }
+    return 'General';
 }
 
 // Flash messages

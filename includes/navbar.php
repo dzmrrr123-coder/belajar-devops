@@ -29,7 +29,7 @@ if (is_logged_in()) {
     }
 }
 
-$more_active = in_array($current_script, ['resources.php', 'questions.php', 'leaderboard.php'], true);
+$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'skills.php', 'leaderboard.php'], true);
 ?>
 <nav class="lt-navbar navbar navbar-expand-lg" aria-label="Navigasi Utama">
     <div class="container lt-navbar-inner">
@@ -40,6 +40,9 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'lea
 
         <?php if (is_logged_in() && $hud_user): ?>
         <div class="d-flex align-items-center gap-2 ms-auto order-lg-2">
+            <button id="ltThemeToggle" class="theme-toggle" type="button" title="Mode gelap / terang" aria-label="Ganti tema gelap atau terang">
+                <i class="fas fa-moon" aria-hidden="true"></i>
+            </button>
             <span class="hud-streak" title="Streak belajar">
                 <i class="fas fa-fire" aria-hidden="true"></i>
                 <span id="hudStreak"><?= (int)$hud_user['streak'] ?></span>
@@ -82,6 +85,8 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'lea
                     <ul class="dropdown-menu lt-menu p-2">
                         <li><a class="dropdown-item <?= $current_script === 'resources.php' ? 'active' : '' ?>" href="resources.php"><i class="fas fa-book-open"></i>Resources</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'questions.php' ? 'active' : '' ?>" href="questions.php"><i class="fas fa-circle-question"></i>Questions</a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'quiz.php' ? 'active' : '' ?>" href="quiz.php"><i class="fas fa-brain"></i>Kuis</a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'skills.php' ? 'active' : '' ?>" href="skills.php"><i class="fas fa-layer-group"></i>Skill tree</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'leaderboard.php' ? 'active' : '' ?>" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a></li>
                     </ul>
                 </li>
@@ -93,6 +98,9 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'lea
         </div>
         <?php else: ?>
         <div class="ms-auto d-flex align-items-center gap-2">
+            <button id="ltThemeToggle" class="theme-toggle" type="button" title="Mode gelap / terang" aria-label="Ganti tema gelap atau terang">
+                <i class="fas fa-moon" aria-hidden="true"></i>
+            </button>
             <a href="login.php" class="btn btn-cyber-outline btn-sm">Masuk</a>
             <a href="register.php" class="btn btn-cyber btn-sm">Daftar</a>
         </div>

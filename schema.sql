@@ -165,6 +165,19 @@ CREATE TABLE IF NOT EXISTS xp_events (
     INDEX idx_xp_events_ref (user_id, ref_type, ref_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS quiz_cards (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    source VARCHAR(16) NOT NULL DEFAULT 'error',
+    source_id INT NOT NULL DEFAULT 0,
+    question VARCHAR(255) NOT NULL,
+    answer TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_quiz_card UNIQUE (user_id, source, source_id),
+    CONSTRAINT fk_quiz_cards_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_quiz_cards_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS schema_meta (
     `k` VARCHAR(64) PRIMARY KEY,
     `v` VARCHAR(64) NOT NULL

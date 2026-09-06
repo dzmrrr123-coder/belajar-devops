@@ -1,0 +1,227 @@
+<?php
+require_once 'config.php';
+require_login();
+$conn = db_connect();
+$user_id = (int)$_SESSION['user_id'];
+
+// Tambah kartu kuis dari Notes / Questions
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create') {
+    verify_csrf();
+    $source = in_array($_POST['source'] ?? '', ['error', 'question'], true) ? $_POST['source'] : 'error';
+    $source_id = (int)($_POST['source_id'] ?? 0);
+    $question = mb_substr(trim(clean($_POST['question'] ?? '')), 0, 255);
+    $answer = mb_substr(trim(clean($_POST['answer'] ?? '')), 0, 2000);
+    $back = ($_POST['back'] ?? '') === 'questions.php' ? 'questions.php' : 'errors.php';
+    if ($question === '' || $answer === '' || $source_id <= 0) {
+        set_flash('warning', 'Pertanyaan, jawaban, dan sumber wajib diisi.');
+    } else {
+        $ins = $conn->prepare("INSERT INTO quiz_cards (user_id, source, source_id, question, answer) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE question = VALUES(question), answer = VALUES(answer)");
+        $ins->bind_param("isiss", $user_id, $source, $source_id, $question, $answer);
+        if ($ins->execute()) {
+            $cid = $source_id > 0 ? (int)$conn->insert_id : 0;
+            if ($cid <= 0) {
+                $g = $conn->prepare("SELECT id FROM quiz_cards WHERE user_id = ? AND source = ? AND source_id = ?");
+                $g->bind_param("isi", $user_id, $source, $source_id);
+                $g->execute();
+                $cid = (int)($g->get_result()->fetch_assoc()['id'] ?? 0);
+                $g->close();
+            }
+            if ($cid > 0) schedule_review($conn, $user_id, 'quiz', $cid, $question, $answer);
+            set_flash('success', 'Kartu kuis disimpan. Selamat berlatih!');
+        } else {
+            set_flash('danger', 'Gagal menyimpan kartu kuis.');
+        }
+        $ins->close();
+    }
+    redirect($back);
+}
+
+// Jawab kartu: Tahu (+2 XP sekali per kartu per hari) / Lupa (jadwal ulang besok)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answer') {
+    verify_csrf();
+    $card_id = (int)($_POST['card_id'] ?? 0);
+    $result = ($_POST['result'] ?? '') === 'know' ? 'know' : 'forgot';
+    $mode = ($_POST['mode'] ?? '') === 'review' ? 'review' : 'latihan';
+    $ids = array_values(array_filter(array_map('intval', explode(',', (string)($_POST['ids'] ?? '')))));
+    $i = max(0, (int)($_POST['i'] ?? 0));
+    $run = $_SESSION['quiz_run'] ?? ['tahu' => 0, 'lupa' => 0, 'xp' => 0];
+
+    $stmt = $conn->prepare("SELECT * FROM quiz_cards WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $card_id, $user_id);
+    $stmt->execute();
+    $card = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if ($card) {
+        if ($result === 'know') {
+            $rev = $conn->prepare("SELECT interval_day, done_count FROM reviews WHERE user_id = ? AND source = 'quiz' AND source_id = ?");
+            $rev->bind_param("ii", $user_id, $card_id);
+            $rev->execute();
+            $rrow = $rev->get_result()->fetch_assoc();
+            $rev->close();
+            $next = review_next_interval((int)($rrow['interval_day'] ?? 1));
+            $up = $conn->prepare("UPDATE reviews SET interval_day = ?, next_due = DATE_ADD(CURDATE(), INTERVAL ? DAY), done_count = done_count + 1 WHERE user_id = ? AND source = 'quiz' AND source_id = ?");
+            $up->bind_param("iiii", $next, $next, $user_id, $card_id);
+            $up->execute(); $up->close();
+            $chk = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND ref_type = 'quiz' AND ref_id = ? AND amount > 0 AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY");
+            $chk->bind_param("ii", $user_id, $card_id);
+            $chk->execute();
+            $already = (int)($chk->get_result()->fetch_assoc()['n'] ?? 0);
+            $chk->close();
+            if ($already <= 0) {
+                award_xp($conn, $user_id, 2, 'quiz', 'quiz', $card_id);
+                $run['xp'] = ($run['xp'] ?? 0) + 2;
+            }
+            $run['tahu'] = ($run['tahu'] ?? 0) + 1;
+            check_and_unlock_badges($conn, $user_id);
+        } else {
+            $up = $conn->prepare("UPDATE reviews SET interval_day = 1, next_due = DATE_ADD(CURDATE(), INTERVAL 1 DAY), lapses = lapses + 1 WHERE user_id = ? AND source = 'quiz' AND source_id = ?");
+            $up->bind_param("ii", $user_id, $card_id);
+            $up->execute(); $up->close();
+            $run['lupa'] = ($run['lupa'] ?? 0) + 1;
+        }
+    }
+    $_SESSION['quiz_run'] = $run;
+    $next_i = $i + 1;
+    if ($next_i >= count($ids)) {
+        redirect('quiz.php?mode=' . $mode . '&done=1');
+    }
+    redirect('quiz.php?mode=' . $mode . '&ids=' . implode(',', $ids) . '&i=' . $next_i);
+}
+
+// Daftar kartu sesi ini
+$mode = ($_GET['mode'] ?? '') === 'review' ? 'review' : 'latihan';
+$done = !empty($_GET['done']);
+$ids = array_values(array_filter(array_map('intval', explode(',', (string)($_GET['ids'] ?? '')))));
+
+$total_cards = 0;
+try {
+    $c = $conn->prepare("SELECT COUNT(*) n FROM quiz_cards WHERE user_id = ?");
+    $c->bind_param("i", $user_id); $c->execute();
+    $total_cards = (int)($c->get_result()->fetch_assoc()['n'] ?? 0);
+    $c->close();
+} catch (Throwable $e) {}
+
+$due_count = 0;
+try {
+    $c = $conn->prepare("SELECT COUNT(*) n FROM reviews WHERE user_id = ? AND source = 'quiz' AND next_due <= CURDATE()");
+    $c->bind_param("i", $user_id); $c->execute();
+    $due_count = (int)($c->get_result()->fetch_assoc()['n'] ?? 0);
+    $c->close();
+} catch (Throwable $e) {}
+
+if (!$done && empty($ids)) {
+    if ($mode === 'review') {
+        try {
+            $s = $conn->prepare("SELECT c.id FROM quiz_cards c JOIN reviews r ON r.source = 'quiz' AND r.source_id = c.id AND r.user_id = c.user_id WHERE c.user_id = ? AND r.next_due <= CURDATE() ORDER BY r.next_due ASC, c.id ASC LIMIT 20");
+            $s->bind_param("i", $user_id); $s->execute();
+            foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $r) $ids[] = (int)$r['id'];
+            $s->close();
+        } catch (Throwable $e) {}
+    } else {
+        try {
+            $s = $conn->prepare("SELECT id FROM quiz_cards WHERE user_id = ? ORDER BY RAND() LIMIT 10");
+            $s->bind_param("i", $user_id); $s->execute();
+            foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $r) $ids[] = (int)$r['id'];
+            $s->close();
+        } catch (Throwable $e) {}
+    }
+    if (!empty($ids)) {
+        $_SESSION['quiz_run'] = ['tahu' => 0, 'lupa' => 0, 'xp' => 0];
+        redirect('quiz.php?mode=' . $mode . '&ids=' . implode(',', $ids) . '&i=0');
+    }
+}
+
+$card = null;
+$i = 0;
+if (!$done && !empty($ids)) {
+    $i = max(0, min(count($ids) - 1, (int)($_GET['i'] ?? 0)));
+    $stmt = $conn->prepare("SELECT * FROM quiz_cards WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $ids[$i], $user_id);
+    $stmt->execute();
+    $card = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$card) redirect('quiz.php?mode=' . $mode);
+}
+$run = $_SESSION['quiz_run'] ?? ['tahu' => 0, 'lupa' => 0, 'xp' => 0];
+if ($done) { $_SESSION['quiz_run'] = ['tahu' => 0, 'lupa' => 0, 'xp' => 0]; }
+$conn->close();
+
+$page_title = 'Kuis';
+require_once 'includes/header.php';
+require_once 'includes/navbar.php';
+?>
+<main class="container py-4 quiz-page" role="main">
+    <div class="page-head">
+        <div class="page-kicker"><?= $total_cards ?> kartu · <?= $due_count ?> jatuh tempo</div>
+        <h1 class="page-title">Kuis</h1>
+        <p class="page-desc">Uji ingatanmu satu kartu satu waktu. Tahu +2 XP (sekali per kartu per hari).</p>
+        <div class="page-actions leaderboard-actions">
+            <div class="segmented" role="group" aria-label="Mode kuis">
+                <a href="quiz.php?mode=latihan" class="filter-pill <?= $mode === 'latihan' ? 'active' : '' ?>">Latihan acak</a>
+                <a href="quiz.php?mode=review" class="filter-pill <?= $mode === 'review' ? 'active' : '' ?>">Review (<?= $due_count ?>)</a>
+            </div>
+        </div>
+    </div>
+
+    <?php if ($total_cards === 0): ?>
+    <div class="empty-state card p-4 p-md-5">
+        <div class="empty-state-icon"><i class="fas fa-brain" aria-hidden="true"></i></div>
+        <h2 class="h5 fw-bold">Belum ada kartu kuis</h2>
+        <p class="text-secondary small mb-3">Buat dari catatan error atau pertanyaanmu — cukup sekali ketuk.</p>
+        <div class="d-flex gap-2 justify-content-center flex-wrap">
+            <a href="errors.php" class="btn btn-cyber-outline btn-sm">Ke Notes</a>
+            <a href="questions.php" class="btn btn-cyber-outline btn-sm">Ke Questions</a>
+        </div>
+    </div>
+    <?php elseif ($done): ?>
+    <div class="empty-state card p-4 p-md-5">
+        <div class="empty-state-icon"><i class="fas fa-flag-checkered" aria-hidden="true"></i></div>
+        <h2 class="h5 fw-bold">Sesi selesai!</h2>
+        <p class="text-secondary small mb-3">Tahu <?= (int)($run['tahu'] ?? 0) ?> · Lupa <?= (int)($run['lupa'] ?? 0) ?> · +<?= (int)($run['xp'] ?? 0) ?> XP sesi ini.</p>
+        <div class="d-flex gap-2 justify-content-center flex-wrap">
+            <a href="quiz.php?mode=latihan" class="btn btn-cyber btn-sm">Main lagi</a>
+            <a href="review.php" class="btn btn-cyber-outline btn-sm">Ke Review</a>
+        </div>
+    </div>
+    <?php elseif (empty($ids)): ?>
+    <div class="empty-state card p-4 p-md-5">
+        <div class="empty-state-icon"><i class="fas fa-check-double" aria-hidden="true"></i></div>
+        <h2 class="h5 fw-bold">Tidak ada kartu <?= $mode === 'review' ? 'jatuh tempo' : 'untuk latihan' ?>.</h2>
+        <p class="text-secondary small mb-3"><?= $mode === 'review' ? 'Semua terjadwal rapi. Coba mode latihan.' : 'Tambah kartu dari Notes atau Questions dulu.' ?></p>
+        <div class="d-flex gap-2 justify-content-center flex-wrap">
+            <?php if ($mode === 'review'): ?><a href="quiz.php?mode=latihan" class="btn btn-cyber btn-sm">Latihan acak</a><?php endif; ?>
+            <a href="errors.php" class="btn btn-cyber-outline btn-sm">Ke Notes</a>
+        </div>
+    </div>
+    <?php elseif ($card): ?>
+    <div class="row g-4 justify-content-center">
+        <div class="col-lg-7">
+            <article class="card p-4 quiz-card">
+                <div class="review-progress">
+                    <span>Kartu <?= $i + 1 ?> dari <?= count($ids) ?></span>
+                    <div class="review-progress-bar" role="progressbar" aria-valuenow="<?= $i + 1 ?>" aria-valuemin="0" aria-valuemax="<?= count($ids) ?>" aria-label="Progres kuis"><div style="width: <?= (int)round((($i + 1) / max(1, count($ids))) * 100) ?>%;"></div></div>
+                </div>
+                <p class="quiz-kicker">Ingat-ingat dulu, baru buka jawabannya</p>
+                <h2 class="h5 fw-bold quiz-question"><?= htmlspecialchars($card['question']) ?></h2>
+                <details class="quiz-answer">
+                    <summary class="quiz-answer-toggle"><i class="fas fa-eye me-1" aria-hidden="true"></i>Lihat jawaban</summary>
+                    <div class="code-solution"><?= nl2br(htmlspecialchars($card['answer'])) ?></div>
+                </details>
+                <form method="POST" action="quiz.php" class="review-actions">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="answer">
+                    <input type="hidden" name="card_id" value="<?= (int)$card['id'] ?>">
+                    <input type="hidden" name="mode" value="<?= $mode ?>">
+                    <input type="hidden" name="ids" value="<?= htmlspecialchars(implode(',', $ids)) ?>">
+                    <input type="hidden" name="i" value="<?= $i ?>">
+                    <button type="submit" name="result" value="forgot" class="btn btn-cyber-outline flex-fill"><i class="fas fa-rotate-left me-1" aria-hidden="true"></i>Lupa</button>
+                    <button type="submit" name="result" value="know" class="btn btn-cyber flex-fill"><i class="fas fa-check me-1" aria-hidden="true"></i>Tahu (+2 XP)</button>
+                </form>
+                <p class="small text-muted mt-3 mb-0">Sesi ini: Tahu <?= (int)($run['tahu'] ?? 0) ?> · Lupa <?= (int)($run['lupa'] ?? 0) ?> · +<?= (int)($run['xp'] ?? 0) ?> XP</p>
+            </article>
+        </div>
+    </div>
+    <?php endif; ?>
+</main>
+<?php require_once 'includes/footer.php'; ?>

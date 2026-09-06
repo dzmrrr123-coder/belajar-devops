@@ -212,6 +212,9 @@ require_once 'includes/navbar.php';
                                 </div>
 
                                 <div class="d-flex align-items-center gap-1">
+                                    <button type="button" class="btn btn-cyber-outline btn-sm py-1 px-2 text-secondary" title="Jadikan kartu kuis" aria-label="Jadikan kartu kuis" onclick="openQuizModal(<?= (int)$err['id'] ?>, <?= htmlspecialchars(json_encode(mb_strimwidth($err['error_message'], 0, 255))) ?>, <?= htmlspecialchars(json_encode($err['solution'] ?? '')) ?>)">
+                                        <i class="fas fa-brain"></i>
+                                    </button>
                                     <!-- Edit Button -->
                                     <button type="button" class="btn btn-cyber-outline btn-sm py-1 px-2 text-secondary" title="Edit Catatan" onclick="openEditModal(<?= htmlspecialchars(json_encode($err)) ?>)">
                                         <i class="fas fa-pencil-alt"></i>
@@ -273,6 +276,33 @@ require_once 'includes/navbar.php';
     </div>
 </main>
 
+<!-- Quiz Modal -->
+<div class="modal fade" id="quizModal" tabindex="-1" aria-labelledby="quizModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-bottom">
+        <div class="modal-content">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h6 fw-bold mb-0" id="quizModalLabel"><i class="fas fa-brain text-primary me-2"></i>Jadikan kartu kuis</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <form method="POST" action="quiz.php">
+                <div class="modal-body">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="action" value="create">
+                    <input type="hidden" name="source" value="error">
+                    <input type="hidden" name="source_id" id="quizSourceId">
+                    <input type="hidden" name="back" value="errors.php">
+                    <div class="mb-3"><label class="form-label" for="quizQuestion">Pertanyaan</label><textarea name="question" id="quizQuestion" class="form-control" rows="2" required maxlength="255"></textarea></div>
+                    <div class="mb-1"><label class="form-label" for="quizAnswer">Jawaban</label><textarea name="answer" id="quizAnswer" class="form-control" rows="3" required></textarea></div>
+                </div>
+                <div class="modal-footer border-top sticky-bottom-bar">
+                    <button type="button" class="btn btn-cyber-outline" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-cyber">Simpan kartu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Edit Modal -->
 <div class="modal fade" id="editErrorModal" tabindex="-1" aria-labelledby="editErrorModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -328,6 +358,13 @@ require_once 'includes/navbar.php';
 <script>
 let activeCat = 'all';
 let activeSolved = 'all';
+
+function openQuizModal(id, question, answer) {
+    document.getElementById('quizSourceId').value = id;
+    document.getElementById('quizQuestion').value = question || '';
+    document.getElementById('quizAnswer').value = answer || '';
+    new bootstrap.Modal(document.getElementById('quizModal')).show();
+}
 
 function openEditModal(err) {
     document.getElementById('modalErrorId').value = err.id;
