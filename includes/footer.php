@@ -46,6 +46,7 @@ $flash = get_flash();
 
     <!-- Toast container for live notifications -->
     <div class="toast-container" aria-live="polite" aria-atomic="true"></div>
+    <div id="pageProgress" aria-hidden="true"></div>
 
     <!-- Bootstrap 5.3 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

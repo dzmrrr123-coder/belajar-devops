@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         redirect('quests.php');
     }
 
+    if ($is_ajax && session_status() === PHP_SESSION_ACTIVE) session_write_close();
     $conn->begin_transaction();
     try {
     // Fetch quest info (global atau milik sendiri saja)
@@ -101,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         if ($leveled_up) {
             $msg .= " Naik ke Level {$new_level} (" . get_user_rank($new_level) . ")!";
         }
-        set_flash('success', $msg);
+        if (!$is_ajax) set_flash('success', $msg);
     } else {
         // Undo Quest completion
         $stmt = $conn->prepare("DELETE FROM user_quests WHERE id = ?");
@@ -121,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         $action = 'uncompleted';
 
         $msg = "Quest ditandai belum selesai. -{$deduct} XP disesuaikan.";
-        set_flash('info', $msg);
+        if (!$is_ajax) set_flash('info', $msg);
     }
 
     // Refresh user state for response

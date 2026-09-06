@@ -365,13 +365,27 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.mission-claim-form').forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
+            const card = this.closest('.mission-card');
             const btn = this.querySelector('button[type="submit"]');
             if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>'; }
+            if (card) card.classList.add('claiming');
             fetch('claim_mission.php', { method: 'POST', body: new FormData(this), headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
             .then(r => r.json()).then(d => {
                 showToast(d.message || 'Misi diproses.', d.status === 'success' ? 'success' : 'danger');
-                if (d.status === 'success') setTimeout(() => location.reload(), 600);
-                else if (btn) { btn.disabled = false; btn.textContent = 'Klaim'; }
+                if (d.status === 'success' && card) {
+                    card.classList.remove('claiming');
+                    card.classList.add('claimed');
+                    const f = card.querySelector('.mission-claim-form');
+                    if (f) f.outerHTML = '<span class="quest-done"><i class="fas fa-check" aria-hidden="true"></i>Diklaim</span>';
+                    if (typeof d.xp_reward === 'number') {
+                        const hx = document.getElementById('hudXp');
+                        if (hx) { const cur = parseInt(hx.textContent, 10); if (!isNaN(cur)) hx.textContent = (cur + d.xp_reward) + ' XP'; }
+                        const sx = document.getElementById('statTotalXp');
+                        if (sx) { const cur = parseInt(sx.textContent, 10); if (!isNaN(cur)) sx.textContent = cur + d.xp_reward; }
+                    }
+                    SoundEffects.questComplete();
+                }
+                else if (btn) { btn.disabled = false; btn.textContent = 'Klaim'; if (card) card.classList.remove('claiming'); }
             }).catch(() => {
                 const fd = new FormData(form);
                 if (!navigator.onLine && window.LTOutbox) {
@@ -446,13 +460,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Quest Check Form Interceptor
+    // Quest Check Form Interceptor (optimistic UI)
     document.querySelectorAll('.quest-toggle-form').forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             const submitBtn = this.querySelector('button');
             const formData = new FormData(this);
-
+            const questItem = form.closest('.quest-item');
+            const wasDone = questItem ? questItem.classList.contains('completed') : false;
+            if (questItem) {
+                questItem.classList.add('pending');
+                questItem.classList.toggle('completed', !wasDone);
+            }
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.setAttribute('aria-busy', 'true');
@@ -472,8 +491,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 return res.json();
             })
-            .then(data => applyQuestResponse(data, form))
+            .then(data => {
+                if (questItem) questItem.classList.remove('pending');
+                if (data.status !== 'success' && questItem) questItem.classList.toggle('completed', wasDone);
+                applyQuestResponse(data, form);
+            })
             .catch(() => {
+                if (questItem) { questItem.classList.remove('pending'); questItem.classList.toggle('completed', wasDone); }
                 const questId = form.querySelector('input[name="quest_id"]')?.value || '';
                 const tokenEl = form.querySelector('input[name="csrf_token"]');
                 if (!navigator.onLine && window.LTOutbox && questId) {
@@ -495,4 +519,113 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+
+    // Persistent timer pill (reads lt_timer_v1 written by timer.php)
+    (function ltTimerPill() {
+        const KEY = 'lt_timer_v1';
+        if (location.pathname.endsWith('timer.php')) return;
+        let el = null;
+        function read() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+        function fmt(sec) {
+            sec = Math.max(0, sec);
+            return String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+        }
+        function ensure() {
+            if (el) return el;
+            el = document.createElement('a');
+            el.id = 'ltTimerPill';
+            el.className = 'timer-pill';
+            el.href = 'timer.php';
+            el.innerHTML = '<i class="fas fa-clock" aria-hidden="true"></i><span class="timer-pill-time"></span><span class="timer-pill-label"></span>';
+            document.body.appendChild(el);
+            return el;
+        }
+        function drop() { if (el) { el.remove(); el = null; } }
+        function finishRemote(s) {
+            const mode = s.mode || 'focus';
+            try {
+                localStorage.setItem(KEY, JSON.stringify({ finished: true, recorded: false, sessionId: s.sessionId || null, mode: mode, totalSec: s.totalSec || 1500, ts: Date.now() }));
+            } catch (e) {}
+            render();
+            if (mode === 'focus') {
+                showToast('Sesi fokus selesai! Buka Focus untuk mencatat +10 XP.', 'success');
+                try { if (window.SoundEffects) SoundEffects.pomodoroAlarm(); } catch (e) {}
+            } else {
+                showToast('Istirahat selesai. Waktunya kembali fokus.', 'info');
+            }
+            try {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification(mode === 'focus' ? 'Sesi fokus selesai' : 'Istirahat selesai', { body: 'Ketuk untuk kembali ke Focus.', tag: 'lt-timer-done' });
+                }
+            } catch (e) {}
+        }
+        function render() {
+            const s = read();
+            if (!s) { drop(); return; }
+            if (s.finished) {
+                const b = ensure();
+                b.classList.add('done');
+                b.querySelector('.timer-pill-time').textContent = s.recorded ? 'Selesai' : 'Selesai';
+                b.querySelector('.timer-pill-label').textContent = s.recorded ? '' : 'ketuk untuk catat';
+                return;
+            }
+            let rem = (typeof s.remainingSec === 'number') ? s.remainingSec : 0;
+            if (s.running && s.endsAt) {
+                rem = Math.max(0, Math.ceil((s.endsAt - Date.now()) / 1000));
+                if (rem <= 0) { finishRemote(s); return; }
+            }
+            if (!s.running && rem >= (s.totalSec || 0)) { drop(); return; }
+            const b = ensure();
+            b.classList.remove('done');
+            b.querySelector('.timer-pill-time').textContent = fmt(rem);
+            b.querySelector('.timer-pill-label').textContent = (s.mode === 'focus' ? 'Fokus' : 'Istirahat') + (s.running ? '' : ' · jeda');
+        }
+        setInterval(render, 1000);
+        window.addEventListener('storage', function(e) { if (e.key === KEY) render(); });
+        render();
+    })();
+
+    // Navigation progress + hover prefetch (same-origin .php)
+    (function() {
+        const bar = document.getElementById('pageProgress');
+        let timer = null;
+        function start() {
+            if (!bar || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            bar.classList.add('on');
+            bar.style.width = '12%';
+            clearTimeout(timer);
+            timer = setTimeout(() => { bar.style.width = '72%'; }, 300);
+        }
+        function stop() { if (bar) { bar.style.width = '100%'; setTimeout(() => { bar.classList.remove('on'); bar.style.width = '0'; }, 250); } }
+        document.addEventListener('click', function(e) {
+            const a = e.target.closest ? e.target.closest('a[href]') : null;
+            if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            const href = a.getAttribute('href') || '';
+            if (href.startsWith('#') || href.startsWith('http') || a.target === '_blank') return;
+            if (/\.php(\?|$)/.test(href)) start();
+        });
+        window.addEventListener('pageshow', stop);
+        window.addEventListener('pagehide', stop);
+        const seen = new Set();
+        function prefetch(url) {
+            try {
+                const u = new URL(url, location.href);
+                if (u.origin !== location.origin || seen.has(u.href)) return;
+                seen.add(u.href);
+                const l = document.createElement('link');
+                l.rel = 'prefetch';
+                l.href = u.href;
+                document.head.appendChild(l);
+            } catch (e) {}
+        }
+        document.addEventListener('mouseover', function(e) {
+            const a = e.target.closest ? e.target.closest('a[href]') : null;
+            if (!a) return;
+            const href = a.getAttribute('href') || '';
+            if (/\.php(\?|$)/.test(href) && !href.startsWith('http')) {
+                if ('requestIdleCallback' in window) requestIdleCallback(() => prefetch(href));
+                else setTimeout(() => prefetch(href), 150);
+            }
+        }, { passive: true });
+    })();
 });

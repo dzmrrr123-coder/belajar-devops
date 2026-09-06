@@ -131,6 +131,8 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
+define('SCHEMA_VERSION', 20);
+
 // Auto-initialize schema & seed data safely without multi_query
 function ensure_database_schema($conn) {
     static $initialized = false;
@@ -139,6 +141,15 @@ function ensure_database_schema($conn) {
 
     try {
         mysqli_report(MYSQLI_REPORT_OFF);
+        try {
+            $ver = $conn->query("SELECT `v` FROM `schema_meta` WHERE `k` = 'version' LIMIT 1");
+            if ($ver && ($row = $ver->fetch_assoc()) && (int)$row['v'] >= SCHEMA_VERSION) {
+                $ver->free();
+                mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+                return;
+            }
+            if ($ver) $ver->free();
+        } catch (Throwable $e) {}
         // Additive migrations run on every connect so existing DBs also upgrade.
         // 1. Create users table
         $conn->query("CREATE TABLE IF NOT EXISTS `users` (
@@ -328,24 +339,12 @@ function ensure_database_schema($conn) {
                 }
             }
         }
+        @$conn->query("CREATE TABLE IF NOT EXISTS `schema_meta` (`k` VARCHAR(64) PRIMARY KEY, `v` VARCHAR(64) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("INSERT INTO `schema_meta` (`k`, `v`) VALUES ('version', '" . SCHEMA_VERSION . "') ON DUPLICATE KEY UPDATE `v` = '" . SCHEMA_VERSION . "'");
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
     } catch (Throwable $e) {
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
         error_log("Schema auto-init: " . $e->getMessage() . " | DB error: " . ($conn->error ?? ''));
-    }
-
-    $missing = [];
-    foreach (['users','quests','user_quests','errors','resources','pomodoro_sessions','questions','daily_missions','quest_subtasks','reviews','user_badges','xp_events'] as $t) {
-        try {
-            $chk = $conn->query("SHOW TABLES LIKE '" . $conn->real_escape_string($t) . "'");
-            if (!$chk || $chk->num_rows === 0) $missing[] = $t;
-            if ($chk) $chk->free();
-        } catch (Throwable $t2) {
-            $missing[] = $t;
-        }
-    }
-    if ($missing) {
-        throw new Exception("Inisialisasi database gagal, tabel belum ada: " . implode(', ', $missing) . ". Info DB: " . ($conn->error ?: 'user DB mungkin tanpa hak CREATE, atau versi server menolak sintaks') . ". Solusi cepat: import schema.sql manual via tab Query di dashboard MySQL Railway.");
     }
 }
 
@@ -587,7 +586,7 @@ function update_user_streak($conn, $user_id) {
         $stmt->execute();
         $stmt->close();
     }
-    if ($used_freeze) set_flash('info', 'Streak Freeze dipakai! Streak-mu terselamatkan.');
+    if ($used_freeze && session_status() === PHP_SESSION_ACTIVE) set_flash('info', 'Streak Freeze dipakai! Streak-mu terselamatkan.');
     return $streak;
 }
 

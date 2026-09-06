@@ -12,7 +12,6 @@ if (is_logged_in()) {
     $hud_user = $stmt->get_result()->fetch_assoc();
     $stmt->close();
     $hud_last = $hud_user['last_login_at'] ?? null;
-    $nav_conn->close();
 
     if ($hud_user) {
         $hud_level = calculate_level($hud_user['xp']);

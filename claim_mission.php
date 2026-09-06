@@ -25,6 +25,7 @@ if (!empty($status[$key]['claimed'])) {
     set_flash('info', $msg); redirect('index.php');
 }
 $xp = (int)$defs[$key]['xp'];
+if ($is_ajax && session_status() === PHP_SESSION_ACTIVE) session_write_close();
 $conn->begin_transaction();
 try {
     $stmt = $conn->prepare("INSERT INTO daily_missions (user_id, mission_date, mission_key, claimed_at) VALUES (?, CURDATE(), ?, NOW()) ON DUPLICATE KEY UPDATE claimed_at = IFNULL(claimed_at, NOW())");
@@ -36,7 +37,7 @@ try {
     $new_badges = check_and_unlock_badges($conn, $user_id);
     $conn->commit();
     $msg = "Misi selesai! +{$xp} XP." . (!empty($new_badges) ? ' Badge: ' . implode(', ', $new_badges) . '!' : '');
-    set_flash('success', $msg);
+    if (!$is_ajax && session_status() === PHP_SESSION_ACTIVE) set_flash('success', $msg);
 } catch (Throwable $e) {
     $conn->rollback();
     error_log("claim_mission: " . $e->getMessage());
