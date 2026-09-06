@@ -44,6 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
 // Jawab kartu: Tahu (+2 XP sekali per kartu per hari) / Lupa (jadwal ulang besok)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answer') {
     verify_csrf();
+    $is_ajax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+        || (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false);
     $card_id = (int)($_POST['card_id'] ?? 0);
     $result = ($_POST['result'] ?? '') === 'know' ? 'know' : 'forgot';
     $mode = ($_POST['mode'] ?? '') === 'review' ? 'review' : 'latihan';
@@ -96,6 +98,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
     }
     $_SESSION['quiz_run'] = $run;
     $next_i = $i + 1;
+    if (!empty($is_ajax)) {
+        $qc = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND ref_type = 'quiz' AND amount > 0 AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY");
+        $qc->bind_param("i", $user_id); $qc->execute();
+        $quota_left = max(0, QUIZ_DAILY_XP_CAP - (int)($qc->get_result()->fetch_assoc()['n'] ?? 0));
+        $qc->close();
+        $next_card = null;
+        if ($next_i < count($ids)) {
+            $stmt = $conn->prepare("SELECT id, question, answer FROM quiz_cards WHERE id = ? AND user_id = ?");
+            $stmt->bind_param("ii", $ids[$next_i], $user_id);
+            $stmt->execute();
+            $next_card = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+        }
+        $conn->close();
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'success', 'result' => $result, 'gain' => $gain ?? 0, 'run' => $run,
+            'quota_left' => $quota_left, 'pos' => $next_i + 1, 'total' => count($ids), 'next' => $next_card,
+        ]);
+        exit();
+    }
     if ($next_i >= count($ids)) {
         redirect('quiz.php?mode=' . $mode . '&done=1');
     }
@@ -175,7 +198,7 @@ require_once 'includes/navbar.php';
 ?>
 <main class="container py-4 quiz-page" role="main">
     <div class="page-head">
-        <div class="page-kicker"><?= $total_cards ?> kartu · <?= $due_count ?> jatuh tempo · kuota +<?= $quiz_quota_left ?> XP hari ini</div>
+        <div class="page-kicker"><?= $total_cards ?> kartu · <?= $due_count ?> jatuh tempo · kuota <span id="quizQuota">+<?= $quiz_quota_left ?> XP</span> hari ini</div>
         <h1 class="page-title">Kuis</h1>
         <p class="page-desc">Uji ingatanmu satu kartu satu waktu. Tahu +2 XP — maks +<?= QUIZ_DAILY_XP_CAP ?> XP/hari, kartu tuntas tak muncul lagi.</p>
         <div class="page-actions leaderboard-actions">
@@ -221,26 +244,26 @@ require_once 'includes/navbar.php';
         <div class="col-lg-7">
             <article class="card p-4 quiz-card">
                 <div class="review-progress">
-                    <span>Kartu <?= $i + 1 ?> dari <?= count($ids) ?></span>
-                    <div class="review-progress-bar" role="progressbar" aria-valuenow="<?= $i + 1 ?>" aria-valuemin="0" aria-valuemax="<?= count($ids) ?>" aria-label="Progres kuis"><div style="width: <?= (int)round((($i + 1) / max(1, count($ids))) * 100) ?>%;"></div></div>
+                    <span id="quizPos">Kartu <?= $i + 1 ?> dari <?= count($ids) ?></span>
+                    <div class="review-progress-bar" role="progressbar" aria-valuenow="<?= $i + 1 ?>" aria-valuemin="0" aria-valuemax="<?= count($ids) ?>" aria-label="Progres kuis"><div id="quizBar" style="width: <?= (int)round((($i + 1) / max(1, count($ids))) * 100) ?>%;"></div></div>
                 </div>
                 <p class="quiz-kicker">Ingat-ingat dulu, baru buka jawabannya</p>
-                <h2 class="h5 fw-bold quiz-question"><?= htmlspecialchars($card['question']) ?></h2>
-                <details class="quiz-answer">
+                <h2 class="h5 fw-bold quiz-question" id="quizQ"><?= htmlspecialchars($card['question']) ?></h2>
+                <details class="quiz-answer" id="quizDetails">
                     <summary class="quiz-answer-toggle"><i class="fas fa-eye me-1" aria-hidden="true"></i>Lihat jawaban</summary>
-                    <div class="code-solution"><?= nl2br(htmlspecialchars($card['answer'])) ?></div>
+                    <div class="code-solution" id="quizA"><?= nl2br(htmlspecialchars($card['answer'])) ?></div>
                 </details>
                 <form method="POST" action="quiz.php" class="review-actions">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="answer">
-                    <input type="hidden" name="card_id" value="<?= (int)$card['id'] ?>">
+                    <input type="hidden" name="card_id" id="quizCardId" value="<?= (int)$card['id'] ?>">
                     <input type="hidden" name="mode" value="<?= $mode ?>">
                     <input type="hidden" name="ids" value="<?= htmlspecialchars(implode(',', $ids)) ?>">
-                    <input type="hidden" name="i" value="<?= $i ?>">
+                    <input type="hidden" name="i" id="quizI" value="<?= $i ?>">
                     <button type="submit" name="result" value="forgot" class="btn btn-cyber-outline flex-fill"><i class="fas fa-rotate-left me-1" aria-hidden="true"></i>Lupa</button>
-                    <button type="submit" name="result" value="know" class="btn btn-cyber flex-fill"><i class="fas fa-check me-1" aria-hidden="true"></i>Tahu<?= $quiz_quota_left > 0 ? ' (+' . min(2, $quiz_quota_left) . ' XP)' : '' ?></button>
+                    <button type="submit" name="result" value="know" class="btn btn-cyber flex-fill"><i class="fas fa-check me-1" aria-hidden="true"></i>Tahu<span id="quizTahuXp"><?= $quiz_quota_left > 0 ? ' (+' . min(2, $quiz_quota_left) . ' XP)' : '' ?></span></button>
                 </form>
-                <p class="small text-muted mt-3 mb-0">Sesi ini: Tahu <?= (int)($run['tahu'] ?? 0) ?> · Lupa <?= (int)($run['lupa'] ?? 0) ?> · +<?= (int)($run['xp'] ?? 0) ?> XP</p>
+                <p class="small text-muted mt-3 mb-0" id="quizRun">Sesi ini: Tahu <?= (int)($run['tahu'] ?? 0) ?> · Lupa <?= (int)($run['lupa'] ?? 0) ?> · +<?= (int)($run['xp'] ?? 0) ?> XP</p>
             </article>
         </div>
     </div>

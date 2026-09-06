@@ -702,6 +702,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.querySelectorAll('.review-actions').forEach(form => {
+        if (!form.querySelector('input[name="review_id"]')) return;
         form.addEventListener('submit', function(e) {
             if (navigator.onLine) return;
             e.preventDefault();
@@ -715,7 +716,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, true);
     });
 
-    ['lt:mission-synced', 'lt:subtask-synced', 'lt:review-synced'].forEach(ev => {
+    ['lt:mission-synced', 'lt:subtask-synced', 'lt:review-synced', 'lt:quiz-synced'].forEach(ev => {
         document.addEventListener(ev, () => setTimeout(() => location.reload(), 800));
     });
 
@@ -852,13 +853,109 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 applyReviewResponse(data);
             })
-            .catch(() => { form.submit(); })
+            .catch(() => {
+                if (!navigator.onLine) return;
+                form.submit();
+            })
             .finally(() => {
                 btns.forEach(b => { b.disabled = false; });
                 if (clicked && orig && clicked.innerHTML.includes('spinner')) clicked.innerHTML = orig;
             });
         });
     });
+
+    // Quiz Card Interceptor (tanpa reload per kartu)
+    document.querySelectorAll('form.review-actions').forEach(form => {
+        const cardInput = form.querySelector('input[name="card_id"]');
+        if (!cardInput) return;
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btns = [...this.querySelectorAll('button[type="submit"]')];
+            const clicked = e.submitter && e.submitter.type === 'submit' ? e.submitter : btns[0];
+            btns.forEach(b => { b.disabled = true; });
+            let orig = null;
+            if (clicked) {
+                orig = clicked.innerHTML;
+                clicked.innerHTML = '<span class="spinner" aria-hidden="true"></span>';
+            }
+            const fd = new FormData(this);
+            if (clicked && clicked.name) fd.append(clicked.name, clicked.value);
+            fetch('quiz.php', {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then(data => {
+                if (data.status !== 'success') {
+                    showToast(data.message || 'Gagal menyimpan jawaban.', 'danger');
+                    return;
+                }
+                applyQuizResponse(data);
+            })
+            .catch(() => {
+                if (!navigator.onLine && window.LTOutbox) {
+                    const fd2 = new FormData(form);
+                    window.LTOutbox.enqueue({ type: 'quiz_answer', card_id: String(fd2.get('card_id') || ''), mode: String(fd2.get('mode') || 'latihan'), ids: String(fd2.get('ids') || ''), i: String(fd2.get('i') || '0'), result: (clicked && clicked.value) || 'know', csrf: String(fd2.get('csrf_token') || '') });
+                    showToast('Offline. Jawaban kuis masuk antrean.', 'warning');
+                    return;
+                }
+                form.submit();
+            })
+            .finally(() => {
+                btns.forEach(b => { b.disabled = false; });
+                if (clicked && orig && clicked.innerHTML.includes('spinner')) clicked.innerHTML = orig;
+            });
+        });
+    });
+
+function applyQuizResponse(data) {
+    const run = data.run || {};
+    if (data.result === 'know' && data.gain > 0) {
+        showToast('Tahu! +' + data.gain + ' XP.', 'success');
+        try { triggerConfetti(true); } catch (err) {}
+        try { if (window.SoundEffects) SoundEffects.questComplete(); } catch (err) {}
+    } else if (data.result === 'know') {
+        showToast('Tersimpan. Kuota XP kuis harian habis.', 'info');
+    } else {
+        showToast('Dicatat. Kita ulang besok.', 'info');
+    }
+    const r = document.getElementById('quizRun');
+    if (r) r.textContent = 'Sesi ini: Tahu ' + (run.tahu || 0) + ' · Lupa ' + (run.lupa || 0) + ' · +' + (run.xp || 0) + ' XP';
+    const tx = document.getElementById('quizTahuXp');
+    if (tx) tx.textContent = data.quota_left > 0 ? ' (+' + Math.min(2, data.quota_left) + ' XP)' : '';
+    const qq = document.getElementById('quizQuota');
+    if (qq) qq.textContent = '+' + data.quota_left + ' XP';
+    const card = document.querySelector('.quiz-card');
+    if (!data.next || !card) {
+        if (card) {
+            card.outerHTML = '<div class="empty-state card p-4 p-md-5"><div class="empty-state-icon"><i class="fas fa-flag-checkered" aria-hidden="true"></i></div><h2 class="h5 fw-bold">Sesi selesai!</h2><p class="text-secondary small mb-3">Tahu ' + (run.tahu || 0) + ' · Lupa ' + (run.lupa || 0) + ' · +' + (run.xp || 0) + ' XP sesi ini.</p><div class="d-flex gap-2 justify-content-center flex-wrap"><a href="quiz.php?mode=latihan" class="btn btn-cyber btn-sm">Main lagi</a><a href="review.php" class="btn btn-cyber-outline btn-sm">Ke Review</a></div></div>';
+        }
+        return;
+    }
+    const n = data.next;
+    const cid = document.getElementById('quizCardId');
+    if (cid) cid.value = n.id;
+    const ii = document.getElementById('quizI');
+    if (ii) ii.value = Math.max(0, (parseInt(ii.value, 10) || 0) + 1);
+    const q = document.getElementById('quizQ');
+    if (q) q.textContent = n.question;
+    const a = document.getElementById('quizA');
+    if (a) a.textContent = n.answer;
+    const det = document.getElementById('quizDetails');
+    if (det) det.open = false;
+    const pos = document.getElementById('quizPos');
+    if (pos) pos.textContent = 'Kartu ' + data.pos + ' dari ' + data.total;
+    const bar = document.getElementById('quizBar');
+    if (bar) {
+        bar.style.width = Math.round((data.pos / Math.max(1, data.total)) * 100) + '%';
+        const wrap = bar.closest('[role="progressbar"]');
+        if (wrap) { wrap.setAttribute('aria-valuemax', data.total); wrap.setAttribute('aria-valuenow', data.pos); }
+    }
+}
 
     // Persistent timer pill (reads lt_timer_v1 written by timer.php)
     (function ltTimerPill() {
