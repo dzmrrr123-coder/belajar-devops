@@ -61,6 +61,8 @@ require_once 'includes/navbar.php';
                 <p>Kode: <strong><?= htmlspecialchars($my_squad['code']) ?></strong> · oleh <?= htmlspecialchars($my_squad['creator']) ?> · <strong>+<?= (int)$my_squad['total_wxp'] ?> XP</strong> minggu ini</p>
             </div>
         </div>
+        <div class="ana-row" style="grid-template-columns:1fr auto;"><span class="ana-lbl">Goal bareng: <?= (int)$my_squad['total_wxp'] ?>/<?= (int)$my_squad['goal'] ?> XP</span><span class="ana-val"><?= (int)$my_squad['goal_pct'] ?>%<?= (int)$my_squad['goal_pct'] >= 100 ? ' · tuntas!' : '' ?></span></div>
+        <div class="ana-track mb-2" role="progressbar" aria-valuenow="<?= (int)$my_squad['goal_pct'] ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Goal squad <?= (int)$my_squad['goal_pct'] ?> persen"><span class="ana-fill" style="width:<?= (int)$my_squad['goal_pct'] ?>%"></span></div>
         <div class="race-list">
             <?php $sp = 0; foreach ($my_squad['members'] as $m): $sp++; $isme = ((int)$m['id'] === $user_id); ?>
             <div class="race-row<?= $isme ? ' me' : '' ?>">

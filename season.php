@@ -27,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $sxp = Season::seasonXp($conn, $user_id, $key);
 $premium = Season::hasPremium($conn, $user_id, $key);
+try { $pm = $conn->prepare("SELECT is_pro, pro_until FROM users WHERE id = ?"); if ($pm) { $pm->bind_param("i", $user_id); $pm->execute(); if ($r = $pm->get_result()->fetch_assoc()) { if (is_pro($r)) $premium = true; } $pm->close(); } } catch (Throwable $e) {}
 $claimed = Season::claimed($conn, $user_id, $key);
 $tiers = Season::tiers();
 $conn->close();

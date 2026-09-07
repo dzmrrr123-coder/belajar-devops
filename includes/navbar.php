@@ -30,7 +30,7 @@ if (is_logged_in()) {
     }
 }
 
-$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'skills.php', 'digest.php', 'shop.php', 'leaderboard.php', 'squad.php', 'duels.php', 'season.php', 'search.php'], true);
+$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'incident.php', 'progress.php', 'certificate.php', 'feedback.php', 'skills.php', 'digest.php', 'shop.php', 'leaderboard.php', 'squad.php', 'duels.php', 'season.php', 'search.php'], true);
 ?>
 <nav class="lt-navbar navbar navbar-expand-lg" aria-label="Navigasi Utama">
     <div class="container lt-navbar-inner">
@@ -84,10 +84,13 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
                     <a class="lt-nav-link dropdown-toggle <?= $more_active ? 'active' : '' ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Jelajah</a>
                     <ul class="dropdown-menu lt-menu lt-menu-grouped p-2">
                         <li class="lt-menu-label" aria-hidden="true">Belajar</li>
+                        <li><a class="dropdown-item <?= $current_script === 'incident.php' ? 'active' : '' ?>" href="incident.php"><i class="fas fa-fire-extinguisher"></i>Incident <small>simulator Pro</small></a></li>
                         <li><a class="dropdown-item <?= $current_script === 'quiz.php' ? 'active' : '' ?>" href="quiz.php"><i class="fas fa-brain"></i>Kuis <small>kilat 60 dtk</small></a></li>
                         <li><a class="dropdown-item <?= $current_script === 'questions.php' ? 'active' : '' ?>" href="questions.php"><i class="fas fa-circle-question"></i>Questions</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'resources.php' ? 'active' : '' ?>" href="resources.php"><i class="fas fa-book-open"></i>Resources</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'skills.php' ? 'active' : '' ?>" href="skills.php"><i class="fas fa-layer-group"></i>Skill tree</a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'progress.php' ? 'active' : '' ?>" href="progress.php"><i class="fas fa-chart-line"></i>Progress <small>outcome</small></a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'certificate.php' ? 'active' : '' ?>" href="certificate.php"><i class="fas fa-award"></i>Sertifikat <small>verifikasi</small></a></li>
                         <li class="lt-menu-label" aria-hidden="true">Bareng</li>
                         <li><a class="dropdown-item <?= $current_script === 'leaderboard.php' ? 'active' : '' ?>" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'squad.php' ? 'active' : '' ?>" href="squad.php"><i class="fas fa-users"></i>Squad <small>baru</small></a></li>
@@ -96,6 +99,8 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
                         <li class="lt-menu-label" aria-hidden="true">Akun</li>
                         <li><a class="dropdown-item <?= $current_script === 'shop.php' ? 'active' : '' ?>" href="shop.php"><i class="fas fa-store"></i>Toko XP</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'digest.php' ? 'active' : '' ?>" href="digest.php"><i class="fas fa-calendar-week"></i>Ringkasan</a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'pricing.php' ? 'active' : '' ?>" href="pricing.php"><i class="fas fa-crown"></i>Pro <small>sertifikat</small></a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'feedback.php' ? 'active' : '' ?>" href="feedback.php"><i class="fas fa-comment"></i>Feedback</a></li>
                     </ul>
                 </li>
             </ul>
@@ -109,6 +114,7 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
             <button class="theme-toggle ltThemeToggle" type="button" title="Mode gelap / terang" aria-label="Ganti tema gelap atau terang">
                 <i class="fas fa-moon" aria-hidden="true"></i>
             </button>
+            <a href="pricing.php" class="btn btn-cyber-outline btn-sm">Harga</a>
             <a href="login.php" class="btn btn-cyber-outline btn-sm">Masuk</a>
             <a href="register.php" class="btn btn-cyber btn-sm">Daftar</a>
         </div>

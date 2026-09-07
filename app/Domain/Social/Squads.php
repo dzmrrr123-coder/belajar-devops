@@ -78,6 +78,8 @@ class Squads {
             $m->bind_param("i", $sid); $m->execute();
             $row['members'] = $m->get_result()->fetch_all(MYSQLI_ASSOC); $m->close();
             $row['total_wxp'] = array_sum(array_map(fn($x) => (int)$x['wxp'], $row['members']));
+            $row['goal'] = 300;
+            $row['goal_pct'] = min(100, (int)round($row['total_wxp'] / 300 * 100));
             return $row;
         } catch (\Throwable $e) { return null; }
     }

@@ -197,6 +197,11 @@ require_once 'includes/navbar.php';
     </a>
     <?php endif; ?>
 
+    <a class="next-action" href="incident.php" data-urgent="0">
+        <span class="next-action-icon" aria-hidden="true"><i class="fas fa-fire-extinguisher"></i></span>
+        <span class="next-action-text"><strong>Coba Incident Simulator</strong><small>Deploy crashloop · dinilai + masuk passport · gratis 1x</small></span>
+        <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
+    </a>
     <section class="progress-strip" aria-label="Ringkasan progres belajar">
         <div class="strip-main">
             <div class="strip-level"><strong>Level <?= $level ?></strong><span><?= htmlspecialchars($rank_title) ?></span></div>

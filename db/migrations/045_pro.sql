@@ -1,0 +1,6 @@
+ALTER TABLE `users` ADD COLUMN `is_pro` TINYINT NOT NULL DEFAULT 0;
+ALTER TABLE `users` ADD COLUMN `pro_until` DATETIME NULL;
+ALTER TABLE `users` ADD COLUMN `pro_plan` VARCHAR(16) NULL;
+CREATE TABLE IF NOT EXISTS `pro_waitlist` (`id` INT AUTO_INCREMENT PRIMARY KEY, `contact` VARCHAR(140) NOT NULL, `plan` VARCHAR(16) NOT NULL DEFAULT 'monthly', `note` VARCHAR(255) NULL, `user_id` INT NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT `fk_pro_waitlist_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS `pro_payments` (`id` INT AUTO_INCREMENT PRIMARY KEY, `user_id` INT NOT NULL, `plan` VARCHAR(16) NOT NULL, `amount` INT NOT NULL DEFAULT 0, `status` ENUM('pending','paid','rejected') NOT NULL DEFAULT 'pending', `proof` VARCHAR(500) NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, `decided_at` DATETIME NULL, CONSTRAINT `fk_pro_payments_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_pro_payments_user ON `pro_payments` (`user_id`, `status`);

@@ -119,6 +119,13 @@ try {
     $cheers = $s->get_result()->fetch_all(MYSQLI_ASSOC);
     $s->close();
 } catch (Throwable $e) {}
+$incidents = [];
+try {
+    $s = $conn->prepare("SELECT c.title, c.skill, c.difficulty, MAX(a.score) best, COUNT(a.id) tries, MAX(a.created_at) last_at FROM incident_attempts a JOIN incident_challenges c ON c.id = a.challenge_id WHERE a.user_id = ? GROUP BY c.id, c.title, c.skill, c.difficulty ORDER BY best DESC");
+    if ($s) { $s->bind_param("i", $uid); $s->execute(); $incidents = $s->get_result()->fetch_all(MYSQLI_ASSOC); $s->close(); }
+} catch (Throwable $e) {}
+$certs = \App\Domain\Incident\Certificate::forUser($conn, $uid);
+$avgScore = $incidents ? (int)round(array_sum(array_column($incidents, 'best')) / count($incidents)) : 0;
 $react_counts = []; $react_mine = [];
 $react_emojis = \App\Domain\Social\Reactions::emojis();
 if ($me > 0) {
@@ -178,6 +185,25 @@ require_once 'includes/header.php';
     </section>
     <?php endif; ?>
 
+    <?php if ($incidents): ?>
+    <section class="card p-4 mb-3" aria-label="Verified challenges">
+        <h2 class="h5 fw-bold mb-1">Skill Passport · <?= count($incidents) ?> verified · rata-rata <?= $avgScore ?>/100</h2>
+        <p class="text-secondary small mb-3">Bukti skill incident · konsisten <?= (int)$user['best_streak'] ?> hari · sejak <?= date('M Y', strtotime($user['created_at'])) ?>.</p>
+        <div class="d-flex flex-column gap-2">
+        <?php foreach ($incidents as $in): ?>
+            <div class="list-row"><div class="list-main"><p class="list-title"><?= htmlspecialchars($in['title']) ?></p><p class="list-meta"><?= htmlspecialchars($in['skill']) ?> · <?= htmlspecialchars($in['difficulty'] ?? '') ?> · score <?= (int)$in['best'] ?>/100 · <?= (int)$in['tries'] ?>x coba<?= !empty($in['last_at']) ? ' · ' . date('M Y', strtotime($in['last_at'])) : '' ?></p></div><span class="quest-badge-xp">verified</span></div>
+        <?php endforeach; ?>
+        </div>
+        <?php if ($certs): ?>
+        <h3 class="h6 fw-bold mt-3 mb-2">Sertifikat (<?= count($certs) ?>)</h3>
+        <div class="d-flex flex-column gap-2">
+        <?php foreach ($certs as $ct): ?>
+            <div class="list-row"><div class="list-main"><p class="list-title"><?= htmlspecialchars($ct['title']) ?> · <?= (int)$ct['score'] ?>/100</p><p class="list-meta"><?= htmlspecialchars($ct['code']) ?> · <?= date('d M Y', strtotime($ct['issued_at'])) ?></p></div><a class="btn btn-cyber-outline btn-sm" href="certificate.php?code=<?= urlencode($ct['code']) ?>">Verifikasi</a></div>
+        <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+    </section>
+    <?php endif; ?>
     <section class="card p-4">
         <h2 class="h5 fw-bold mb-3">Badge (<?= count($owned) ?>)</h2>
         <div class="badge-grid">
