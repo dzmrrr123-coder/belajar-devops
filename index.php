@@ -245,6 +245,7 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
     $mission_claimed = count(array_filter($missions, fn($m) => !empty($m['claimed'])));
     $mission_all_done = count(array_filter($missions, fn($m) => !empty($m['done']))) === 3;
     ?>
+    <div class="bolt-say mb-3" data-bolt data-mood="<?= $claimable_n > 0 ? 'happy' : 'idle' ?>" data-msg="<?= $claimable_n > 0 ? 'Ada <strong>+' . $claimable_xp . ' XP</strong> nganggur. Klaim gih!' : 'Fokus satu quest, sisanya ngikut.' ?>"></div>
     <section class="mission-strip" aria-label="Misi harian">
         <details class="mission-details" id="missionDetails" open>
             <summary class="mission-summary">

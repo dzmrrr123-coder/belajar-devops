@@ -105,6 +105,29 @@ const SoundEffects = (function() {
         comboUp: function() {
             playTone(740.00, 'square', 0.07, 0, 0.06);
             playTone(987.77, 'square', 0.1, 0.07, 0.06);
+        },
+        splashBoot: function() {
+            playTone(392.00, 'square', 0.06, 0, 0.05);
+            playTone(523.25, 'square', 0.06, 0.07, 0.05);
+            playTone(783.99, 'sine', 0.15, 0.14, 0.08);
+        },
+        rankUp: function() {
+            playTone(523.25, 'triangle', 0.12, 0, 0.14);
+            playTone(659.25, 'triangle', 0.12, 0.1, 0.14);
+            playTone(783.99, 'triangle', 0.12, 0.2, 0.14);
+            playTone(1046.50, 'triangle', 0.2, 0.3, 0.16);
+            playTone(1318.51, 'sine', 0.5, 0.42, 0.18);
+            playTone(1567.98, 'sine', 0.6, 0.55, 0.16);
+        },
+        victory: function() {
+            playTone(659.25, 'triangle', 0.15, 0, 0.14);
+            playTone(659.25, 'triangle', 0.15, 0.18, 0.14);
+            playTone(783.99, 'triangle', 0.15, 0.36, 0.14);
+            playTone(1046.50, 'sine', 0.5, 0.5, 0.18);
+        },
+        defeat: function() {
+            playTone(392.00, 'sine', 0.2, 0, 0.1);
+            playTone(329.63, 'sine', 0.3, 0.2, 0.1);
         }
     };
 })();

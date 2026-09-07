@@ -25,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'finish' && $did > 0) {
         $r = Duels::finish($conn, $user_id, $did);
         set_flash($r['ok'] ? 'success' : 'warning', $r['msg']);
+        if ($r['ok'] && ($r['winner'] ?? null) === $user_id) redirect('duels.php?win=1');
     }
     redirect('duels.php');
 }
@@ -71,7 +72,7 @@ require_once 'includes/navbar.php';
                 <p class="list-title">vs <?= htmlspecialchars($foe) ?>
                     <?php if (($d['status'] ?? '') === 'pending'): ?><span class="quest-pending">Menunggu</span>
                     <?php elseif (($d['status'] ?? '') === 'active'): ?><span class="quest-pending">Berjalan</span>
-                    <?php else: ?><span class="quest-done"><i class="fas fa-check" aria-hidden="true"></i>Selesai<?= $d['winner_id'] ? (((int)$d['winner_id'] === $user_id) ? ' · Kamu menang!' : ' · Kamu kalah') : ' · Seri' ?></span><?php endif; ?>
+                    <?php else: ?><span class="quest-done"><i class="fas fa-check" aria-hidden="true"></i>Selesai<?= $d['winner_id'] ? (((int)$d['winner_id'] === $user_id) ? ' · Kamu menang!' : ' · Kamu kalah') : ' · Seri' ?></span><?php if ((int)($d['winner_id'] ?? 0) === $user_id): ?> <a href="duels.php?vs=<?= urlencode($foe) ?>" class="small">Rematch</a><?php endif; ?><?php endif; ?>
                 </p>
                 <p class="list-meta"><?= htmlspecialchars($d['week_key']) ?> · <?= $is_ch ? 'kamu menantang' : 'kamu ditantang' ?><?php if ($sc): ?> · <?= (int)$sc['c'] ?> vs <?= (int)$sc['o'] ?> XP<?php endif; ?></p>
                 <div class="d-flex flex-wrap gap-2 mt-2">
@@ -87,4 +88,26 @@ require_once 'includes/navbar.php';
         <?php endforeach; ?>
     </div>
 </main>
+<?php if (!empty($_GET['win'])): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    try { if (window.SoundEffects && SoundEffects.victory) SoundEffects.victory(); } catch (e) {}
+    try { tierHaptic('legendary'); } catch (e) {}
+    try { triggerConfetti(true); } catch (e) {}
+    const ov = document.createElement('div');
+    ov.className = 'bolt-overlay';
+    ov.setAttribute('role', 'alertdialog');
+    ov.setAttribute('aria-label', 'Kemenangan duel');
+    ov.innerHTML = '<div class="bolt-card">' + boltSVG('hype')
+        + '<p class="bolt-term">$ duel --result → VICTORY</p>'
+        + '<div class="bolt-win">MENANG!<small>+15 XP dikantongi</small></div>'
+        + '<p>Lawan sudah diberi tahu lewat leaderboard.</p>'
+        + '<button type="button" class="btn btn-cyber">Gas lagi</button></div>';
+    document.body.appendChild(ov);
+    const close = function() { ov.remove(); };
+    ov.querySelector('button').addEventListener('click', close);
+    ov.addEventListener('click', function(e) { if (e.target === ov) close(); });
+});
+</script>
+<?php endif; ?>
 <?php require_once 'includes/footer.php'; ?>

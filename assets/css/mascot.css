@@ -1,0 +1,29 @@
+.bolt{width:72px;height:72px;flex-shrink:0}
+.bolt-head{fill:var(--surface);stroke:var(--primary);stroke-width:4}
+.bolt-tip{fill:var(--primary)}
+.bolt-tip{animation:bolt-blink 1.6s ease-in-out infinite}
+.bolt-eye{fill:var(--ink)}
+.bolt-mouth{stroke:var(--primary);stroke-width:3;fill:none;stroke-linecap:round}
+.bolt-prompt{fill:var(--primary);font-family:var(--font-mono);font-size:11px;font-weight:700}
+.bolt .eyes-happy,.bolt .eyes-sleep{display:none}
+.bolt[data-mood="happy"] .eyes-open,.bolt[data-mood="hype"] .eyes-open{display:none}
+.bolt[data-mood="happy"] .eyes-happy,.bolt[data-mood="hype"] .eyes-happy{display:block}
+.bolt[data-mood="sleep"] .eyes-open,.bolt[data-mood="sleep"] .eyes-happy{display:none}
+.bolt[data-mood="sleep"] .eyes-sleep{display:block}
+.bolt[data-mood="hype"]{animation:bolt-hype .5s ease-in-out infinite}
+.bolt[data-mood="idle"] .bolt-head{animation:bolt-breathe 3s ease-in-out infinite}
+@keyframes bolt-blink{0%,92%,100%{opacity:1}95%{opacity:.2}}
+@keyframes bolt-hype{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-6px) rotate(2deg)}}
+@keyframes bolt-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+.bolt-say{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:8px 12px}
+.bolt-say p{margin:0;font-size:.85rem;color:var(--muted)}
+.bolt-say strong{color:var(--ink)}
+.bolt-overlay{position:fixed;inset:0;z-index:4000;display:flex;align-items:center;justify-content:center;background:rgba(10,14,12,.82);backdrop-filter:blur(4px);padding:20px}
+.bolt-overlay[hidden]{display:none}
+.bolt-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px 32px;text-align:center;max-width:min(420px,calc(100vw - 40px));box-shadow:var(--shadow-md)}
+.bolt-card .bolt{width:110px;height:110px}
+.bolt-card h2{margin:12px 0 4px;font-size:1.4rem}
+.bolt-card p{color:var(--muted);font-size:.9rem;margin:0 0 16px}
+.bolt-term{font-family:var(--font-mono);font-size:.8rem;color:var(--primary);background:var(--surface-2);border-radius:8px;padding:8px 12px;margin:0 0 16px;min-height:40px;text-align:left;white-space:pre-wrap}
+.bolt-win{font-size:2.6rem;font-weight:800;letter-spacing:-.02em;color:var(--ink);margin:8px 0 2px}
+.bolt-win small{display:block;font-size:.85rem;font-weight:500;color:var(--muted);letter-spacing:0}

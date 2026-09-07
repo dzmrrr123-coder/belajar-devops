@@ -22,8 +22,7 @@ function applyQuestResponse(data, form) {
     if (typeof data.xp_delta === 'number' && data.xp_delta > 0) xpJuice(data.xp_delta, questItem || form);
     if (data.leveled_up) {
         buzz([25, 50, 25]);
-        SoundEffects.levelUp();
-        triggerConfetti(true);
+        try { showRankUp(data.level, data.level_title); } catch (e) { SoundEffects.levelUp(); triggerConfetti(true); }
     } else {
         SoundEffects.questComplete();
     }
