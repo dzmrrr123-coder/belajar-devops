@@ -19,6 +19,8 @@ $flash = get_flash();
                 <span>Roadmap 12 minggu</span>
                 <span aria-hidden="true">•</span>
                 <span>Level up setiap hari</span>
+                <span aria-hidden="true">•</span>
+                <button type="button" class="btn btn-link btn-sm text-muted p-0" data-motion-toggle aria-pressed="false"><i class="fas fa-person-running" aria-hidden="true"></i> <span>Gerak: penuh</span></button>
             </div>
         </div>
     </footer>

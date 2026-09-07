@@ -1,4 +1,5 @@
 (function() {
+    if (window.LTMotion && window.LTMotion.reduced()) return;
     const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) return;
 
@@ -65,8 +66,10 @@
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) stop(); else start();
         });
-        const lowPower = window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches && (navigator.hardwareConcurrency || 8) <= 4;
-        if (lowPower) { parts = parts.slice(0, 16); }
+        const isMobile = window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches;
+        const lowPower = isMobile && (navigator.hardwareConcurrency || 8) <= 4;
+        if (lowPower) { parts = parts.slice(0, 12); }
+        else if (isMobile) { parts = parts.slice(0, 16); }
         if (navigator.getBattery) {
             navigator.getBattery().then(function(b) {
                 const apply = function() { if (b.charging === false && b.level < 0.2) stop(); else start(); };
@@ -82,9 +85,9 @@
     else boot();
 
     /* Tilt 3D halus: desktop berpointer presisi saja */
-    if (window.matchMedia && window.matchMedia('(pointer: fine)').matches) {
+    if (window.matchMedia && window.matchMedia('(pointer: fine)').matches && !(window.LTMotion && window.LTMotion.reduced())) {
         const MAX = 6;
-        document.querySelectorAll('.quest-item, .badge-item').forEach(function(el) {
+        document.querySelectorAll('.quest-item, .badge-item, .mission-card, .next-action').forEach(function(el) {
             el.classList.add('tilt');
             el.addEventListener('mousemove', function(e) {
                 const r = el.getBoundingClientRect();
@@ -97,17 +100,22 @@
     }
 
     /* Transisi antar halaman: fade kilat, fallback = navigasi biasa */
-    if (document.startViewTransition) {
+    if (document.startViewTransition && !(window.LTMotion && window.LTMotion.reduced())) {
         document.addEventListener('click', function(e) {
+            if (e.defaultPrevented) return;
             const a = e.target.closest('a[href]');
             if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-            if (a.target === '_blank' || a.hasAttribute('download')) return;
+            if (a.target === '_blank' || a.hasAttribute('download') || a.hasAttribute('data-no-transition')) return;
+            const href = a.getAttribute('href') || '';
+            if (!href || href.startsWith('#')) return;
             let url = null;
-            try { url = new URL(a.getAttribute('href'), location.href); } catch (err) { return; }
+            try { url = new URL(href, location.href); } catch (err) { return; }
             if (url.origin !== location.origin) return;
-            if (url.pathname.endsWith('.sql') || url.pathname.endsWith('.png')) return;
+            if (url.href === location.href) return;
+            if (/.(sql|png|jpe?g|webp|pdf|zip)(\?|$)/i.test(url.pathname)) return;
             e.preventDefault();
-            document.startViewTransition(function() { location.href = a.href; });
+            try { document.startViewTransition(function() { location.href = a.href; }); }
+            catch (err) { location.href = a.href; }
         });
     }
 })();

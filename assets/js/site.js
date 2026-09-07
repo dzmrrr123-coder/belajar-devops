@@ -290,7 +290,7 @@ document.querySelectorAll('.subtask-toggle-form, .subtask-add-form').forEach(for
     const bar = document.getElementById('pageProgress');
     let timer = null;
     function start() {
-        if (!bar || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (!bar || (window.LTMotion ? window.LTMotion.reduced() : window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
         bar.classList.add('on');
         bar.style.width = '12%';
         clearTimeout(timer);

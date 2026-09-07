@@ -15,43 +15,86 @@ function boltSay(el, mood, html) {
     el.innerHTML = boltSVG(mood) + '<p>' + html + '</p>';
 }
 (function() {
-    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduced = window.LTMotion ? window.LTMotion.reduced() : (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     document.querySelectorAll('[data-bolt]').forEach(function(el) {
-        boltSay(el, el.dataset.mood || 'idle', el.dataset.msg || 'Gas!');
+        const ctx = el.dataset.context || '';
+        let mood = el.dataset.mood || 'idle';
+        if (!el.dataset.mood) {
+            if (ctx === 'combo') mood = 'hype';
+            else if (ctx === 'recovery') mood = 'sleep';
+            else if (ctx === 'claim') mood = 'happy';
+        }
+        boltSay(el, mood, el.dataset.msg || 'Gas!');
     });
-    /* Splash 1x per sesi */
     try {
         if (!reduced && !sessionStorage.getItem('lt_splash')) {
             sessionStorage.setItem('lt_splash', '1');
+            const prevFocus = document.activeElement;
             const ov = document.createElement('div');
             ov.className = 'bolt-overlay';
-            ov.setAttribute('role', 'status');
-            ov.innerHTML = '<div class="bolt-card">' + boltSVG('happy') + '<p class="bolt-term" id="boltTerm"></p></div>';
+            ov.setAttribute('role', 'dialog');
+            ov.setAttribute('aria-modal', 'true');
+            ov.setAttribute('aria-label', 'Selamat datang');
+            ov.innerHTML = '<div class="bolt-card">' + boltSVG('happy') + '<p class="bolt-term" id="boltTerm"></p><button type="button" class="btn btn-cyber btn-sm" data-close>Mulai gas</button></div>';
             document.body.appendChild(ov);
             const term = ov.querySelector('#boltTerm');
+            const btn = ov.querySelector('[data-close]');
             const lines = ['$ lt --start', '> memuat quest…', '> siap, gas!'];
-            let li = 0, ci = 0, out = '';
+            let li = 0, ci = 0, closed = false;
             try { if (window.SoundEffects && SoundEffects.splashBoot) SoundEffects.splashBoot(); } catch (e) {}
-            const close = function() { ov.remove(); };
-            ov.addEventListener('click', close);
+            const close = function() { if (closed) return; closed = true; ov.remove(); if (prevFocus && prevFocus.focus) try { prevFocus.focus(); } catch (e) {} };
+            btn.addEventListener('click', close);
+            ov.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });
             const tick = function() {
-                if (!document.body.contains(ov)) return;
-                if (li >= lines.length) { setTimeout(close, 350); return; }
+                if (closed || !document.body.contains(ov)) return;
+                if (li >= lines.length) { btn.focus(); setTimeout(close, 4000); return; }
                 const line = lines[li];
                 if (ci <= line.length) {
-                    out = lines.slice(0, li).join('\n') + (li ? '\n' : '') + line.slice(0, ci);
-                    term.textContent = out;
+                    term.textContent = lines.slice(0, li).join('\n') + (li ? '\n' : '') + line.slice(0, ci);
                     ci++;
                     setTimeout(tick, line.startsWith('$') ? 28 : 14);
                 } else { li++; ci = 0; setTimeout(tick, 120); }
             };
             tick();
-            setTimeout(close, 2600);
+            setTimeout(close, 6000);
+            btn.focus();
         }
     } catch (e) {}
 })();
+function showBoltMoment(kind, title, sub) {
+    const reduced = window.LTMotion ? window.LTMotion.reduced() : (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const prevFocus = document.activeElement;
+    const ov = document.createElement('div');
+    ov.className = 'bolt-overlay';
+    ov.setAttribute('role', 'alertdialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.setAttribute('aria-label', String(title || kind));
+    const mood = kind === 'recovery' ? 'sleep' : (reduced ? 'happy' : 'hype');
+    const head = kind === 'combo' ? '$ combo --check → x2' : kind === 'recovery' ? '$ streak --recovery' : '$ xp --check → LEVEL UP';
+    ov.innerHTML = '<div class="bolt-card">' + boltSVG(mood) + '<p class="bolt-term"></p><div class="bolt-win"></div><p class="bolt-sub"></p><button type="button" class="btn btn-cyber">Lanjut gas</button></div>';
+    ov.querySelector('.bolt-term').textContent = head;
+    ov.querySelector('.bolt-win').textContent = String(title || '');
+    ov.querySelector('.bolt-sub').textContent = String(sub || (kind === 'recovery' ? 'Streak putus? Mulai lagi dari 1 quest kecil.' : 'Rank baru diraih. Gas ke berikutnya!'));
+    document.body.appendChild(ov);
+    const btn = ov.querySelector('button');
+    const close = function() { ov.remove(); if (prevFocus && prevFocus.focus) try { prevFocus.focus(); } catch (e) {} };
+    btn.addEventListener('click', close);
+    ov.addEventListener('click', function(e) { if (e.target === ov) close(); });
+    ov.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });
+    btn.focus();
+    try {
+        if (window.SoundEffects) {
+            if (kind === 'combo' && window.SoundEffects.comboUp) window.SoundEffects.comboUp();
+            else if (window.SoundEffects.rankUp) window.SoundEffects.rankUp();
+        }
+    } catch (e) {}
+    try { if (kind !== 'recovery') triggerConfetti(true); } catch (e) {}
+}
+function showComboUp(mult) { showBoltMoment('combo', 'Combo ' + mult, 'Pertahankan. 1 aksi lagi bikin streak XP.'); }
+function showRecovery() { showBoltMoment('recovery', 'Misi comeback', 'Streak putus? Mulai lagi dari 1 quest kecil.'); }
+window.showBoltMoment = showBoltMoment; window.showComboUp = showComboUp; window.showRecovery = showRecovery; window.showRankUp = showRankUp;
 function showRankUp(level, title) {
-    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduced = window.LTMotion ? window.LTMotion.reduced() : (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     const ov = document.createElement('div');
     ov.className = 'bolt-overlay';
     ov.setAttribute('role', 'alertdialog');
@@ -64,10 +107,15 @@ function showRankUp(level, title) {
         + '<p>Rank baru diraih. Gas ke berikutnya!</p>'
         + '<button type="button" class="btn btn-cyber">Lanjut gas</button></div>';
     ov.querySelector('.bolt-win small').textContent = tmp.textContent;
+    ov.setAttribute('aria-modal', 'true');
+    const prevFocus = document.activeElement;
     document.body.appendChild(ov);
-    const close = function() { ov.remove(); };
-    ov.querySelector('button').addEventListener('click', close);
+    const btn = ov.querySelector('button');
+    const close = function() { ov.remove(); if (prevFocus && prevFocus.focus) try { prevFocus.focus(); } catch (e) {} };
+    btn.addEventListener('click', close);
     ov.addEventListener('click', function(e) { if (e.target === ov) close(); });
+    ov.addEventListener('keydown', function(e) { if (e.key === 'Escape') close(); });
+    btn.focus();
     try { if (window.SoundEffects && SoundEffects.rankUp) SoundEffects.rankUp(); } catch (e) {}
     try { triggerConfetti(true); } catch (e) {}
 }

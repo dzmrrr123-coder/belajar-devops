@@ -131,9 +131,25 @@ const SoundEffects = (function() {
         }
     };
 })();
+const LTMotion = (function() {
+    function prefersReduced() { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    function stored() { try { return localStorage.getItem('lt_motion') || 'full'; } catch (e) { return 'full'; } }
+    function current() { return prefersReduced() || stored() === 'reduced' ? 'reduced' : 'full'; }
+    function apply() { try { document.documentElement.dataset.motion = current(); } catch (e) {} syncBtn(); }
+    function syncBtn() { try { document.querySelectorAll('[data-motion-toggle]').forEach(function(b) { b.setAttribute('aria-pressed', current() === 'reduced' ? 'true' : 'false'); b.querySelector('span').textContent = current() === 'reduced' ? 'Gerak: hemat' : 'Gerak: penuh'; }); } catch (e) {} }
+    try { apply(); } catch (e) {}
+    try { if (window.matchMedia) window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', apply); } catch (e) {}
+    document.addEventListener('DOMContentLoaded', function() {
+        syncBtn();
+        document.querySelectorAll('[data-motion-toggle]').forEach(function(b) {
+            b.addEventListener('click', function() { try { localStorage.setItem('lt_motion', current() === 'reduced' ? 'full' : 'reduced'); } catch (e) {} apply(); });
+        });
+    });
+    return { current, apply, reduced: () => current() === 'reduced', toggle: function() { try { localStorage.setItem('lt_motion', current() === 'reduced' ? 'full' : 'reduced'); } catch (e) {} apply(); return current(); } };
+})();
+window.LTMotion = LTMotion;
 function tierHaptic(tier) {
-    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) return;
+    if (window.LTMotion && window.LTMotion.reduced()) return;
     const map = { common: 15, rare: [20, 40, 20], epic: [30, 50, 30, 50, 30], legendary: [50, 60, 50, 60, 80] };
     buzz(map[tier] || 12);
 }
@@ -156,8 +172,7 @@ function ensureConfetti() {
 
 function triggerConfetti(levelUp = false) {
     if (!levelUp) return;
-    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) return;
+    if (window.LTMotion && window.LTMotion.reduced()) return;
     ensureConfetti().then((ok) => {
         if (!ok || typeof confetti !== 'function') return;
         const duration = 2.5 * 1000;
@@ -190,8 +205,10 @@ function showToast(message, type = 'success') {
         container = document.createElement('div');
         container.className = 'toast-container';
         container.setAttribute('role', 'status');
+        container.setAttribute('aria-live', 'polite');
         document.body.appendChild(container);
     }
+    while (container.children.length >= 3) container.firstChild.remove();
     const toast = document.createElement('div');
     toast.className = 'lt-toast p-3 d-flex align-items-center justify-content-between gap-2';
     toast.setAttribute('role', type === 'danger' ? 'alert' : 'status');
@@ -295,10 +312,18 @@ window.installPWA = installPWA;
 function buzz(pattern) {
     try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
 }
+function xpTierForAmount(amount) {
+    if (amount >= 30) return 'legendary';
+    if (amount >= 15) return 'epic';
+    if (amount >= 10) return 'rare';
+    return '';
+}
 function xpJuice(amount, anchor, opts) {
     amount = parseInt(amount, 10) || 0;
     if (amount <= 0) return;
     opts = opts || {};
+    if (!opts.tier) opts.tier = xpTierForAmount(amount);
+    if (window.LTMotion && window.LTMotion.reduced()) { buzz(0); return; }
     buzz(opts.buzz || 12);
     const host = anchor && anchor.getBoundingClientRect ? anchor : null;
     const r = host ? host.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 3, width: 0 };

@@ -132,7 +132,7 @@ require_once 'includes/navbar.php';
         </div>
     </div>
 
-    <div class="chest-card<?= $chest ? ' opened' : '' ?>" id="dailyChest">
+    <div class="chest-card<?= $chest ? ' opened' : '' ?>" id="dailyChest" data-urgent="<?= $chest ? '0' : '1' ?>">
         <?php if ($chest): ?>
             <span class="chest-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
             <span class="chest-text"><strong><?= !empty($chest['is_golden']) ? 'PETI EMAS! ' : '' ?>+<?= (int)$chest['xp'] ?> XP<?= !empty($chest['freeze']) ? ' + 1 freeze' : '' ?></strong><small>peti hari ini sudah dibuka · kembali besok</small></span>
@@ -169,9 +169,18 @@ require_once 'includes/navbar.php';
     $streak_broken = $last_active !== '' && $last_active < date('Y-m-d', strtotime('-1 day')) && (int)$user['streak'] <= 1;
     $next_action = \App\Domain\NextAction::pick(['claimable_n' => $claimable_n, 'claimable_xp' => $claimable_xp, 'due_reviews' => $due_reviews, 'next_quest' => $next_quest, 'pomo_today' => $pomodoro_today, 'streak_broken' => $streak_broken]);
     $next_icons = ['claim' => 'fa-gift', 'recovery' => 'fa-heart', 'review' => 'fa-rotate-right', 'quest' => 'fa-map', 'focus' => 'fa-play', 'digest' => 'fa-calendar-week'];
+    $next_urgent = in_array($next_action['type'], ['claim', 'recovery'], true) ? '1' : '0';
+    $bolt_combo_done = \App\Domain\Gamification\Combo::countDone($missions);
+    $bolt_combo_total = count($missions) ?: 3;
+    $bolt_combo_mult = \App\Domain\Gamification\Combo::tier($bolt_combo_done, $bolt_combo_total);
+    if ($claimable_n > 0) { $bolt_ctx = 'claim'; $bolt_mood = 'happy'; $bolt_msg = 'Ada <strong>+' . $claimable_xp . ' XP</strong> nganggur. Klaim gih!'; }
+    elseif ($streak_broken) { $bolt_ctx = 'recovery'; $bolt_mood = 'sleep'; $bolt_msg = 'Streak putus? Gas 1 quest kecil buat comeback.'; }
+    elseif ($bolt_combo_mult >= 2.0) { $bolt_ctx = 'combo'; $bolt_mood = 'hype'; $bolt_msg = 'Pipeline kamu kembali hijau. Combo x2 aktif!'; }
+    elseif ($next_action['type'] === 'review') { $bolt_ctx = 'review'; $bolt_mood = 'idle'; $bolt_msg = 'Ada ' . (int)$due_reviews . ' review nunggu. 2 menit saja.'; }
+    else { $bolt_ctx = 'focus'; $bolt_mood = 'idle'; $bolt_msg = 'Fokus satu quest, sisanya ngikut.'; }
     ?>
     <?php if ($next_action['type'] === 'claim'): ?>
-    <div class="next-action">
+    <div class="next-action" data-urgent="<?= $next_urgent ?>">
         <span class="next-action-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
         <span class="next-action-text"><strong><?= htmlspecialchars($next_action['title']) ?></strong><small><?= htmlspecialchars($next_action['desc']) ?></small></span>
         <form method="POST" action="claim_mission.php" class="m-0 flex-shrink-0">
@@ -181,7 +190,7 @@ require_once 'includes/navbar.php';
         </form>
     </div>
     <?php else: ?>
-    <a class="next-action" href="<?= htmlspecialchars($next_action['href']) ?>">
+    <a class="next-action" href="<?= htmlspecialchars($next_action['href']) ?>" data-urgent="<?= $next_urgent ?>">
         <span class="next-action-icon" aria-hidden="true"><i class="fas <?= $next_icons[$next_action['type']] ?? 'fa-arrow-right' ?>"></i></span>
         <span class="next-action-text"><strong><?= htmlspecialchars($next_action['title']) ?></strong><small><?= htmlspecialchars($next_action['desc']) ?></small></span>
         <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
@@ -231,7 +240,7 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
     $mission_claimed = count(array_filter($missions, fn($m) => !empty($m['claimed'])));
     $mission_all_done = count(array_filter($missions, fn($m) => !empty($m['done']))) === count($missions);
     ?>
-    <div class="bolt-say mb-3" data-bolt data-mood="<?= $claimable_n > 0 ? 'happy' : 'idle' ?>" data-msg="<?= $claimable_n > 0 ? 'Ada <strong>+' . $claimable_xp . ' XP</strong> nganggur. Klaim gih!' : 'Fokus satu quest, sisanya ngikut.' ?>"></div>
+    <div class="bolt-say mb-3" data-bolt data-context="<?= htmlspecialchars($bolt_ctx) ?>" data-mood="<?= htmlspecialchars($bolt_mood) ?>" data-msg="<?= $bolt_msg ?>"></div>
     <section class="mission-strip" aria-label="Misi harian">
         <details class="mission-details" id="missionDetails" open>
             <summary class="mission-summary">
@@ -265,7 +274,7 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
                 <?php endif; ?>
                 <div class="mission-row">
                     <?php foreach ($missions as $mkey => $m): ?>
-                    <div class="mission-card <?= !empty($m['claimed']) ? 'claimed' : (!empty($m['done']) ? 'ready' : '') ?>">
+                    <div class="mission-card <?= !empty($m['claimed']) ? 'claimed' : (!empty($m['done']) ? 'ready' : '') ?>" data-urgent="<?= (!empty($m['done']) && empty($m['claimed'])) ? '1' : '0' ?>">
                         <i class="fas <?= htmlspecialchars($m['icon']) ?>" aria-hidden="true"></i>
                         <div class="mission-main"><strong><?= htmlspecialchars($m['label']) ?></strong><span>+<?= (int)$m['xp'] ?> XP</span></div>
                         <?php if (!empty($m['claimed'])): ?>
@@ -516,7 +525,7 @@ document.querySelector('.chest-form')?.addEventListener('submit', async function
     const tier = data.tier || 'common';
     const tierLabel = { common: 'Biasa', rare: 'Langka', epic: 'Epik', legendary: 'Legendaris', golden: 'EMAS' }[tier] || 'Biasa';
     const tierStyle = tier === 'golden' ? 'legendary' : tier;
-    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduceMotion = window.LTMotion ? window.LTMotion.reduced() : matchMedia('(prefers-reduced-motion: reduce)').matches;
     const reveal = function() {
         card.classList.remove('opening');
         card.classList.add('opened');
