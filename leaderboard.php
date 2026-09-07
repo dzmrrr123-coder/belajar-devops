@@ -174,6 +174,9 @@ require_once 'includes/navbar.php';
             </div>
             <?php endif; ?>
             </div>
+            <?php if ($rid > 0 && $rid !== $user_id): ?>
+            <a class="btn btn-cyber-outline btn-sm flex-shrink-0 align-self-center" href="duels.php?vs=<?= urlencode($r['username']) ?>" aria-label="Tantang <?= htmlspecialchars($r['username']) ?> duel"><i class="fas fa-hand-fist" aria-hidden="true"></i></a>
+            <?php endif; ?>
         </div>
         <?php endforeach; ?>
     </div>

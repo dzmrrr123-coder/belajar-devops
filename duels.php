@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $duels = Duels::myDuels($conn, $user_id);
 $week_key = challenge_week_key();
+$vs_prefill = preg_replace('/[^a-zA-Z0-9_]/', '', (string)($_GET['vs'] ?? ''));
 $scores = [];
 foreach ($duels as $d) {
     if (($d['status'] ?? '') === 'finished') continue;
@@ -58,7 +59,7 @@ require_once 'includes/navbar.php';
         <form method="POST" action="duels.php" class="d-flex gap-2 m-0">
             <?= csrf_field() ?>
             <input type="hidden" name="duel_action" value="challenge">
-            <input name="username" class="form-control" placeholder="Username lawan…" maxlength="100" required aria-label="Username lawan">
+            <input name="username" class="form-control" placeholder="Username lawan…" maxlength="100" required aria-label="Username lawan" value="<?= htmlspecialchars($vs_prefill) ?>"<?= $vs_prefill !== '' ? ' autofocus' : '' ?>>
             <button class="btn btn-cyber btn-sm flex-shrink-0" type="submit">Tantang</button>
         </form>
     </section>

@@ -39,6 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $my_squad = null;
 $sid = Squads::mySquadId($conn, $user_id);
 if ($sid !== null) $my_squad = Squads::detail($conn, $sid);
+$code_prefill = strtoupper(preg_replace('/[^a-zA-Z0-9]/', '', (string)($_GET['code'] ?? '')));
+$scheme_inv = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$invite_url = $scheme_inv . '://' . ($_SERVER['HTTP_HOST'] ?? '') . '/squad.php?code=' . urlencode($my_squad['code'] ?? $code_prefill);
 $conn->close();
 $page_title = 'Squad';
 require_once 'includes/header.php';
@@ -68,11 +71,14 @@ require_once 'includes/navbar.php';
             </div>
             <?php endforeach; ?>
         </div>
-        <form method="POST" action="squad.php" class="m-0 mt-2" onsubmit="return confirm('Keluar dari squad ini?')">
-            <?= csrf_field() ?>
-            <input type="hidden" name="squad_action" value="leave">
-            <button type="submit" class="btn btn-cyber-outline btn-sm">Keluar squad</button>
-        </form>
+        <div class="d-flex gap-2 mt-2 flex-wrap">
+            <button type="button" class="btn btn-cyber btn-sm" onclick="copyToClipboard('<?= htmlspecialchars($invite_url, ENT_QUOTES) ?>', this)"><i class="fas fa-link me-1" aria-hidden="true"></i>Salin link undangan</button>
+            <form method="POST" action="squad.php" class="m-0" onsubmit="return confirm('Keluar dari squad ini?')">
+                <?= csrf_field() ?>
+                <input type="hidden" name="squad_action" value="leave">
+                <button type="submit" class="btn btn-cyber-outline btn-sm">Keluar squad</button>
+            </form>
+        </div>
     </section>
     <?php else: ?>
     <section class="card p-4 mb-3" aria-label="Buat squad">
@@ -91,7 +97,7 @@ require_once 'includes/navbar.php';
         <form method="POST" action="squad.php" class="d-flex gap-2 m-0">
             <?= csrf_field() ?>
             <input type="hidden" name="squad_action" value="join">
-            <input name="code" class="form-control" placeholder="Kode 6 karakter…" maxlength="8" required aria-label="Kode squad" style="text-transform:uppercase">
+            <input name="code" class="form-control" placeholder="Kode 6 karakter…" maxlength="8" required aria-label="Kode squad" style="text-transform:uppercase" value="<?= htmlspecialchars($code_prefill) ?>"<?= $code_prefill !== '' ? ' autofocus' : '' ?>>
             <button class="btn btn-cyber-outline btn-sm flex-shrink-0" type="submit">Gabung</button>
         </form>
     </section>
