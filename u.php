@@ -119,6 +119,12 @@ try {
     $cheers = $s->get_result()->fetch_all(MYSQLI_ASSOC);
     $s->close();
 } catch (Throwable $e) {}
+$react_counts = []; $react_mine = [];
+$react_emojis = \App\Domain\Social\Reactions::emojis();
+if ($me > 0) {
+    $react_counts = \App\Domain\Social\Reactions::counts($conn, 'profile', [$uid]);
+    $react_mine = \App\Domain\Social\Reactions::mine($conn, $me, 'profile', [$uid]);
+}
 $conn->close();
 
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
@@ -146,6 +152,14 @@ require_once 'includes/header.php';
             <a class="btn btn-cyber-outline btn-sm" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=<?= urlencode($share_url) ?>" aria-label="Bagikan ke LinkedIn"><i class="fab fa-linkedin" aria-hidden="true"></i></a>
             <a href="register.php" class="btn btn-cyber btn-sm">Buat trackermu</a>
         </div>
+        <?php if ($me > 0 && $me !== $uid): ?>
+        <div id="reactCsrf" hidden><?= csrf_field() ?></div>
+        <div class="react-bar" data-target="<?= $uid ?>">
+            <?php foreach ($react_emojis as $ekey => $echar): $ecount = (int)($react_counts[$uid][$ekey] ?? 0); $eon = in_array($ekey, $react_mine[$uid] ?? [], true); ?>
+            <button type="button" class="react-btn<?= $eon ? ' on' : '' ?>" data-emoji="<?= $ekey ?>" aria-label="Reaksi <?= $ekey ?>" aria-pressed="<?= $eon ? 'true' : 'false' ?>"><?= $echar ?><span><?= $ecount ?></span></button>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
     </div>
 
     <?php if ($top_skills): ?>

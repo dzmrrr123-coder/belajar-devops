@@ -56,9 +56,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->close();
                     seed_quiz_bank($conn, $new_id);
                     $conn->close();
-                    set_flash('success', "Akun berhasil dibuat. Selamat datang, {$username}! 36 kartu kuis menantimu.");
+                    set_flash('success', "Akun berhasil dibuat. Selamat datang, {$username}! Atur start-mu dulu.");
                     session_regenerate_id(true);
-                    redirect('index.php');
+                    redirect('onboarding.php');
                 } else {
                     $error = 'Terjadi kesalahan sistem saat mendaftar. Silakan coba lagi.';
                     $stmt->close();

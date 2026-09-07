@@ -18,18 +18,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         if ($action === 'set_role') {
             $role = ($_POST['role'] ?? '') === 'admin' ? 'admin' : 'user';
-            $tq = $conn->prepare("SELECT email FROM users WHERE id = ?");
-            $tq->bind_param("i", $target);
-            $tq->execute();
-            $temail = strtolower(trim((string)($tq->get_result()->fetch_assoc()['email'] ?? '')));
-            $tq->close();
-            if ($role === 'admin' && $temail !== OWNER_ADMIN_EMAIL) {
-                set_flash('danger', 'Role admin dikunci hanya untuk ' . OWNER_ADMIN_EMAIL . '.');
+            if ($role === 'admin') {
+                if (\App\Domain\Auth\Roles::grant($conn, $target, 'admin')) {
+                    set_flash('success', "User #{$target} dijadikan admin.");
+                } else {
+                    set_flash('danger', 'Gagal memberi role admin.');
+                }
             } else {
-                $up = $conn->prepare("UPDATE users SET role = ? WHERE id = ?");
-                $up->bind_param("si", $role, $target);
-                $up->execute(); $up->close();
-                set_flash('success', "Role user #{$target} diubah menjadi {$role}.");
+                if (\App\Domain\Auth\Roles::revoke($conn, $target, 'admin')) {
+                    set_flash('success', "Role admin user #{$target} dicabut.");
+                } else {
+                    set_flash('danger', 'Gagal mencabut admin (minimal 1 admin harus tersisa).');
+                }
             }
         } elseif ($action === 'adjust_xp') {
             $delta = max(-10000, min(10000, (int)($_POST['xp_delta'] ?? 0)));
@@ -87,11 +87,21 @@ try {
     $rows = $s->get_result()->fetch_all(MYSQLI_ASSOC);
     $s->close();
 } catch (Throwable $e) {}
+$admin_ids = [];
+try {
+    $ar = $conn->query("SELECT ur.user_id FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE r.slug = 'admin'");
+    if ($ar) { foreach ($ar->fetch_all(MYSQLI_ASSOC) as $arow) $admin_ids[(int)$arow['user_id']] = true; $ar->free(); }
+} catch (Throwable $e) {}
+$is_row_admin = function (array $row) use ($admin_ids): bool {
+    if (isset($admin_ids[(int)($row['id'] ?? 0)])) return true;
+    return ($row['role'] ?? '') === 'admin';
+};
 
 $stat_all = ['users' => 0, 'admins' => 0, 'xp' => 0];
 try {
-    $r = $conn->query("SELECT COUNT(*) u, SUM(role = 'admin') a, COALESCE(SUM(xp), 0) x FROM users");
-    if ($r) { $d = $r->fetch_assoc(); $stat_all = ['users' => (int)($d['u'] ?? 0), 'admins' => (int)($d['a'] ?? 0), 'xp' => (int)($d['x'] ?? 0)]; $r->free(); }
+    $r = $conn->query("SELECT COUNT(*) u, COALESCE(SUM(xp), 0) x FROM users");
+    if ($r) { $d = $r->fetch_assoc(); $stat_all['users'] = (int)($d['u'] ?? 0); $stat_all['xp'] = (int)($d['x'] ?? 0); $r->free(); }
+    $stat_all['admins'] = \App\Domain\Auth\Roles::countAdmins($conn);
 } catch (Throwable $e) {}
 $conn->close();
 $pages = max(1, (int)ceil($total / $per));
@@ -124,7 +134,7 @@ require_once 'includes/navbar.php';
         <div class="list-row align-items-start">
             <div class="list-main">
                 <p class="list-title">#<?= (int)$r['id'] ?> <?= htmlspecialchars($r['username']) ?>
-                    <?php if (($r['role'] ?? '') === 'admin'): ?><span class="quest-pending">Admin</span><?php endif; ?>
+                    <?php if ($is_row_admin($r)): ?><span class="quest-pending">Admin</span><?php endif; ?>
                     <?php if ($is_self): ?><span class="quest-pending">Kamu</span><?php endif; ?>
                 </p>
                 <p class="list-meta"><?= htmlspecialchars($r['email']) ?> · Lv <?= calculate_level((int)$r['xp']) ?> · <?= (int)$r['xp'] ?> XP · streak <?= (int)$r['streak'] ?> (terbaik <?= (int)$r['best_streak'] ?>) · <?= (int)$r['qd'] ?> quest · gabung <?= date('d M Y', strtotime($r['created_at'])) ?></p>
@@ -135,8 +145,8 @@ require_once 'includes/navbar.php';
                         <input type="hidden" name="admin_action" value="set_role">
                         <input type="hidden" name="target_id" value="<?= (int)$r['id'] ?>">
                         <select name="role" class="form-select form-select-sm" style="max-width:110px" aria-label="Role user">
-                            <option value="user" <?= ($r['role'] ?? '') !== 'admin' ? 'selected' : '' ?>>User</option>
-                            <option value="admin" <?= ($r['role'] ?? '') === 'admin' ? 'selected' : '' ?>>Admin</option>
+                            <option value="user" <?= !$is_row_admin($r) ? 'selected' : '' ?>>User</option>
+                            <option value="admin" <?= $is_row_admin($r) ? 'selected' : '' ?>>Admin</option>
                         </select>
                         <button class="btn btn-cyber-outline btn-sm" type="submit">Role</button>
                     </form>

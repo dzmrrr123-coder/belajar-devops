@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
         || (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false);
     $card_id = (int)($_POST['card_id'] ?? 0);
     $result = ($_POST['result'] ?? '') === 'know' ? 'know' : 'forgot';
-    $mode = ($_POST['mode'] ?? '') === 'review' ? 'review' : 'latihan';
+    $mode = in_array(($_POST['mode'] ?? ''), ['review', 'blitz'], true) ? $_POST['mode'] : 'latihan';
     $ids = array_values(array_filter(array_map('intval', explode(',', (string)($_POST['ids'] ?? '')))));
     $i = max(0, (int)($_POST['i'] ?? 0));
     $run = $_SESSION['quiz_run'] ?? ['tahu' => 0, 'lupa' => 0, 'xp' => 0];
@@ -101,6 +101,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
     }
     $_SESSION['quiz_run'] = $run;
     $next_i = $i + 1;
+    if ($mode === 'blitz' && $next_i >= count($ids)) {
+        try {
+            $bi = $conn->prepare("INSERT INTO blitz_runs (user_id, score, total, xp) VALUES (?, ?, ?, ?)");
+            if ($bi) {
+                $bs = (int)($run['tahu'] ?? 0); $bt = count($ids); $bx = (int)($run['xp'] ?? 0);
+                $bi->bind_param("iiii", $user_id, $bs, $bt, $bx); $bi->execute(); $bi->close();
+            }
+        } catch (Throwable $e) {}
+        unset($_SESSION['blitz_deadline']);
+    }
     if (!empty($is_ajax)) {
         $qc = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND ref_type = 'quiz' AND amount > 0 AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY");
         $qc->bind_param("i", $user_id); $qc->execute();
@@ -129,7 +139,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
 }
 
 // Daftar kartu sesi ini
-$mode = ($_GET['mode'] ?? '') === 'review' ? 'review' : 'latihan';
+$mode = in_array(($_GET['mode'] ?? ''), ['review', 'blitz'], true) ? $_GET['mode'] : 'latihan';
+$is_blitz = $mode === 'blitz';
 $quiz_topics = quiz_topics();
 $topic = in_array($_GET['topic'] ?? 'all', $quiz_topics, true) ? $_GET['topic'] : 'all';
 $topic_sql = $topic === 'all' ? '' : 'AND c.topic = ?';
@@ -181,8 +192,24 @@ if (!$done && empty($ids)) {
     }
     if (!empty($ids)) {
         $_SESSION['quiz_run'] = ['tahu' => 0, 'lupa' => 0, 'xp' => 0];
+        if ($is_blitz) $_SESSION['blitz_deadline'] = time() + 60;
         redirect('quiz.php?mode=' . $mode . '&ids=' . implode(',', $ids) . '&i=0');
     }
+}
+
+$blitz_left = 0;
+if ($is_blitz && !$done && !empty($ids)) {
+    $blitz_left = max(0, (int)(($_SESSION['blitz_deadline'] ?? 0) - time()));
+    if ($blitz_left <= 0) redirect('quiz.php?mode=blitz&done=1');
+}
+$blitz_top = []; $blitz_best = null;
+if ($is_blitz) {
+    try {
+        $bt = $conn->prepare("SELECT u.username, MAX(b.score) s FROM blitz_runs b JOIN users u ON u.id = b.user_id WHERE b.created_at >= CURDATE() AND b.created_at < CURDATE() + INTERVAL 1 DAY GROUP BY u.id, u.username ORDER BY s DESC LIMIT 5");
+        if ($bt) { $bt->execute(); $blitz_top = $bt->get_result()->fetch_all(MYSQLI_ASSOC); $bt->close(); }
+        $bb = $conn->prepare("SELECT MAX(score) s FROM blitz_runs WHERE user_id = ? AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY");
+        if ($bb) { $bb->bind_param("i", $user_id); $bb->execute(); $blitz_best = $bb->get_result()->fetch_assoc()['s'] ?? null; $bb->close(); }
+    } catch (Throwable $e) {}
 }
 
 $card = null;
@@ -213,6 +240,7 @@ require_once 'includes/navbar.php';
             <div class="segmented" role="group" aria-label="Mode kuis">
                 <a href="quiz.php?mode=latihan<?= $topic !== 'all' ? '&topic=' . urlencode($topic) : '' ?>" class="filter-pill <?= $mode === 'latihan' ? 'active' : '' ?>">Latihan acak</a>
                 <a href="quiz.php?mode=review<?= $topic !== 'all' ? '&topic=' . urlencode($topic) : '' ?>" class="filter-pill <?= $mode === 'review' ? 'active' : '' ?>">Review (<?= $due_count ?>)</a>
+                <a href="quiz.php?mode=blitz" class="filter-pill <?= $mode === 'blitz' ? 'active' : '' ?>">Kilat 60 dtk</a>
             </div>
             <div class="segmented" role="group" aria-label="Topik kuis">
                 <a href="quiz.php?mode=<?= $mode ?>" class="filter-pill <?= $topic === 'all' ? 'active' : '' ?>">Semua</a>
@@ -236,13 +264,28 @@ require_once 'includes/navbar.php';
     <?php elseif ($done): ?>
     <div class="empty-state card p-4 p-md-5">
         <div class="empty-state-icon"><i class="fas fa-flag-checkered" aria-hidden="true"></i></div>
-        <h2 class="h5 fw-bold">Sesi selesai!</h2>
-        <p class="text-secondary small mb-3">Tahu <?= (int)($run['tahu'] ?? 0) ?> · Lupa <?= (int)($run['lupa'] ?? 0) ?> · +<?= (int)($run['xp'] ?? 0) ?> XP sesi ini.</p>
+        <h2 class="h5 fw-bold"><?= $is_blitz ? 'Waktu habis!' : 'Sesi selesai!' ?></h2>
+        <p class="text-secondary small mb-3">Tahu <?= (int)($run['tahu'] ?? 0) ?> · Lupa <?= (int)($run['lupa'] ?? 0) ?> · +<?= (int)($run['xp'] ?? 0) ?> XP sesi ini.<?= $is_blitz && $blitz_best !== null ? ' · Terbaik hari ini: ' . (int)$blitz_best : '' ?></p>
         <div class="d-flex gap-2 justify-content-center flex-wrap">
-            <a href="quiz.php?mode=latihan" class="btn btn-cyber btn-sm">Main lagi</a>
+            <a href="quiz.php?mode=<?= $is_blitz ? 'blitz' : 'latihan' ?>" class="btn btn-cyber btn-sm">Main lagi</a>
             <a href="review.php" class="btn btn-cyber-outline btn-sm">Ke Review</a>
         </div>
     </div>
+    <?php if ($is_blitz && $blitz_top): ?>
+    <section class="card p-4 mt-3" aria-label="Tercepat hari ini">
+        <h2 class="h5 fw-bold mb-1">Tercepat hari ini</h2>
+        <p class="text-secondary small mb-3">Skor kilat tertinggi per user.</p>
+        <div class="race-list">
+            <?php $bp = 0; foreach ($blitz_top as $brow): $bp++; ?>
+            <div class="race-row">
+                <span class="race-rank">#<?= $bp ?></span>
+                <span class="race-name"><?= htmlspecialchars($brow['username']) ?></span>
+                <span class="ana-val"><?= (int)$brow['s'] ?> benar</span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+    <?php endif; ?>
     <?php elseif (empty($ids)): ?>
     <div class="empty-state card p-4 p-md-5">
         <div class="empty-state-icon"><i class="fas fa-check-double" aria-hidden="true"></i></div>
@@ -254,6 +297,25 @@ require_once 'includes/navbar.php';
         </div>
     </div>
     <?php elseif ($card): ?>
+    <?php if ($is_blitz): ?>
+    <div class="card p-3 mb-3" role="timer" aria-label="Sisa waktu kilat">
+        <div class="d-flex justify-content-between align-items-center mb-1"><strong><i class="fas fa-bolt me-1" aria-hidden="true"></i>Mode kilat</strong><span id="blitzClock"><?= $blitz_left ?> dtk</span></div>
+        <div class="review-progress-bar" role="progressbar" aria-valuenow="<?= $blitz_left ?>" aria-valuemin="0" aria-valuemax="60" aria-label="Sisa waktu"><div id="blitzBar" style="width: <?= (int)round($blitz_left / 60 * 100) ?>%;"></div></div>
+    </div>
+    <script>
+    (function() {
+        let left = <?= $blitz_left ?>;
+        const clock = document.getElementById('blitzClock');
+        const bar = document.getElementById('blitzBar');
+        const t = setInterval(function() {
+            left--;
+            if (clock) clock.textContent = Math.max(0, left) + ' dtk';
+            if (bar) bar.style.width = Math.max(0, Math.round(left / 60 * 100)) + '%';
+            if (left <= 0) { clearInterval(t); window.location.href = 'quiz.php?mode=blitz&done=1'; }
+        }, 1000);
+    })();
+    </script>
+    <?php endif; ?>
     <div class="row g-4 justify-content-center">
         <div class="col-lg-7">
             <article class="card p-4 quiz-card">

@@ -1,0 +1,1 @@
+ALTER TABLE `daily_chests` ADD COLUMN `is_golden` TINYINT NOT NULL DEFAULT 0;

@@ -28,8 +28,12 @@
       "dest": "/assets/$1"
     },
     {
+      "src": "/api/v1/(.*)",
+      "dest": "/public/api/v1/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/$1"
+      "dest": "/router.php"
     }
   ]
 }

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/app/bootstrap.php';
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
 error_reporting(E_ALL);
@@ -78,8 +79,15 @@ if (file_exists(__DIR__ . '/.env')) {
     }
 }
 
-// 2. Set session save path if writable /tmp/sessions exists
-if (is_dir('/tmp/sessions') && is_writable('/tmp/sessions')) {
+// 2. Session driver: file (default) | redis | db — Fase 3 stateless
+$session_driver = strtolower((string)(getenv('SESSION_DRIVER') ?: 'file'));
+if (PHP_SAPI !== 'cli' && $session_driver === 'redis' && extension_loaded('redis') && (getenv('REDIS_URL') || getenv('REDIS_HOST'))) {
+    $h = new \App\Session\RedisHandler();
+    if ($h->open('', '')) session_set_save_handler($h, true);
+} elseif (PHP_SAPI !== 'cli' && $session_driver === 'db') {
+    $h = new \App\Session\DbHandler();
+    if ($h->open('', '')) session_set_save_handler($h, true);
+} elseif (is_dir('/tmp/sessions') && is_writable('/tmp/sessions')) {
     ini_set('session.save_path', '/tmp/sessions');
 }
 
@@ -89,6 +97,7 @@ if (session_status() === PHP_SESSION_NONE) {
         'path' => '/',
         'httponly' => true,
         'samesite' => 'Lax',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
     ]);
     session_start();
 }
@@ -100,31 +109,9 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
 }
 
-function rate_limit_hit($key, $max, $window_sec) {
-    $max = max(1, (int)$max);
-    $window = max(1, (int)$window_sec);
-    if (session_status() !== PHP_SESSION_ACTIVE) return false;
-    $now = time();
-    $rl = isset($_SESSION['rl']) && is_array($_SESSION['rl']) ? $_SESSION['rl'] : [];
-    $slot = $rl[$key] ?? null;
-    if (!is_array($slot) || ($now - (int)($slot[0] ?? 0)) >= $window) $slot = [$now, 0];
-    $slot[1] = (int)($slot[1] ?? 0) + 1;
-    $rl[$key] = $slot;
-    $_SESSION['rl'] = array_slice($rl, -20, 20, true);
-    return $slot[1] > $max;
-}
-
-function shop_reroll_win($roll, $draw) {
-    $roll = max(1, min(100, (int)$roll));
-    $draw = (int)$draw;
-    if ($roll <= 60) return max(5, min(10, $draw));
-    if ($roll <= 90) return max(11, min(20, $draw));
-    return max(21, min(30, $draw));
-}
-
-function shop_reroll_ev() {
-    return 0.6 * 7.5 + 0.3 * 15.5 + 0.1 * 25.5;
-}
+function rate_limit_hit($key, $max, $window_sec) { return \App\Http\RateLimit::hit((string)$key, (int)$max, (int)$window_sec); }
+function shop_reroll_win($roll, $draw) { return \App\Domain\Shop::rerollWin((int)$roll, (int)$draw); }
+function shop_reroll_ev() { return \App\Domain\Shop::rerollEv(); }
 
 // 3. Resolve Database configuration (Supports standard, Railway native, and URL connection strings)
 $db_host = getenv('DB_HOST') ?: (getenv('MYSQLHOST') ?: '');
@@ -158,78 +145,13 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 31);
+define('SCHEMA_VERSION', 32);
 
-function quiz_topics() {
-    return ['Linux', 'Git', 'MySQL', 'PHP', 'Laravel', 'Docker', 'AWS', 'Networking', 'General'];
-}
+function quiz_topics() { return \App\Domain\Quiz\QuizBank::topics(); }
 
-function quiz_bank_cards() {
-    return [
-        ['Linux', 'Perintah melihat isi direktori + file tersembunyi?', 'ls -la'],
-        ['Linux', 'Perintah pindah ke direktori home user?', 'cd ~ atau cd'],
-        ['Linux', 'Cara melihat 20 baris terakhir file log?', 'tail -n 20 /var/log/nginx/error.log'],
-        ['Linux', 'Perintah cek pemakaian disk per partisi?', 'df -h'],
-        ['Linux', 'Perintah memberi hak eksekusi ke script?', 'chmod +x deploy.sh'],
-        ['Linux', 'Perintah menjalankan perintah sebagai root?', 'sudo <perintah>, misal sudo apt update'],
-        ['Git', 'Perintah menyimpan snapshot perubahan ke staging?', 'git add . lalu git commit -m "pesan"'],
-        ['Git', 'Perintah melihat riwayat commit ringkas?', 'git log --oneline'],
-        ['Git', 'Perintah pindah branch / membuat branch baru?', 'git checkout -b fitur-x (atau git switch -c fitur-x)'],
-        ['Git', 'Perintah menggabungkan branch ke branch aktif?', 'git merge nama-branch'],
-        ['Git', 'Perintah mengunduh perubahan remote tanpa merge?', 'git fetch origin'],
-        ['Git', 'Perintah membatalkan file yang belum di-commit?', 'git restore <file> (atau git checkout -- <file>)'],
-        ['MySQL', 'Perintah membuat database baru?', 'CREATE DATABASE tokoonline CHARACTER SET utf8mb4;'],
-        ['MySQL', 'Perintah menambah kolom ke tabel?', 'ALTER TABLE users ADD COLUMN avatar VARCHAR(255);'],
-        ['MySQL', 'Klausa mencegah duplikat & mempercepat pencarian?', 'UNIQUE constraint dan INDEX pada kolom yang sering dicari'],
-        ['MySQL', 'Apa fungsi FOREIGN KEY?', 'Menjamin relasi antar tabel valid; baris anak wajib punya induk yang ada'],
-        ['MySQL', 'Perintah backup satu database?', 'mysqldump -u root -p tokoonline > backup.sql'],
-        ['MySQL', 'Bedanya DELETE vs TRUNCATE?', 'DELETE bisa WHERE + tercatat per baris; TRUNCATE hapus semua cepat tanpa WHERE'],
-        ['PHP', 'Fungsi mengamankan output HTML dari XSS?', 'htmlspecialchars($data, ENT_QUOTES, "UTF-8")'],
-        ['PHP', 'Cara mencegah SQL injection dengan MySQLi?', 'Prepared statement: $conn->prepare + bind_param'],
-        ['PHP', 'Fungsi hashing password yang dianjurkan?', 'password_hash($pw, PASSWORD_BCRYPT) + password_verify'],
-        ['PHP', 'Bedanya == dan === di PHP?', '== longgar (konversi tipe), === ketat (nilai + tipe sama)'],
-        ['PHP', 'Apa itu PDO/MySQLi prepared statement?', 'Query dikirim terpisah dari data sehingga input tak dieksekusi sebagai SQL'],
-        ['PHP', 'Fungsi redirect lalu hentikan eksekusi?', 'header("Location: index.php"); exit();'],
-        ['Docker', 'Perintah membangun image dari Dockerfile?', 'docker build -t nama-app .'],
-        ['Docker', 'Perintah menjalankan container dari image?', 'docker run -d -p 8080:80 nama-app'],
-        ['Docker', 'File untuk orkestrasi multi-container?', 'docker-compose.yml + perintah docker compose up -d'],
-        ['Docker', 'Perintah melihat container yang berjalan?', 'docker ps (semua termasuk berhenti: docker ps -a)'],
-        ['Docker', 'Perintah menghapus image tak terpakai?', 'docker image prune'],
-        ['Docker', 'Apa itu volume di Docker?', 'Penyimpanan persisten di luar container agar data tak hilang saat container dihapus'],
-        ['AWS', 'Layanan VPS di AWS?', 'EC2 (Elastic Compute Cloud)'],
-        ['AWS', 'Layanan penyimpanan objek di AWS?', 'S3 (Simple Storage Service)'],
-        ['AWS', 'Apa itu Security Group?', 'Firewall virtual pengatur inbound/outbound instance EC2'],
-        ['AWS', 'Perintah koneksi SSH ke EC2?', 'ssh -i kunci.pem ubuntu@<ip-publik>'],
-        ['AWS', 'Tool gratis sertifikat SSL?', "Let's Encrypt via Certbot"],
-        ['AWS', 'Apa itu reverse proxy (Nginx)?', 'Server perantara yang meneruskan request ke aplikasi di belakangnya + terminasi SSL'],
-        ['Networking', 'Apa itu alamat IP dan subnet?', 'IP identitas host di jaringan; subnet membagi jaringan jadi blok (misal 192.168.1.0/24)'],
-        ['Networking', 'Bedanya HTTP dan HTTPS?', 'HTTPS = HTTP + enkripsi TLS; wajib untuk login & data sensitif'],
-        ['Networking', 'Apa fungsi DNS?', 'Menerjemahkan nama domain (contoh.com) jadi alamat IP'],
-        ['Networking', 'Port umum: 80, 443, 22, 3306?', '80 HTTP, 443 HTTPS, 22 SSH, 3306 MySQL'],
-        ['Networking', 'Apa itu ping dan kapan dipakai?', 'Menguji konektivitas & latency ke host: ping 8.8.8.8'],
-        ['Networking', 'Bedanya TCP dan UDP?', 'TCP andal berurutan (web, SSH); UDP cepat tanpa jaminan (video, DNS)'],
-    ];
-}
+function quiz_bank_cards() { return \App\Domain\Quiz\QuizBank::cards(); }
 
-function seed_quiz_bank($conn, $user_id) {
-    $n = 0;
-    try {
-        try { @$conn->query("ALTER TABLE `quiz_cards` ADD COLUMN `topic` VARCHAR(32) NOT NULL DEFAULT 'General'"); } catch (Throwable $e) {}
-        $ins = $conn->prepare("INSERT INTO quiz_cards (user_id, source, source_id, question, answer, topic) VALUES (?, 'bank', ?, ?, ?, ?) ON DUPLICATE KEY UPDATE question = VALUES(question), answer = VALUES(answer), topic = VALUES(topic)");
-        if (!$ins) return 0;
-        foreach (quiz_bank_cards() as $i => $c) {
-            $sid = $i + 1;
-            $t = mb_substr(trim((string)($c[0] ?? 'General')) ?: 'General', 0, 32);
-            $q = mb_substr(trim((string)$c[1]), 0, 255);
-            $a = mb_substr(trim((string)$c[2]), 0, 2000);
-            if ($q === '' || $a === '') continue;
-            $ins->bind_param("iisss", $user_id, $sid, $q, $a, $t);
-            if ($ins->execute() && $ins->affected_rows > 0) $n++;
-        }
-        $ins->close();
-    } catch (Throwable $e) {}
-    return $n;
-}
+function seed_quiz_bank($conn, $user_id) { return \App\Domain\Quiz\QuizSeeder::seed($conn, (int)$user_id); }
 
 // Auto-initialize schema & seed data safely without multi_query
 function ensure_database_schema($conn) {
@@ -500,6 +422,11 @@ function ensure_database_schema($conn) {
             CONSTRAINT `fk_cheers_from` FOREIGN KEY (`from_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         @$conn->query("CREATE INDEX idx_cheers_profile ON `cheers` (`profile_id`, `created_at`)");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `onboarded` TINYINT NOT NULL DEFAULT 0");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `pkl_target` VARCHAR(32) NOT NULL DEFAULT ''");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `daily_minutes` INT NOT NULL DEFAULT 25");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `focus_skills` VARCHAR(255) NOT NULL DEFAULT ''");
+        @$conn->query("UPDATE `users` SET `onboarded` = 1 WHERE `onboarded` = 0");
 
         // 8. Seed default quests and resources if quests table is empty
         $checkQuests = $conn->query("SELECT COUNT(*) AS total FROM `quests`");
@@ -599,7 +526,7 @@ function render_db_error_page($error_msg, $host, $port, $user, $db) {
     <?php
 }
 
-// Connect database (one shared connection per request)
+// Connect database (one shared connection per request, Fase 2: fast version gate)
 function db_connect() {
     static $shared = null;
     if ($shared instanceof mysqli) {
@@ -608,21 +535,11 @@ function db_connect() {
         } catch (Throwable $e) {}
         $shared = null;
     }
-    $conn = mysqli_init();
-    if (!$conn) {
-        throw new Exception("Gagal menginisialisasi MySQLi driver.");
-    }
-
-    // Set 5 detik connection timeout agar tidak hanging
-    $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
-
     try {
-        $connected = @$conn->real_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
-        if (!$connected || $conn->connect_error) {
-            throw new Exception($conn->connect_error ?: "Gagal terhubung ke MySQL pada " . DB_HOST . ":" . DB_PORT);
+        $conn = \App\Db::connectWrite();
+        if (\App\Db\Schema::needsUpgrade($conn) && \App\Db\Schema::autoMigrateEnabled()) {
+            \App\Db\Migrator::run($conn);
         }
-        $conn->set_charset("utf8mb4");
-        ensure_database_schema($conn);
         $shared = $conn;
         return $conn;
     } catch (Throwable $e) {
@@ -631,806 +548,114 @@ function db_connect() {
         exit();
     }
 }
+function db_read() { return \App\Db::connectRead(); }
 
-// Helper: redirect
-function redirect($url) {
-    header("Location: $url");
-    exit();
-}
+function redirect($url) { \App\Http\Auth::redirect((string)$url); }
 
-function clean($data) {
-    if ($data === null) return '';
-    if (is_array($data)) return '';
-    $data = trim((string)$data);
-    $data = stripslashes($data);
-    return mb_substr($data, 0, 5000);
-}
+function clean($data) { return \App\Support\Sanitize::clean($data); }
+function esc($data) { return \App\Support\Sanitize::esc($data); }
+function valid_url($url) { return \App\Support\Sanitize::validUrl($url); }
 
-function esc($data) {
-    return htmlspecialchars((string)($data ?? ''), ENT_QUOTES, 'UTF-8');
-}
+// Level calculation delegates to App\Domain\Gamification\Level (Fase 1)
+function calculate_level($xp) { return \App\Domain\Gamification\Level::calculate((int)$xp); }
+function level_base_xp($level) { return \App\Domain\Gamification\Level::baseXp((int)$level); }
+function xp_to_next_level($xp) { return \App\Domain\Gamification\Level::nextXp((int)$xp); }
+function level_progress_percent($xp) { return \App\Domain\Gamification\Level::progress((int)$xp); }
+function get_user_rank($level) { return \App\Domain\Gamification\Level::rank((int)$level); }
 
-function valid_url($url) {
-    $url = trim((string)$url);
-    if ($url === '') return '';
-    if (!preg_match('#^https?://#i', $url)) return '';
-    if (strlen($url) > 500) return '';
-    return filter_var($url, FILTER_VALIDATE_URL) ? $url : '';
-}
-
-// Level calculation: level = floor(sqrt(xp / 100)) + 1
-function calculate_level($xp) {
-    $xp = max(0, (int)$xp);
-    return (int)(floor(sqrt($xp / 100)) + 1);
-}
-
-// Base XP for a given level
-function level_base_xp($level) {
-    $level = max(1, (int)$level);
-    return ($level - 1) * ($level - 1) * 100;
-}
-
-// XP needed to reach next level
-function xp_to_next_level($xp) {
-    $current_level = calculate_level($xp);
-    return ($current_level * $current_level * 100);
-}
-
-// Level progress percentage (0 - 100%)
-function level_progress_percent($xp) {
-    $xp = max(0, (int)$xp);
-    $level = calculate_level($xp);
-    $base = level_base_xp($level);
-    $next = xp_to_next_level($xp);
-    $range = $next - $base;
-    if ($range <= 0) return 100;
-    $progress = $xp - $base;
-    return min(100, max(0, round(($progress / $range) * 100)));
-}
-
-// Gamification Rank title based on level
-function get_user_rank($level) {
-    $ranks = [
-        1 => 'Terminal Cadet',
-        2 => 'Junior Scripter',
-        3 => 'Git Wrangler',
-        4 => 'Backend Craftsman',
-        5 => 'Docker Apprentice',
-        6 => 'Container Captain',
-        7 => 'Cloud Pioneer',
-        8 => 'DevOps Specialist',
-        9 => 'CI/CD Architect',
-        10 => 'Site Reliability Engineer',
-        11 => 'Cloud Guru',
-        12 => 'DevOps Legend'
-    ];
-    return $ranks[min(12, max(1, (int)$level))] ?? 'DevOps Grandmaster';
-}
-
-// Check if user is logged in
-function is_logged_in() {
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
-}
-
-// Admin dikunci ke satu akun pemilik. Perbandingan live dari DB agar
-// perubahan email/role langsung berlaku tanpa perlu logout.
 define('OWNER_ADMIN_EMAIL', 'dzmrrr123@gmail.com');
-function is_admin($conn, $user_id) {
-    try {
-        $s = $conn->prepare("SELECT email FROM users WHERE id = ?");
-        if (!$s) return false;
-        $s->bind_param("i", $user_id);
-        $s->execute();
-        $r = $s->get_result()->fetch_assoc();
-        $s->close();
-        return strtolower(trim((string)($r['email'] ?? ''))) === OWNER_ADMIN_EMAIL;
-    } catch (Throwable $e) { return false; }
-}
+function is_logged_in() { return \App\Http\Auth::loggedIn(); }
+function is_admin($conn, $user_id) { return \App\Http\Auth::isAdmin($conn, (int)$user_id); }
+function require_admin($conn) { \App\Http\Auth::requireAdmin($conn); }
+function require_login() { \App\Http\Auth::requireLogin(); }
 
-// Gate for private admin pages: 404 (not 403) so the URL stays undiscoverable
-function require_admin($conn) {
-    if (!is_logged_in() || !is_admin($conn, (int)($_SESSION['user_id'] ?? 0))) {
-        http_response_code(404);
-        require __DIR__ . '/404.php';
-        exit();
-    }
-}
+function update_user_streak($conn, $user_id) { return \App\Domain\Gamification\Streak::update($conn, (int)$user_id); }
 
-// Require login
-function require_login() {
-    if (!is_logged_in()) {
-        set_flash('warning', 'Silakan login terlebih dahulu untuk melanjutkan.');
-        redirect('login.php');
-    }
-}
+function badge_defs() { return \App\Domain\Social::badgeDefs(); }
 
-// Daily streak updater (dengan freeze token: absen 1 hari tidak reset jika token tersedia)
-function update_user_streak($conn, $user_id) {
-    $today = date('Y-m-d');
-    $yesterday = date('Y-m-d', strtotime('-1 day'));
-    $two_ago = date('Y-m-d', strtotime('-2 days'));
+function user_badges($conn, $user_id) { return \App\Domain\Gamification\Badges::owned($conn, (int)$user_id); }
 
-    $stmt = $conn->prepare("SELECT streak, last_active_date, freeze_tokens, best_streak FROM users WHERE id = ?");
-    if (!$stmt) return 0;
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $res = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    if (!$res) return 0;
+function check_and_unlock_badges($conn, $user_id) { return \App\Domain\Gamification\Badges::check($conn, (int)$user_id); }
+function mission_multiplier($conn, $user_id) { return \App\Domain\Gamification\Combo::multiplier($conn, (int)$user_id); }
+function combo_tier($done) { return \App\Domain\Gamification\Combo::tier((int)$done); }
+function combo_count_done($missions) { return \App\Domain\Gamification\Combo::countDone((array)$missions); }
 
-    $last_active = $res['last_active_date'];
-    $streak = (int)$res['streak'];
-    $tokens = (int)($res['freeze_tokens'] ?? 1);
-    $best = (int)($res['best_streak'] ?? 0);
-    if ($last_active === $today) {
-        if ($streak > $best) {
-            $up = $conn->prepare("UPDATE users SET best_streak = ? WHERE id = ?");
-            if ($up) { $up->bind_param("ii", $streak, $user_id); $up->execute(); $up->close(); }
-        }
-        return $streak;
-    }
-
-    $used_freeze = false;
-    if ($last_active === $yesterday) {
-        $streak++;
-    } elseif ($last_active === $two_ago && $tokens > 0) {
-        $streak++;
-        $tokens--;
-        $used_freeze = true;
-    } else {
-        $streak = 1;
-    }
-    if (date('W') !== date('W', strtotime($last_active ?: $today))) $tokens = min(2, $tokens + 1);
-
-    $best = max($best, $streak);
-    $stmt = $conn->prepare("UPDATE users SET streak = ?, last_active_date = ?, freeze_tokens = ?, best_streak = ? WHERE id = ?");
-    if ($stmt) {
-        $stmt->bind_param("isiii", $streak, $today, $tokens, $best, $user_id);
-        $stmt->execute();
-        $stmt->close();
-    }
-    if ($used_freeze && session_status() === PHP_SESSION_ACTIVE) set_flash('info', 'Streak Freeze dipakai! Streak-mu terselamatkan.');
-    return $streak;
-}
-
-function badge_defs() {
-    return [
-        'first-quest' => ['name' => 'Langkah Pertama', 'desc' => 'Selesaikan 1 quest', 'icon' => 'fa-flag'],
-        'quest-5' => ['name' => 'Quest Hunter 5', 'desc' => 'Selesaikan 5 quest', 'icon' => 'fa-map'],
-        'quest-10' => ['name' => 'Quest Hunter 10', 'desc' => 'Selesaikan 10 quest', 'icon' => 'fa-map-location-dot'],
-        'quest-all' => ['name' => 'Roadmap Tuntas', 'desc' => 'Selesaikan 14 quest', 'icon' => 'fa-crown'],
-        'focus-1' => ['name' => 'Fokus Perdana', 'desc' => '1 sesi fokus', 'icon' => 'fa-clock'],
-        'focus-25' => ['name' => 'Deep Worker', 'desc' => '25 sesi fokus', 'icon' => 'fa-brain'],
-        'note-1' => ['name' => 'Bug Reporter', 'desc' => 'Tulis 1 catatan', 'icon' => 'fa-note-sticky'],
-        'note-25' => ['name' => 'Bug Hunter', 'desc' => '25 catatan error/tanya', 'icon' => 'fa-bug'],
-        'streak-7' => ['name' => 'Konsisten 7 Hari', 'desc' => 'Streak 7 hari', 'icon' => 'fa-fire'],
-        'streak-30' => ['name' => 'Unstoppable 30', 'desc' => 'Streak 30 hari', 'icon' => 'fa-volcano'],
-        'review-10' => ['name' => 'Reviewer', 'desc' => '10 review Tahu', 'icon' => 'fa-rotate-right'],
-        'custom-1' => ['name' => 'Inisiatif', 'desc' => 'Buat 1 quest custom', 'icon' => 'fa-plus'],
-    ];
-}
-
-function user_badges($conn, $user_id) {
-    $out = [];
-    try {
-        $q = $conn->prepare("SELECT slug, unlocked_at FROM user_badges WHERE user_id = ? ORDER BY unlocked_at ASC");
-        $q->bind_param("i", $user_id); $q->execute();
-        foreach ($q->get_result()->fetch_all(MYSQLI_ASSOC) as $r) $out[$r['slug']] = $r;
-        $q->close();
-    } catch (Throwable $e) {}
-    return $out;
-}
-
-function check_and_unlock_badges($conn, $user_id) {
-    $defs = badge_defs();
-    $owned = user_badges($conn, $user_id);
-    $cat_of = [
-        'first-quest' => 'quest', 'quest-5' => 'quest', 'quest-10' => 'quest', 'quest-all' => 'quest',
-        'focus-1' => 'focus', 'focus-25' => 'focus',
-        'note-1' => 'note', 'note-25' => 'note',
-        'streak-7' => 'streak', 'streak-30' => 'streak',
-        'review-10' => 'review', 'custom-1' => 'custom',
-    ];
-    $need = [];
-    foreach ($cat_of as $slug => $cat) {
-        if (!isset($owned[$slug]) && isset($defs[$slug])) $need[$cat] = true;
-    }
-    if (empty($need)) return [];
-    $c = ['quest' => 0, 'focus' => 0, 'note' => 0, 'streak' => 0, 'review' => 0, 'custom' => 0];
-    try {
-        if (isset($need['quest'])) {
-            $q = $conn->prepare("SELECT COUNT(*) n FROM user_quests WHERE user_id = ?");
-            $q->bind_param("i", $user_id); $q->execute(); $c['quest'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        }
-        if (isset($need['focus'])) {
-            $q = $conn->prepare("SELECT COUNT(*) n FROM pomodoro_sessions WHERE user_id = ? AND mode = 'focus'");
-            $q->bind_param("i", $user_id); $q->execute(); $c['focus'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        }
-        if (isset($need['note'])) {
-            $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM errors WHERE user_id = ?) + (SELECT COUNT(*) FROM questions WHERE user_id = ?) n");
-            $q->bind_param("ii", $user_id, $user_id); $q->execute(); $c['note'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        }
-        if (isset($need['streak'])) {
-            $q = $conn->prepare("SELECT streak FROM users WHERE id = ?");
-            $q->bind_param("i", $user_id); $q->execute();
-            $u = $q->get_result()->fetch_assoc(); $q->close();
-            $c['streak'] = (int)($u['streak'] ?? 0);
-        }
-        if (isset($need['review'])) {
-            try {
-                $q = $conn->prepare("SELECT COALESCE(SUM(done_count),0) n FROM reviews WHERE user_id = ?");
-                $q->bind_param("i", $user_id); $q->execute(); $c['review'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-            } catch (Throwable $e) {}
-        }
-        if (isset($need['custom'])) {
-            $q = $conn->prepare("SELECT COUNT(*) n FROM quests WHERE user_id = ? AND is_custom = 1");
-            $q->bind_param("i", $user_id); $q->execute(); $c['custom'] = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        }
-    } catch (Throwable $e) { return []; }
-    $rules = [
-        'first-quest' => $c['quest'] >= 1, 'quest-5' => $c['quest'] >= 5, 'quest-10' => $c['quest'] >= 10, 'quest-all' => $c['quest'] >= 14,
-        'focus-1' => $c['focus'] >= 1, 'focus-25' => $c['focus'] >= 25,
-        'note-1' => $c['note'] >= 1, 'note-25' => $c['note'] >= 25,
-        'streak-7' => $c['streak'] >= 7, 'streak-30' => $c['streak'] >= 30,
-        'review-10' => $c['review'] >= 10, 'custom-1' => $c['custom'] >= 1,
-    ];
-    $new = [];
-    foreach ($rules as $slug => $ok) {
-        if ($ok && !isset($owned[$slug]) && isset($defs[$slug])) {
-            try {
-                $ins = $conn->prepare("INSERT IGNORE INTO user_badges (user_id, slug) VALUES (?, ?)");
-                $ins->bind_param("is", $user_id, $slug);
-                if ($ins->execute() && $ins->affected_rows > 0) $new[] = $slug;
-                $ins->close();
-            } catch (Throwable $e) {}
-        }
-    }
-    return $new;
-}
-
-function mission_multiplier($conn, $user_id) {
-    try {
-        $s = get_daily_mission_status($conn, $user_id);
-        foreach ($s as $m) if (empty($m['done'])) return 1.0;
-        return 1.5;
-    } catch (Throwable $e) { return 1.0; }
-}
-
-function apply_xp_multiplier($base, $mult) {
-    return (int)ceil($base * $mult);
-}
+function apply_xp_multiplier($base, $mult) { return \App\Domain\Gamification\Xp::apply((int)$base, (float)$mult); }
 
 define('NOTE_DAILY_XP_CAP', 25);
 
-function capped_xp_gain($wanted, $today_sum, $cap) {
-    $left = max(0, (int)$cap - (int)$today_sum);
-    if ($left <= 0) return 0;
-    return min(max(0, (int)$wanted), $left);
-}
+function capped_xp_gain($wanted, $today_sum, $cap) { return \App\Domain\Gamification\Xp::capped((int)$wanted, (int)$today_sum, (int)$cap); }
 
-function daily_reason_xp($conn, $user_id, $reason) {
-    try {
-        $q = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND reason = ? AND amount > 0 AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY");
-        $q->bind_param("is", $user_id, $reason); $q->execute();
-        $n = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        return max(0, $n);
-    } catch (Throwable $e) { return 0; }
-}
+function daily_reason_xp($c, $u, $r) { return \App\Domain\Gamification\Ledger::dailyReason($c, (int)$u, (string)$r); }
+function xp_events_has_ref($c) { return \App\Domain\Gamification\Ledger::hasRef($c); }
+function award_xp($c, $u, $a, $r = 'other', $t = null, $i = null) { \App\Domain\Gamification\Ledger::award($c, (int)$u, (int)$a, (string)$r, $t, $i); }
+function xp_ledger_sum($c, $u) { return \App\Domain\Gamification\Ledger::sum($c, (int)$u); }
+function sync_user_xp($c, $u) { return \App\Domain\Gamification\Ledger::sync($c, (int)$u); }
+function awarded_for_ref($c, $u, $t, $i) { return \App\Domain\Gamification\Ledger::awardedFor($c, (int)$u, (string)$t, (int)$i); }
 
-function xp_events_has_ref($conn) {
-    static $cached = null;
-    if ($cached !== null) return $cached;
-    try {
-        $chk = $conn->query("SHOW COLUMNS FROM `xp_events` LIKE 'ref_type'");
-        $cached = ($chk && $chk->num_rows > 0);
-        if ($chk) $chk->free();
-    } catch (Throwable $e) { $cached = false; }
-    return $cached;
-}
+function weekly_xp($conn, $user_id) { return \App\Domain\Gamification\Ledger::weekly($conn, (int)$user_id); }
 
-function award_xp($conn, $user_id, $amount, $reason = 'other', $ref_type = null, $ref_id = null) {
-    $amount = (int)$amount;
-    if ($amount === 0) return;
-    $stmt = $conn->prepare("UPDATE users SET xp = GREATEST(0, xp + ?) WHERE id = ?");
-    $stmt->bind_param("ii", $amount, $user_id);
-    $stmt->execute();
-    $stmt->close();
-    try {
-        if (xp_events_has_ref($conn)) {
-            $log = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason, ref_type, ref_id) VALUES (?, ?, ?, ?, ?)");
-            $log->bind_param("iissi", $user_id, $amount, $reason, $ref_type, $ref_id);
-            $log->execute();
-            $log->close();
-        } else {
-            $log = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason) VALUES (?, ?, ?)");
-            $log->bind_param("iis", $user_id, $amount, $reason);
-            $log->execute();
-            $log->close();
-        }
-    } catch (Throwable $e) {}
-}
+function daily_mission_defs() { return \App\Domain\Gamification\Mission::defs(); }
 
-function xp_ledger_sum($conn, $user_id) {
-    try {
-        $q = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ?");
-        $q->bind_param("i", $user_id); $q->execute();
-        $n = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        return max(0, $n);
-    } catch (Throwable $e) { return 0; }
-}
+function get_daily_mission_status($conn, $user_id) { return \App\Domain\Gamification\Missions::status($conn, (int)$user_id); }
 
-function sync_user_xp($conn, $user_id) {
-    try {
-        $sum = xp_ledger_sum($conn, $user_id);
-        $cur = 0;
-        $q = $conn->prepare("SELECT xp FROM users WHERE id = ?");
-        $q->bind_param("i", $user_id); $q->execute();
-        $cur = (int)($q->get_result()->fetch_assoc()['xp'] ?? 0); $q->close();
-        if ($sum < $cur) {
-            $diff = $cur - $sum;
-            try {
-                $b = $conn->prepare("INSERT INTO xp_events (user_id, amount, reason) VALUES (?, ?, 'backfill')");
-                $b->bind_param("ii", $user_id, $diff);
-                $b->execute(); $b->close();
-            } catch (Throwable $e) {}
-            return $cur;
-        }
-        $up = $conn->prepare("UPDATE users SET xp = ? WHERE id = ?");
-        $up->bind_param("ii", $sum, $user_id);
-        $up->execute(); $up->close();
-        return $sum;
-    } catch (Throwable $e) { return 0; }
-}
+function quest_visible_where() { return \App\Domain\Quest\QuestPolicy::visibleWhere(); }
 
-function awarded_for_ref($conn, $user_id, $ref_type, $ref_id) {
-    try {
-        $q = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND ref_type = ? AND ref_id = ? AND amount > 0");
-        $ref_id = (int)$ref_id;
-        $q->bind_param("isi", $user_id, $ref_type, $ref_id);
-        $q->execute();
-        $n = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        return $n;
-    } catch (Throwable $e) { return 0; }
-}
+function delete_review($conn, $user_id, $source, $source_id) { \App\Domain\Review\ReviewStore::delete($conn, (int)$user_id, (string)$source, (int)$source_id); }
 
-function weekly_xp($conn, $user_id) {
-    try {
-        $q = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
-        $q->bind_param("i", $user_id); $q->execute();
-        $n = (int)($q->get_result()->fetch_assoc()['n'] ?? 0); $q->close();
-        return max(0, $n);
-    } catch (Throwable $e) { return 0; }
-}
+function review_next_interval($c) { return \App\Domain\Review\Sm2::nextInterval((int)$c); }
 
-function daily_mission_defs() {
-    return [
-        'quest1' => ['label' => 'Selesaikan 1 quest', 'xp' => 5, 'icon' => 'fa-map'],
-        'focus1' => ['label' => '1 sesi fokus', 'xp' => 5, 'icon' => 'fa-clock'],
-        'note1' => ['label' => 'Tulis 1 catatan', 'xp' => 5, 'icon' => 'fa-note-sticky'],
-    ];
-}
+function schedule_review($conn, $user_id, $source, $source_id, $title, $detail = '', $skill = '') { \App\Domain\Review\ReviewStore::schedule($conn, (int)$user_id, (string)$source, (int)$source_id, (string)$title, (string)$detail, (string)$skill); }
 
-function get_daily_mission_status($conn, $user_id) {
-    $defs = daily_mission_defs();
-    $out = [];
-    foreach ($defs as $k => $d) $out[$k] = ['done' => false, 'claimed' => false] + $d;
-    try {
-        $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests WHERE user_id=? AND completed_at=CURDATE()) AS qc, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id=? AND completed_at>=CURDATE() AND completed_at<CURDATE() + INTERVAL 1 DAY) AS fc, (SELECT COUNT(*) FROM errors WHERE user_id=? AND created_at>=CURDATE() AND created_at<CURDATE() + INTERVAL 1 DAY) + (SELECT COUNT(*) FROM questions WHERE user_id=? AND created_at>=CURDATE() AND created_at<CURDATE() + INTERVAL 1 DAY) AS nc, (SELECT COUNT(*) FROM daily_missions WHERE user_id=? AND mission_date=CURDATE() AND mission_key='quest1' AND claimed_at IS NOT NULL) AS c_quest1, (SELECT COUNT(*) FROM daily_missions WHERE user_id=? AND mission_date=CURDATE() AND mission_key='focus1' AND claimed_at IS NOT NULL) AS c_focus1, (SELECT COUNT(*) FROM daily_missions WHERE user_id=? AND mission_date=CURDATE() AND mission_key='note1' AND claimed_at IS NOT NULL) AS c_note1");
-        $q->bind_param("iiiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id, $user_id); $q->execute();
-        $mc = $q->get_result()->fetch_assoc() ?: [];
-        $q->close();
-        $out['quest1']['done'] = ((int)($mc['qc'] ?? 0)) > 0;
-        $out['focus1']['done'] = ((int)($mc['fc'] ?? 0)) > 0;
-        $out['note1']['done'] = ((int)($mc['nc'] ?? 0)) > 0;
-        foreach (['quest1' => 'c_quest1', 'focus1' => 'c_focus1', 'note1' => 'c_note1'] as $k => $ck) {
-            if (((int)($mc[$ck] ?? 0)) > 0) $out[$k]['claimed'] = true;
-        }
-    } catch (Throwable $e) {}
-    return $out;
-}
+function skill_defs() { return \App\Domain\Skill\Skill::defs(); }
+function skill_for_week($week) { return \App\Domain\Skill\Skill::forWeek((int)$week); }
+function normalize_skill($topic) { return \App\Domain\Skill\Skill::normalize((string)$topic); }
+function avatar_frames() { return \App\Domain\Social::avatarFrames(); }
+function avatar_unlocked($frame, $level, $best_streak, $badges, $is_owner = false) { return \App\Domain\Social::avatarUnlocked((string)$frame, (int)$level, (int)$best_streak, (array)$badges, (bool)$is_owner); }
 
-function quest_visible_where() {
-    return "(q.user_id IS NULL OR q.user_id = ?)";
-}
+function analytics_trend_percent($now, $prev) { return \App\Domain\Analytics::trend((int)$now, (int)$prev); }
+function analytics_consistency_score($a, $t) { return \App\Domain\Analytics::consistency((int)$a, (int)$t); }
+function analytics_heat_level($xp) { return \App\Domain\Analytics::heat((int)$xp); }
+function analytics_streak_verdict($s) { return \App\Domain\Analytics::verdict((int)$s); }
+function analytics_project_days_left($d, $t, $a) { return \App\Domain\Analytics::daysLeft((int)$d, (int)$t, (float)$a); }
+function analytics_predict_label($d) { return \App\Domain\Analytics::predictLabel((int)$d); }
+function analytics_week_label($o) { return \App\Domain\Analytics::weekLabel((int)$o); }
+function sm2_grade_to_int($g) { return \App\Domain\Review\Sm2::gradeToInt($g); }
+function sm2_next($e, $r, $i, $g) { return \App\Domain\Review\Sm2::next((float)$e, (int)$r, (int)$i, $g); }
+function sm2_labels() { return \App\Domain\Review\Sm2::labels(); }
 
-function delete_review($conn, $user_id, $source, $source_id) {
-    try {
-        $stmt = $conn->prepare("DELETE FROM reviews WHERE user_id = ? AND source = ? AND source_id = ?");
-        $stmt->bind_param("isi", $user_id, $source, $source_id);
-        $stmt->execute();
-        $stmt->close();
-    } catch (Throwable $e) {}
-}
+function quest_prev_map($quests) { return \App\Domain\Quest\QuestPolicy::prevMap((array)$quests); }
+function quest_blocker($quest, $done_ids, $prev_id = null) { return \App\Domain\Quest\QuestPolicy::blocker((array)$quest, (array)$done_ids, $prev_id); }
+function quest_week_stats($week_quests) { return \App\Domain\Quest\QuestPolicy::weekStats((array)$week_quests); }
 
-function review_next_interval($current) {
-    foreach ([1, 3, 7, 14, 30] as $step) if ($current < $step) return $step;
-    return 30;
-}
+function quest_next_unlocked($a, $b, $c) { return \App\Domain\Quest\QuestPolicy::nextUnlocked((array)$a, (array)$b, (array)$c); }
+function challenge_week_key($ts = null) { return \App\Domain\Challenge::weekKey($ts); }
+function challenge_for_week($k) { return \App\Domain\Challenge::forWeek((string)$k); }
+function challenge_pct($xp, $t) { return \App\Domain\Challenge::pct((int)$xp, (int)$t); }
+function cheer_clean($b) { return \App\Domain\Social::cheerClean((string)$b); }
+function badge_share_text($u, $b) { return \App\Domain\Social::badgeShare((string)$u, (string)$b); }
 
-function schedule_review($conn, $user_id, $source, $source_id, $title, $detail = '', $skill = '') {
-    try {
-        $title = mb_substr(trim((string)$title) ?: 'Review', 0, 255);
-        $detail = mb_substr((string)$detail, 0, 2000);
-        $skill = mb_substr(trim((string)$skill) ?: review_skill_for($source, $title, $detail), 0, 32);
-        $stmt = $conn->prepare("INSERT INTO reviews (user_id, source, source_id, title, detail, next_due, interval_day, skill) VALUES (?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL 1 DAY), 1, ?) ON DUPLICATE KEY UPDATE title=VALUES(title), detail=VALUES(detail), skill=VALUES(skill)");
-        if (!$stmt) {
-            $fb = $conn->prepare("INSERT INTO reviews (user_id, source, source_id, title, detail, next_due, interval_day) VALUES (?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL 1 DAY), 1) ON DUPLICATE KEY UPDATE title=VALUES(title), detail=VALUES(detail)");
-            if (!$fb) return;
-            $fb->bind_param("isiss", $user_id, $source, $source_id, $title, $detail);
-            $fb->execute();
-            $fb->close();
-            return;
-        }
-        $stmt->bind_param("isssss", $user_id, $source, $source_id, $title, $detail, $skill);
-        $stmt->execute();
-        $stmt->close();
-    } catch (Throwable $e) {}
-}
+function ensure_weekly_challenge($conn) { return \App\Domain\ChallengeStore::ensureWeekly($conn); }
 
-// Skill tree: 8 skill sejajar kategori catatan, minggu roadmap dipetakan ke skill
-function skill_defs() {
-    return [
-        'Linux' => ['icon' => 'fas fa-terminal', 'desc' => 'VPS, terminal & jaringan'],
-        'Git' => ['icon' => 'fas fa-code-branch', 'desc' => 'Version control & GitHub'],
-        'MySQL' => ['icon' => 'fas fa-database', 'desc' => 'Database & relasi'],
-        'PHP' => ['icon' => 'fas fa-file-code', 'desc' => 'Native, OOP & security'],
-        'Laravel' => ['icon' => 'fa-brands fa-laravel', 'desc' => 'Framework & middleware'],
-        'Docker' => ['icon' => 'fa-brands fa-docker', 'desc' => 'Container & registry'],
-        'AWS' => ['icon' => 'fa-brands fa-aws', 'desc' => 'Cloud & deploy'],
-        'General' => ['icon' => 'fas fa-layer-group', 'desc' => 'Lainnya'],
-    ];
-}
+function onboarding_targets() { return \App\Domain\Onboarding::targets(); }
+function onboarding_minutes() { return \App\Domain\Onboarding::minutes(); }
+function onboarding_plan($t, $m, $s) { return \App\Domain\Onboarding::plan((string)$t, (int)$m, (array)$s); }
+function review_skill_for($s, $t, $d) { return \App\Domain\Skill\Skill::reviewSkillFor((string)$s, (string)$t, (string)$d); }
+function set_flash($t, $m) { \App\Http\Flash::set((string)$t, (string)$m); }
+function get_flash() { return \App\Http\Flash::get(); }
 
-function skill_for_week($week) {
-    $map = [1 => 'MySQL', 2 => 'PHP', 3 => 'PHP', 4 => 'PHP', 5 => 'Laravel', 6 => 'Laravel', 7 => 'Docker', 8 => 'Docker', 9 => 'AWS', 10 => 'Linux', 11 => 'Git', 12 => 'General'];
-    return $map[max(1, min(12, (int)$week))] ?? 'General';
-}
-
-function normalize_skill($topic) {
-    $t = strtolower(trim((string)$topic));
-    if ($t === '') return '';
-    $aliases = [
-        'MySQL' => ['mysql', 'database', 'db', 'sql', 'mariadb', 'relasi'],
-        'PHP' => ['php', 'oop', 'solid', 'composer'],
-        'Laravel' => ['laravel', 'eloquent', 'blade', 'middleware'],
-        'Docker' => ['docker', 'container', 'dockerfile', 'image'],
-        'Linux' => ['linux', 'ubuntu', 'bash', 'terminal', 'vps', 'nginx', 'ssl', 'domain', 'server'],
-        'Git' => ['git', 'github', 'version'],
-        'AWS' => ['aws', 'cloud', 'ec2', 'deploy'],
-    ];
-    foreach ($aliases as $skill => $keys) {
-        foreach ($keys as $k) {
-            if (strpos($t, $k) !== false) return $skill;
-        }
-    }
-    foreach (array_keys(skill_defs()) as $skill) {
-        if (strtolower($skill) === $t) return $skill;
-    }
-    return 'General';
-}
-
-// Bingkai avatar unlockable (kunci berbasis progres, awet karena pakai best_streak)
-function avatar_frames() {
-    return [
-        'default' => ['name' => 'Polos', 'hint' => 'Untuk semua orang'],
-        'ring' => ['name' => 'Cincin', 'hint' => 'Capai Level 3'],
-        'ember' => ['name' => 'Bara', 'hint' => 'Streak terbaik 7 hari'],
-        'gold' => ['name' => 'Emas', 'hint' => 'Capai Level 5'],
-        'legend' => ['name' => 'Legenda', 'hint' => 'Badge Roadmap Tuntas / Level 8'],
-    ];
-}
-
-function avatar_unlocked($frame, $level, $best_streak, $badges, $is_owner = false) {
-    if ($is_owner) return true;
-    if ($frame === 'default') return true;
-    if ($frame === 'ring') return $level >= 3;
-    if ($frame === 'ember') return $best_streak >= 7;
-    if ($frame === 'gold') return $level >= 5;
-    if ($frame === 'legend') return $level >= 8 || isset($badges['quest-all']);
-    return false;
-}
-
-function analytics_trend_percent($now, $prev) {
-    $now = max(0, (int)$now);
-    $prev = max(0, (int)$prev);
-    if ($now === 0 && $prev === 0) return 0;
-    if ($prev <= 0) return 100;
-    return (int)round(($now - $prev) / $prev * 100);
-}
-
-function analytics_consistency_score($active_days, $total_days) {
-    $total_days = max(1, (int)$total_days);
-    $active_days = min($total_days, max(0, (int)$active_days));
-    return (int)round($active_days / $total_days * 100);
-}
-
-function analytics_heat_level($xp) {
-    $xp = max(0, (int)$xp);
-    if ($xp <= 0) return 0;
-    if ($xp < 10) return 1;
-    if ($xp < 25) return 2;
-    if ($xp < 50) return 3;
-    return 4;
-}
-
-function analytics_streak_verdict($score) {
-    $score = (int)$score;
-    if ($score >= 70) return 'Ritme kuat. Tinggal jaga.';
-    if ($score >= 40) return 'Ritme tumbuh. Tambah 1 sesi kecil.';
-    if ($score > 0) return 'Ritme rapuh. Satu aksi hari ini cukup.';
-    return 'Belum mulai. Satu sesi 25 menit memecah kebekuan.';
-}
-
-function analytics_project_days_left($done, $total, $avg_per_day) {
-    $done = max(0, (int)$done);
-    $total = max(0, (int)$total);
-    $avg = max(0.0, (float)$avg_per_day);
-    $left = max(0, $total - $done);
-    if ($left <= 0) return 0;
-    if ($avg <= 0) return -1;
-    return (int)ceil($left / $avg);
-}
-
-function analytics_predict_label($days_left) {
-    $days_left = (int)$days_left;
-    if ($days_left < 0) return 'Selesaikan 1 quest untuk memproyeksi target.';
-    if ($days_left === 0) return 'Roadmap tuntas. Pertahankan dengan review.';
-    if ($days_left === 1) return 'Tuntas besok jika ritme dijaga.';
-    if ($days_left <= 14) return 'Tuntas sekitar ' . $days_left . ' hari lagi.';
-    if ($days_left <= 60) return 'Sekitar ' . (int)ceil($days_left / 7) . ' minggu menuju tuntas.';
-    return 'Sekitar ' . (int)ceil($days_left / 30) . ' bulan menuju tuntas di ritme ini.';
-}
-
-function analytics_week_label($offset) {
-    $offset = (int)$offset;
-    if ($offset === 0) return 'Minggu ini';
-    if ($offset === 1) return 'Lalu';
-    return 'M-' . $offset;
-}
-
-function sm2_grade_to_int($grade) {
-    $map = ['again' => 0, 'hard' => 3, 'good' => 4, 'easy' => 5, 'forgot' => 0, 'know' => 4];
-    if (is_int($grade)) return min(5, max(0, $grade));
-    $g = strtolower(trim((string)$grade));
-    return $map[$g] ?? 4;
-}
-
-function sm2_next($ease, $reps, $interval, $grade) {
-    $ease = max(1.3, min(3.0, (float)$ease ?: 2.5));
-    $reps = max(0, (int)$reps);
-    $interval = max(1, (int)$interval);
-    $g = sm2_grade_to_int($grade);
-    if ($g < 3) {
-        return ['interval' => 1, 'ease' => max(1.3, $ease - 0.2), 'reps' => 0];
-    }
-    $new_ease = $ease + (0.1 - (5 - $g) * (0.08 + (5 - $g) * 0.02));
-    $new_ease = max(1.3, min(3.0, $new_ease));
-    if ($reps === 0) {
-        $next = 1;
-    } elseif ($reps === 1) {
-        $next = 6;
-    } else {
-        $next = (int)round($interval * $new_ease);
-    }
-    if ($g === 3) $next = max(1, (int)round($next * 0.8));
-    if ($g === 5) $next = (int)round($next * 1.15) + 1;
-    $next = min(90, max(1, $next));
-    return ['interval' => $next, 'ease' => round($new_ease, 2), 'reps' => $reps + 1];
-}
-
-function sm2_labels() {
-    return [
-        'again' => ['label' => 'Lagi', 'hint' => 'besok', 'key' => '1'],
-        'hard' => ['label' => 'Sulit', 'hint' => 'segera', 'key' => '2'],
-        'good' => ['label' => 'Bisa', 'hint' => 'sesuai jadwal', 'key' => '3'],
-        'easy' => ['label' => 'Mudah', 'hint' => 'lama', 'key' => '4'],
-    ];
-}
-
-function quest_prev_map($quests) {
-    $sorted = array_values($quests);
-    usort($sorted, fn($a, $b) => ((int)($a['week'] ?? 0) <=> (int)($b['week'] ?? 0)) ?: ((int)($a['id'] ?? 0) <=> (int)($b['id'] ?? 0)));
-    $prev = null;
-    $map = [];
-    foreach ($sorted as $q) {
-        $id = (int)($q['id'] ?? 0);
-        if ($id <= 0) continue;
-        if (!empty($q['user_id'])) {
-            $map[$id] = null;
-            continue;
-        }
-        $map[$id] = $prev;
-        $prev = $id;
-    }
-    return $map;
-}
-
-function quest_blocker($quest, $done_ids, $prev_id = null) {
-    if (!empty($quest['completed_at'])) return null;
-    if (!empty($quest['user_id'])) return null;
-    $dep = isset($quest['depends_on']) && (int)$quest['depends_on'] > 0 ? (int)$quest['depends_on'] : $prev_id;
-    if ($dep === null || $dep <= 0) return null;
-    if ((int)$dep === (int)($quest['id'] ?? 0)) return null;
-    return isset($done_ids[$dep]) ? null : (int)$dep;
-}
-
-function quest_week_stats($week_quests) {
-    $total = count($week_quests);
-    $done = 0;
-    foreach ($week_quests as $q) if (!empty($q['completed_at'])) $done++;
-    return ['done' => $done, 'total' => $total, 'pct' => $total > 0 ? (int)round($done / $total * 100) : 0];
-}
-
-function quest_next_unlocked($quests_sorted, $done_ids, $prev_map) {
-    foreach ($quests_sorted as $q) {
-        if (!empty($q['completed_at'])) continue;
-        $b = quest_blocker($q, $done_ids, $prev_map[(int)($q['id'] ?? 0)] ?? null);
-        if ($b === null) return $q;
-    }
-    return null;
-}
-
-function challenge_week_key($ts = null) {
-    return date('o-\\WW', $ts ?? time());
-}
-
-function challenge_for_week($week_key) {
-    $n = 0;
-    if (preg_match('/W(\d{1,2})$/', (string)$week_key, $m)) $n = (int)$m[1];
-    $tiers = [
-        ['Sprint 80 XP', 80],
-        ['Sprint 100 XP', 100],
-        ['Sprint 120 XP', 120],
-        ['Sprint 150 XP', 150],
-    ];
-    $pick = $tiers[$n % 4];
-    return ['title' => 'Tantangan minggu ini: ' . $pick[0], 'target_xp' => $pick[1]];
-}
-
-function challenge_pct($xp, $target) {
-    $target = max(1, (int)$target);
-    return min(100, (int)round(max(0, (int)$xp) / $target * 100));
-}
-
-function cheer_clean($body) {
-    $t = trim(preg_replace('/\s+/', ' ', (string)$body));
-    if (mb_strlen($t) < 2) return '';
-    return mb_substr($t, 0, 140);
-}
-
-function badge_share_text($username, $badge_name) {
-    return trim((string)$username) . ' meraih badge "' . trim((string)$badge_name) . '" di Learn Tracker DevOps';
-}
-
-function ensure_weekly_challenge($conn) {
-    $key = challenge_week_key();
-    $def = challenge_for_week($key);
-    try {
-        $ins = $conn->prepare("INSERT IGNORE INTO challenges (week_key, title, target_xp) VALUES (?, ?, ?)");
-        $ins->bind_param("ssi", $key, $def['title'], $def['target_xp']);
-        $ins->execute();
-        $ins->close();
-        $s = $conn->prepare("SELECT id, week_key, title, target_xp FROM challenges WHERE week_key = ?");
-        $s->bind_param("s", $key);
-        $s->execute();
-        $row = $s->get_result()->fetch_assoc();
-        $s->close();
-        return $row ?: null;
-    } catch (Throwable $e) { return null; }
-}
-
-function review_skill_for($source, $title, $detail) {
-    $t = normalize_skill((string)$title . ' ' . (string)$detail);
-    if ($t !== '' && $t !== 'General') return $t;
-    $defs = skill_defs();
-    foreach (array_keys($defs) as $sk) {
-        if (stripos((string)$source, $sk) !== false) return $sk;
-    }
-    return 'General';
-}
-
-// Flash messages
-function set_flash($type, $message) {
-    $_SESSION['flash'] = [
-        'type' => $type, // success, danger, warning, info
-        'message' => $message
-    ];
-}
-
-function get_flash() {
-    if (isset($_SESSION['flash'])) {
-        $flash = $_SESSION['flash'];
-        unset($_SESSION['flash']);
-        return $flash;
-    }
-    return null;
-}
-
-// CSRF tokens
-function csrf_token() {
-    if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    }
-    return $_SESSION['csrf_token'];
-}
-
-function csrf_field() {
-    return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(csrf_token()) . '">';
-}
-
-function verify_csrf() {
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $token = $_POST['csrf_token'] ?? '';
-        if (empty($token) || !hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
-            http_response_code(403);
-            die("Error 403: Invalid CSRF Token request.");
-        }
-    }
-}
+function csrf_token() { return \App\Http\Csrf::token(); }
+function csrf_field() { return \App\Http\Csrf::field(); }
+function verify_csrf() { \App\Http\Csrf::verify(); }
 
 define('REMEMBER_COOKIE', 'lt_remember');
 define('REMEMBER_DAYS', 30);
 
-function remember_cookie_opts($expire) {
-    return [
-        'expires' => $expire,
-        'path' => '/',
-        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ];
-}
+function remember_cookie_opts($e) { return \App\Domain\Auth\Remember::opts((int)$e); }
+function create_remember_token($conn, $user_id) { \App\Domain\Auth\Remember::create($conn, (int)$user_id); }
 
-function create_remember_token($conn, $user_id) {
-    try {
-        @$conn->query("DELETE FROM remember_tokens WHERE expires_at < NOW()");
-        $selector = bin2hex(random_bytes(12));
-        $validator = bin2hex(random_bytes(32));
-        $hash = hash('sha256', $validator);
-        $expires = date('Y-m-d H:i:s', time() + REMEMBER_DAYS * 86400);
-        $stmt = $conn->prepare("INSERT INTO remember_tokens (user_id, selector, validator_hash, expires_at) VALUES (?, ?, ?, ?)");
-        if (!$stmt) return;
-        $stmt->bind_param("isss", $user_id, $selector, $hash, $expires);
-        if ($stmt->execute()) {
-            setcookie(REMEMBER_COOKIE, $selector . ':' . $validator, remember_cookie_opts(time() + REMEMBER_DAYS * 86400));
-        }
-        $stmt->close();
-    } catch (Throwable $e) {
-        error_log("remember create: " . $e->getMessage());
-    }
-}
-
-function clear_remember_token($conn = null) {
-    $cookie = $_COOKIE[REMEMBER_COOKIE] ?? '';
-    $parts = explode(':', $cookie, 2);
-    if (count($parts) === 2 && $conn) {
-        try {
-            $stmt = $conn->prepare("DELETE FROM remember_tokens WHERE selector = ?");
-            if ($stmt) {
-                $stmt->bind_param("s", $parts[0]);
-                $stmt->execute();
-                $stmt->close();
-            }
-        } catch (Throwable $e) {
-            error_log("remember clear: " . $e->getMessage());
-        }
-    }
-    setcookie(REMEMBER_COOKIE, '', remember_cookie_opts(time() - 3600));
-    unset($_COOKIE[REMEMBER_COOKIE]);
-}
-
-function touch_login_time($conn, $user_id) {
-    try {
-        $stmt = $conn->prepare("UPDATE users SET last_login_at = NOW() WHERE id = ?");
-        if ($stmt) {
-            $stmt->bind_param("i", $user_id);
-            $stmt->execute();
-            $stmt->close();
-        }
-    } catch (Throwable $e) {
-        error_log("last_login touch: " . $e->getMessage());
-    }
-}
+function clear_remember_token($conn = null) { \App\Domain\Auth\Remember::clear($conn); }
+function touch_login_time($conn, $user_id) { \App\Domain\Auth\Remember::touch($conn, (int)$user_id); }
 
 function try_remember_login() {
     if (!empty($_SESSION['user_id'])) return;

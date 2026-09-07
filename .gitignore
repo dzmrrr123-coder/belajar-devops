@@ -9,3 +9,5 @@ Thumbs.db
 cookies*.txt
 scratch/
 .env
+storage/cache/
+storage/migrate.lock

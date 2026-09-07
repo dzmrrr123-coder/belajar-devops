@@ -6,7 +6,7 @@ $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
 
 // Get user data (kolom eksplisit: jangan tarik hash password)
-$stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, freeze_tokens, best_streak, show_on_board, public_profile, flair, avatar_frame, role, created_at FROM users WHERE id = ?");
+$stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, freeze_tokens, best_streak, show_on_board, public_profile, flair, avatar_frame, role, created_at, onboarded FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
@@ -66,12 +66,15 @@ try {
     $lg->close();
 } catch (Throwable $e) {}
 
-// Dashboard counts dalam 1 roundtrip (quest + pomodoro + XP minggu ini + review jatuh tempo)
-$stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id = uq.quest_id WHERE uq.user_id = ? AND (q.user_id IS NULL OR q.user_id = ?)) AS total_done, (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS total_cnt, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS pomo_today, (SELECT COALESCE(SUM(amount),0) FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS xp_week, (SELECT COUNT(*) FROM reviews WHERE user_id = ? AND next_due <= CURDATE()) AS due_reviews");
-$stmt->bind_param("iiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id);
-$stmt->execute();
-$dash_counts = $stmt->get_result()->fetch_assoc() ?: [];
-$stmt->close();
+// Dashboard counts dalam 1 roundtrip, cache 60s (invalidasi di Ledger::award)
+$dash_counts = \App\Cache\Store::remember(\App\Cache\Keys::dashboard($user_id), \App\Cache\Keys::DASHBOARD_TTL, function () use ($conn, $user_id) {
+    $stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id = uq.quest_id WHERE uq.user_id = ? AND (q.user_id IS NULL OR q.user_id = ?)) AS total_done, (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS total_cnt, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS pomo_today, (SELECT COALESCE(SUM(amount),0) FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS xp_week, (SELECT COUNT(*) FROM reviews WHERE user_id = ? AND next_due <= CURDATE()) AS due_reviews");
+    $stmt->bind_param("iiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id);
+    $stmt->execute();
+    $out = $stmt->get_result()->fetch_assoc() ?: [];
+    $stmt->close();
+    return $out;
+});
 $total_completed = (int)($dash_counts['total_done'] ?? 0);
 $total_quests_cnt = (int)($dash_counts['total_cnt'] ?? 14);
 $pomodoro_today = (int)($dash_counts['pomo_today'] ?? 0);
@@ -81,11 +84,16 @@ $due_reviews = (int)($dash_counts['due_reviews'] ?? 0);
 // Peti harian hari ini (sudah dibuka atau belum)
 $chest = null;
 try {
-    $stmt = $conn->prepare("SELECT xp, `freeze` FROM daily_chests WHERE user_id = ? AND chest_date = CURDATE()");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $chest = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    $stmt = $conn->prepare("SELECT xp, `freeze`, is_golden FROM daily_chests WHERE user_id = ? AND chest_date = CURDATE()");
+    if (!$stmt) {
+        $stmt = $conn->prepare("SELECT xp, `freeze` FROM daily_chests WHERE user_id = ? AND chest_date = CURDATE()");
+    }
+    if ($stmt) {
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $chest = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+    }
 } catch (Throwable $e) {}
 $overall_quest_percent = $total_quests_cnt > 0 ? round(($total_completed / $total_quests_cnt) * 100) : 0;
 $missions = get_daily_mission_status($conn, $user_id);
@@ -127,10 +135,10 @@ require_once 'includes/navbar.php';
     <div class="chest-card<?= $chest ? ' opened' : '' ?>" id="dailyChest">
         <?php if ($chest): ?>
             <span class="chest-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
-            <span class="chest-text"><strong>+<?= (int)$chest['xp'] ?> XP<?= !empty($chest['freeze']) ? ' + 1 freeze' : '' ?></strong><small>peti hari ini sudah dibuka · kembali besok</small></span>
+            <span class="chest-text"><strong><?= !empty($chest['is_golden']) ? 'PETI EMAS! ' : '' ?>+<?= (int)$chest['xp'] ?> XP<?= !empty($chest['freeze']) ? ' + 1 freeze' : '' ?></strong><small>peti hari ini sudah dibuka · kembali besok</small></span>
         <?php else: ?>
             <span class="chest-icon closed" aria-hidden="true"><i class="fas fa-gift"></i></span>
-            <span class="chest-text"><strong>Peti harian menunggumu</strong><small>3–15 XP + kesempatan freeze · gratis tiap hari</small></span>
+            <span class="chest-text"><strong>Peti harian menunggumu</strong><small>3–15 XP + freeze · waspada Peti Emas mingguan</small></span>
             <form method="POST" action="claim_chest.php" class="chest-form m-0 flex-shrink-0">
                 <?= csrf_field() ?>
                 <button type="submit" class="btn btn-cyber btn-sm">Buka</button>
@@ -204,8 +212,16 @@ require_once 'includes/navbar.php';
             <span><strong><?= (int)$user['streak'] ?></strong> hari konsisten</span>
             <span><strong>+<span id="dashWeekXp"><?= (int)$xp_week ?></span> XP</strong> minggu ini</span>
             <span><strong><span id="dashQuestDone"><?= $total_completed ?></span>/<?= $total_quests_cnt ?></strong> quest (<span id="dashQuestPct"><?= $overall_quest_percent ?></span>%)</span>
+            <button type="button" class="btn btn-cyber-outline btn-sm mt-2" id="dashShareBtn" data-username="<?= htmlspecialchars($user['username']) ?>" data-level="<?= $level ?>" data-rank="<?= htmlspecialchars($rank_title) ?>" data-streak="<?= (int)$user['streak'] ?>" data-xp="<?= (int)$user['xp'] ?>" data-quests="<?= $total_completed ?>/<?= $total_quests_cnt ?>"><i class="fas fa-share-nodes me-1" aria-hidden="true"></i>Bagikan</button>
         </div>
     </section>
+<script>
+document.getElementById('dashShareBtn')?.addEventListener('click', function() {
+    const d = this.dataset;
+    const canvas = drawProgressCard({ username: d.username, level: d.level, rank: d.rank, streak: d.streak, xp: d.xp, quests: d.quests });
+    shareCanvasImage(canvas, 'progres-' + d.username + '.png', 'Progres belajarku', d.username + ' — Level ' + d.level + ' ' + d.rank + ', ' + d.streak + ' hari streak di Learn Tracker DevOps!');
+});
+</script>
 
     <?php
     $mission_claimed = count(array_filter($missions, fn($m) => !empty($m['claimed'])));
@@ -216,7 +232,8 @@ require_once 'includes/navbar.php';
             <summary class="mission-summary">
                 <span class="mission-summary-text">
                     <strong>Misi hari ini</strong>
-                    <small><?= $mission_claimed ?>/3 diklaim · +5 XP tiap klaim<?php if ($mission_all_done): ?> · <span class="text-success fw-bold">x1.5 aktif!</span><?php endif; ?></small>
+                    <?php $combo_done = \App\Domain\Gamification\Combo::countDone($missions); $combo_mult = \App\Domain\Gamification\Combo::tier($combo_done); ?>
+                    <small><?= $mission_claimed ?>/3 diklaim · +5 XP tiap klaim · <span class="text-success fw-bold">Combo <?= \App\Domain\Gamification\Combo::label($combo_mult) ?></span> · <?= \App\Domain\Gamification\Combo::nextHint($combo_done) ?></small>
                 </span>
                 <span class="mission-summary-count" aria-hidden="true"><?= $mission_claimed ?>/3</span>
                 <i class="fas fa-chevron-down mission-summary-chev" aria-hidden="true"></i>
@@ -418,27 +435,25 @@ document.querySelector('.chest-form')?.addEventListener('submit', async function
         return;
     }
     const tier = data.tier || 'common';
-    const tierLabel = { common: 'Biasa', rare: 'Langka', epic: 'Epik', legendary: 'Legendaris' }[tier] || 'Biasa';
+    const tierLabel = { common: 'Biasa', rare: 'Langka', epic: 'Epik', legendary: 'Legendaris', golden: 'EMAS' }[tier] || 'Biasa';
+    const tierStyle = tier === 'golden' ? 'legendary' : tier;
     const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const reveal = function() {
         card.classList.remove('opening');
         card.classList.add('opened');
         card.innerHTML = '<span class="chest-icon" aria-hidden="true"><i class="fas fa-box-open"></i></span>'
-            + '<span class="chest-text"><span class="chest-tier tier-' + tier + '">' + tierLabel + '</span>'
-            + '<span class="chest-reward tier-' + tier + '">+' + data.xp + ' XP' + (data.freeze > 0 ? ' + 1 freeze' : '') + '</span>'
+            + '<span class="chest-text"><span class="chest-tier tier-' + tierStyle + '">' + tierLabel + '</span>'
+            + '<span class="chest-reward tier-' + tierStyle + '">+' + data.xp + ' XP' + (data.freeze > 0 ? ' + 1 freeze' : '') + '</span>'
             + '<small>peti hari ini sudah dibuka · kembali besok</small></span>';
         const xpEl = document.getElementById('statTotalXp');
         if (xpEl) xpEl.textContent = (parseInt(xpEl.textContent, 10) || 0) + (parseInt(data.xp, 10) || 0);
-        xpJuice(data.xp, card, { tier: tier, buzz: tier === 'common' ? 12 : [20, 50, 30] });
+        xpJuice(data.xp, card, { tier: tierStyle, buzz: tier === 'common' ? 12 : [20, 50, 30] });
         showToast(tierLabel + '! ' + data.message, 'success');
-        if (tier === 'legendary' || tier === 'epic') {
+        try { tierHaptic(tier === 'golden' ? 'legendary' : tier); } catch (err) {}
+        const chestSound = { common: 'chestCommon', rare: 'chestRare', epic: 'chestEpic', legendary: 'chestLegendary', golden: 'chestLegendary' }[tier] || 'chestCommon';
+        try { if (window.SoundEffects && SoundEffects[chestSound]) SoundEffects[chestSound](); } catch (err) {}
+        if (tier === 'legendary' || tier === 'epic' || tier === 'golden') {
             try { triggerConfetti(true); } catch (err) {}
-            try { if (window.SoundEffects) SoundEffects.levelUp(); } catch (err) {}
-        } else if (tier === 'rare') {
-            try { triggerConfetti(false); } catch (err) {}
-            try { if (window.SoundEffects) SoundEffects.questComplete(); } catch (err) {}
-        } else {
-            try { if (window.SoundEffects) SoundEffects.questComplete(); } catch (err) {}
         }
     };
     if (reduceMotion) { reveal(); return; }

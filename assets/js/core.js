@@ -77,9 +77,43 @@ const SoundEffects = (function() {
         },
         click: function() {
             playTone(600, 'sine', 0.05, 0, 0.05);
+        },
+        chestCommon: function() {
+            playTone(523.25, 'sine', 0.15, 0, 0.1);
+            playTone(659.25, 'sine', 0.2, 0.1, 0.1);
+        },
+        chestRare: function() {
+            playTone(523.25, 'sine', 0.15, 0, 0.12);
+            playTone(659.25, 'sine', 0.15, 0.1, 0.12);
+            playTone(783.99, 'triangle', 0.3, 0.2, 0.14);
+        },
+        chestEpic: function() {
+            playTone(392.00, 'triangle', 0.15, 0, 0.14);
+            playTone(523.25, 'triangle', 0.15, 0.1, 0.14);
+            playTone(659.25, 'triangle', 0.15, 0.2, 0.14);
+            playTone(783.99, 'sine', 0.4, 0.3, 0.16);
+            playTone(1046.50, 'sine', 0.5, 0.4, 0.16);
+        },
+        chestLegendary: function() {
+            playTone(523.25, 'sawtooth', 0.12, 0, 0.08);
+            playTone(659.25, 'sawtooth', 0.12, 0.1, 0.08);
+            playTone(783.99, 'triangle', 0.15, 0.2, 0.14);
+            playTone(1046.50, 'triangle', 0.15, 0.3, 0.14);
+            playTone(1318.51, 'sine', 0.5, 0.4, 0.18);
+            playTone(1567.98, 'sine', 0.7, 0.55, 0.18);
+        },
+        comboUp: function() {
+            playTone(740.00, 'square', 0.07, 0, 0.06);
+            playTone(987.77, 'square', 0.1, 0.07, 0.06);
         }
     };
 })();
+function tierHaptic(tier) {
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+    const map = { common: 15, rare: [20, 40, 20], epic: [30, 50, 30, 50, 30], legendary: [50, 60, 50, 60, 80] };
+    buzz(map[tier] || 12);
+}
 
 let confettiPromise = null;
 function ensureConfetti() {

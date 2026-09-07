@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $conn = db_connect();
-            $stmt = $conn->prepare("SELECT id, username, password FROM users WHERE username = ? OR email = ?");
+            $stmt = $conn->prepare("SELECT id, username, password, onboarded FROM users WHERE username = ? OR email = ?");
             if (!$stmt) {
                 throw new Exception("Gagal mempersiapkan query login: " . $conn->error);
             }
@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     set_flash('success', "Selamat datang kembali, {$user['username']}!");
                     $_SESSION['login_attempts'] = ['count' => 0, 'first' => time()];
                     session_regenerate_id(true);
-                    redirect('index.php');
+                    redirect(empty($user['onboarded']) ? 'onboarding.php' : 'index.php');
                 } else {
                     $_SESSION['login_attempts']['count']++;
                     $error = 'Kata sandi salah. Silakan coba lagi!';

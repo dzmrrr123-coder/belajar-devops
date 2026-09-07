@@ -23,6 +23,8 @@ jobs:
           exit $fail
       - name: Unit tests
         run: php tests/run.php
+      - name: Cache smoke
+        run: php tests/cache_smoke.php
   db:
     runs-on: ubuntu-latest
     services:
@@ -52,6 +54,22 @@ jobs:
           DB_PASS: root
           DB_NAME: learn_tracker
         run: php tests/db_smoke.php
+      - name: Migrate up
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASS: root
+          DB_NAME: learn_tracker
+        run: php db/migrate.php --up
+      - name: Migrate check
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASS: root
+          DB_NAME: learn_tracker
+        run: php db/migrate.php --check
   js:
     runs-on: ubuntu-latest
     steps:

@@ -1,0 +1,51 @@
+<?php
+namespace App\Domain\Quiz;
+class QuizBank {
+    public static function topics(): array { return ['Linux','Git','MySQL','PHP','Laravel','Docker','AWS','Networking','General']; }
+    public static function cards(): array {
+        return [
+            ['Linux','Perintah melihat isi direktori + file tersembunyi?','ls -la'],
+            ['Linux','Perintah pindah ke direktori home user?','cd ~ atau cd'],
+            ['Linux','Cara melihat 20 baris terakhir file log?','tail -n 20 /var/log/nginx/error.log'],
+            ['Linux','Perintah cek pemakaian disk per partisi?','df -h'],
+            ['Linux','Perintah memberi hak eksekusi ke script?','chmod +x deploy.sh'],
+            ['Linux','Perintah menjalankan perintah sebagai root?','sudo <perintah>, misal sudo apt update'],
+            ['Git','Perintah menyimpan snapshot perubahan ke staging?','git add . lalu git commit -m "pesan"'],
+            ['Git','Perintah melihat riwayat commit ringkas?','git log --oneline'],
+            ['Git','Perintah pindah branch / membuat branch baru?','git checkout -b fitur-x (atau git switch -c fitur-x)'],
+            ['Git','Perintah menggabungkan branch ke branch aktif?','git merge nama-branch'],
+            ['Git','Perintah mengunduh perubahan remote tanpa merge?','git fetch origin'],
+            ['Git','Perintah membatalkan file yang belum di-commit?','git restore <file> (atau git checkout -- <file>)'],
+            ['MySQL','Perintah membuat database baru?','CREATE DATABASE tokoonline CHARACTER SET utf8mb4;'],
+            ['MySQL','Perintah menambah kolom ke tabel?','ALTER TABLE users ADD COLUMN avatar VARCHAR(255);'],
+            ['MySQL','Klausa mencegah duplikat & mempercepat pencarian?','UNIQUE constraint dan INDEX pada kolom yang sering dicari'],
+            ['MySQL','Apa fungsi FOREIGN KEY?','Menjamin relasi antar tabel valid; baris anak wajib punya induk yang ada'],
+            ['MySQL','Perintah backup satu database?','mysqldump -u root -p tokoonline > backup.sql'],
+            ['MySQL','Bedanya DELETE vs TRUNCATE?','DELETE bisa WHERE + tercatat per baris; TRUNCATE hapus semua cepat tanpa WHERE'],
+            ['PHP','Fungsi mengamankan output HTML dari XSS?','htmlspecialchars($data, ENT_QUOTES, "UTF-8")'],
+            ['PHP','Cara mencegah SQL injection dengan MySQLi?','Prepared statement: $conn->prepare + bind_param'],
+            ['PHP','Fungsi hashing password yang dianjurkan?','password_hash($pw, PASSWORD_BCRYPT) + password_verify'],
+            ['PHP','Bedanya == dan === di PHP?','== longgar (konversi tipe), === ketat (nilai + tipe sama)'],
+            ['PHP','Apa itu PDO/MySQLi prepared statement?','Query dikirim terpisah dari data sehingga input tak dieksekusi sebagai SQL'],
+            ['PHP','Fungsi redirect lalu hentikan eksekusi?','header("Location: index.php"); exit();'],
+            ['Docker','Perintah membangun image dari Dockerfile?','docker build -t nama-app .'],
+            ['Docker','Perintah menjalankan container dari image?','docker run -d -p 8080:80 nama-app'],
+            ['Docker','File untuk orkestrasi multi-container?','docker-compose.yml + perintah docker compose up -d'],
+            ['Docker','Perintah melihat container yang berjalan?','docker ps (semua termasuk berhenti: docker ps -a)'],
+            ['Docker','Perintah menghapus image tak terpakai?','docker image prune'],
+            ['Docker','Apa itu volume di Docker?','Penyimpanan persisten di luar container agar data tak hilang saat container dihapus'],
+            ['AWS','Layanan VPS di AWS?','EC2 (Elastic Compute Cloud)'],
+            ['AWS','Layanan penyimpanan objek di AWS?','S3 (Simple Storage Service)'],
+            ['AWS','Apa itu Security Group?','Firewall virtual pengatur inbound/outbound instance EC2'],
+            ['AWS','Perintah koneksi SSH ke EC2?','ssh -i kunci.pem ubuntu@<ip-publik>'],
+            ['AWS','Tool gratis sertifikat SSL?',"Let's Encrypt via Certbot"],
+            ['AWS','Apa itu reverse proxy (Nginx)?','Server perantara yang meneruskan request ke aplikasi di belakangnya + terminasi SSL'],
+            ['Networking','Apa itu alamat IP dan subnet?','IP identitas host di jaringan; subnet membagi jaringan jadi blok (misal 192.168.1.0/24)'],
+            ['Networking','Bedanya HTTP dan HTTPS?','HTTPS = HTTP + enkripsi TLS; wajib untuk login & data sensitif'],
+            ['Networking','Apa fungsi DNS?','Menerjemahkan nama domain (contoh.com) jadi alamat IP'],
+            ['Networking','Port umum: 80, 443, 22, 3306?','80 HTTP, 443 HTTPS, 22 SSH, 3306 MySQL'],
+            ['Networking','Apa itu ping dan kapan dipakai?','Menguji konektivitas & latency ke host: ping 8.8.8.8'],
+            ['Networking','Bedanya TCP dan UDP?','TCP andal berurutan (web, SSH); UDP cepat tanpa jaminan (video, DNS)'],
+        ];
+    }
+}

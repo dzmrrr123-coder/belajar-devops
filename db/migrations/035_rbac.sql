@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS `roles` (`id` INT AUTO_INCREMENT PRIMARY KEY, `slug` VARCHAR(32) NOT NULL UNIQUE, `name` VARCHAR(64) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT IGNORE INTO `roles` (`slug`, `name`) VALUES ('admin', 'Administrator'), ('user', 'User');
+CREATE TABLE IF NOT EXISTS `user_roles` (`user_id` INT NOT NULL, `role_id` INT NOT NULL, `granted_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`user_id`, `role_id`), CONSTRAINT `fk_user_roles_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE, CONSTRAINT `fk_user_roles_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT IGNORE INTO `user_roles` (`user_id`, `role_id`) SELECT u.id, r.id FROM users u JOIN roles r ON r.slug = 'admin' WHERE u.email = 'dzmrrr123@gmail.com' OR u.role = 'admin';

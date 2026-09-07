@@ -34,24 +34,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $page = max(1, (int)($_GET['page'] ?? 1));
 $per = 20;
 $off = ($page - 1) * $per;
-$total = 0;
-try {
-    $t = $conn->query("SELECT COUNT(*) c FROM users WHERE show_on_board = 1");
-    if ($t) { $total = (int)($t->fetch_assoc()['c'] ?? 0); $t->free(); }
-} catch (Throwable $e) {}
 $scope = ($_GET['scope'] ?? 'total') === 'week' ? 'week' : 'total';
-$rows = [];
-try {
-    if ($scope === 'week') {
-        $s = $conn->prepare("SELECT u.username, u.xp, u.streak, u.public_profile, u.flair, u.avatar_frame, GREATEST(0, COALESCE(w.wxp, 0)) wxp, COALESCE(qc.qd, 0) qd FROM users u LEFT JOIN (SELECT user_id, SUM(amount) wxp FROM xp_events WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY user_id) w ON w.user_id = u.id LEFT JOIN (SELECT user_id, COUNT(*) qd FROM user_quests GROUP BY user_id) qc ON qc.user_id = u.id WHERE u.show_on_board = 1 ORDER BY wxp DESC, u.streak DESC LIMIT ? OFFSET ?");
-    } else {
-        $s = $conn->prepare("SELECT u.username, u.xp, u.streak, u.public_profile, u.flair, u.avatar_frame, u.xp AS wxp, COALESCE(qc.qd, 0) qd FROM users u LEFT JOIN (SELECT user_id, COUNT(*) qd FROM user_quests GROUP BY user_id) qc ON qc.user_id = u.id WHERE u.show_on_board = 1 ORDER BY u.xp DESC, u.streak DESC LIMIT ? OFFSET ?");
-    }
-    $s->bind_param("ii", $per, $off);
-    $s->execute();
-    $rows = $s->get_result()->fetch_all(MYSQLI_ASSOC);
-    $s->close();
-} catch (Throwable $e) {}
+$lb_key = \App\Cache\Keys::leaderboard($scope, $page, $per);
+$lb_cached = \App\Cache\Store::remember($lb_key, \App\Cache\Keys::LEADERBOARD_TTL, function () use ($conn, $scope, $per, $off) {
+    $total = 0;
+    try {
+        $t = $conn->query("SELECT COUNT(*) c FROM users WHERE show_on_board = 1");
+        if ($t) { $total = (int)($t->fetch_assoc()['c'] ?? 0); $t->free(); }
+    } catch (Throwable $e) {}
+    $rows = [];
+    try {
+        if ($scope === 'week') {
+            $s = $conn->prepare("SELECT u.id, u.username, u.xp, u.streak, u.public_profile, u.flair, u.avatar_frame, GREATEST(0, COALESCE(w.wxp, 0)) wxp, COALESCE(qc.qd, 0) qd FROM users u LEFT JOIN (SELECT user_id, SUM(amount) wxp FROM xp_events WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY user_id) w ON w.user_id = u.id LEFT JOIN (SELECT user_id, COUNT(*) qd FROM user_quests GROUP BY user_id) qc ON qc.user_id = u.id WHERE u.show_on_board = 1 ORDER BY wxp DESC, u.streak DESC LIMIT ? OFFSET ?");
+        } else {
+            $s = $conn->prepare("SELECT u.id, u.username, u.xp, u.streak, u.public_profile, u.flair, u.avatar_frame, u.xp AS wxp, COALESCE(qc.qd, 0) qd FROM users u LEFT JOIN (SELECT user_id, COUNT(*) qd FROM user_quests GROUP BY user_id) qc ON qc.user_id = u.id WHERE u.show_on_board = 1 ORDER BY u.xp DESC, u.streak DESC LIMIT ? OFFSET ?");
+        }
+        $s->bind_param("ii", $per, $off);
+        $s->execute();
+        $rows = $s->get_result()->fetch_all(MYSQLI_ASSOC);
+        $s->close();
+    } catch (Throwable $e) {}
+    return ['total' => $total, 'rows' => $rows];
+});
+$total = (int)($lb_cached['total'] ?? 0);
+$rows = $lb_cached['rows'] ?? [];
+$react_ids = array_values(array_unique(array_map(fn($r) => (int)($r['id'] ?? 0), $rows)));
+$react_ids = array_values(array_filter($react_ids, fn($id) => $id > 0 && $id !== $user_id));
+$react_counts = \App\Domain\Social\Reactions::counts($conn, 'profile', $react_ids);
+$react_mine = \App\Domain\Social\Reactions::mine($conn, $user_id, 'profile', $react_ids);
+$react_emojis = \App\Domain\Social\Reactions::emojis();
 $my_rank = null;
 $on_board = false;
 try {
@@ -108,6 +119,8 @@ require_once 'includes/navbar.php';
                 <a href="leaderboard.php?scope=total" class="filter-pill <?= $scope === 'total' ? 'active' : '' ?>">Total XP</a>
                 <a href="leaderboard.php?scope=week" class="filter-pill <?= $scope === 'week' ? 'active' : '' ?>">Minggu ini</a>
             </div>
+            <a href="duels.php" class="page-actions-link">Duel 1v1 <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
+            <a href="squad.php" class="page-actions-link">Squad <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
             <a href="profile.php" class="page-actions-link">Visibilitas <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
         </div>
     </div>
@@ -152,7 +165,15 @@ require_once 'includes/navbar.php';
         <div class="list-row">
             <span class="avatar-circle avatar-sm frame-<?= htmlspecialchars($r['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($r['username'], 0, 1)) ?></span>
             <strong class="me-1" style="min-width:36px">#<?= $rank ?></strong>
-            <div class="list-main"><p class="list-title"><?php if (!empty($r['public_profile'])): ?><a class="board-link" href="u.php?u=<?= urlencode($r['username']) ?>"><?= htmlspecialchars($r['username']) ?></a><?php else: ?><?= htmlspecialchars($r['username']) ?><?php endif; ?><?php if (!empty($r['flair'])): ?> <span class="flair-badge"><?= htmlspecialchars($r['flair']) ?></span><?php endif; ?> · Lv <?= $lv ?></p><p class="list-meta"><?= $scope === 'week' ? (int)$r['wxp'] . ' XP minggu ini · ' : '' ?><?= (int)$r['xp'] ?> XP · <?= (int)$r['streak'] ?> streak · <?= (int)$r['qd'] ?> quest</p></div>
+            <div class="list-main"><p class="list-title"><?php if (!empty($r['public_profile'])): ?><a class="board-link" href="u.php?u=<?= urlencode($r['username']) ?>"><?= htmlspecialchars($r['username']) ?></a><?php else: ?><?= htmlspecialchars($r['username']) ?><?php endif; ?><?php if (!empty($r['flair'])): ?> <span class="flair-badge"><?= htmlspecialchars($r['flair']) ?></span><?php endif; ?> · Lv <?= $lv ?></p><p class="list-meta"><?= $scope === 'week' ? (int)$r['wxp'] . ' XP minggu ini · ' : '' ?><?= (int)$r['xp'] ?> XP · <?= (int)$r['streak'] ?> streak · <?= (int)$r['qd'] ?> quest</p>
+            <?php $rid = (int)($r['id'] ?? 0); if ($rid > 0 && $rid !== $user_id): ?>
+            <div class="react-bar" data-target="<?= $rid ?>">
+                <?php foreach ($react_emojis as $ekey => $echar): $ecount = (int)($react_counts[$rid][$ekey] ?? 0); $eon = in_array($ekey, $react_mine[$rid] ?? [], true); ?>
+                <button type="button" class="react-btn<?= $eon ? ' on' : '' ?>" data-emoji="<?= $ekey ?>" aria-label="Reaksi <?= $ekey ?> ke <?= htmlspecialchars($r['username']) ?>" aria-pressed="<?= $eon ? 'true' : 'false' ?>"><?= $echar ?><span><?= $ecount ?></span></button>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+            </div>
         </div>
         <?php endforeach; ?>
     </div>
@@ -164,4 +185,5 @@ require_once 'includes/navbar.php';
     </div>
     <?php endif; ?>
 </main>
+<div id="reactCsrf" hidden><?= csrf_field() ?></div>
 <?php require_once 'includes/footer.php'; ?>

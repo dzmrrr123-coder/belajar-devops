@@ -21,22 +21,40 @@ try {
 } catch (Throwable $e) { $existing = null; }
 if ($existing) $fail('Peti hari ini sudah dibuka. Kembali besok!');
 
+// Golden chest: maks 2x per minggu, peluang 25% — XP 12-20 + freeze pasti
+$golden = false;
+try {
+    $gq = $conn->prepare("SELECT COUNT(*) n FROM daily_chests WHERE user_id = ? AND YEARWEEK(chest_date, 1) = YEARWEEK(CURDATE(), 1) AND is_golden = 1");
+    if ($gq) {
+        $gq->bind_param("i", $user_id); $gq->execute();
+        $golden_count = (int)($gq->get_result()->fetch_assoc()['n'] ?? 0); $gq->close();
+        try { $golden = $golden_count < 2 && random_int(1, 100) <= 25; } catch (Throwable $e) { $golden = false; }
+    }
+} catch (Throwable $e) { $golden = false; }
+
 // Undian berbobot: 60% kecil, 30% sedang, 10% besar; freeze 15%
 try {
     $r = random_int(1, 100);
 } catch (Throwable $e) { $r = 50; }
-if ($r <= 60) { try { $xp = random_int(3, 7); } catch (Throwable $e) { $xp = 5; } }
+if ($golden) { try { $xp = random_int(12, 20); } catch (Throwable $e) { $xp = 15; } $freeze = 1; }
+elseif ($r <= 60) { try { $xp = random_int(3, 7); } catch (Throwable $e) { $xp = 5; } }
 elseif ($r <= 90) { try { $xp = random_int(8, 12); } catch (Throwable $e) { $xp = 10; } }
 else { try { $xp = random_int(13, 15); } catch (Throwable $e) { $xp = 14; } }
-try { $freeze = random_int(1, 100) <= 15 ? 1 : 0; } catch (Throwable $e) { $freeze = 0; }
+if (!$golden) { try { $freeze = random_int(1, 100) <= 15 ? 1 : 0; } catch (Throwable $e) { $freeze = 0; } }
 
 $conn->begin_transaction();
 try {
-    $ins = $conn->prepare("INSERT INTO daily_chests (user_id, chest_date, xp, `freeze`) VALUES (?, CURDATE(), ?, ?)");
-    $ins->bind_param("iii", $user_id, $xp, $freeze);
+    $ins = $conn->prepare("INSERT INTO daily_chests (user_id, chest_date, xp, `freeze`, is_golden) VALUES (?, CURDATE(), ?, ?, ?)");
+    if ($ins) {
+        $g = $golden ? 1 : 0;
+        $ins->bind_param("iiii", $user_id, $xp, $freeze, $g);
+    } else {
+        $ins = $conn->prepare("INSERT INTO daily_chests (user_id, chest_date, xp, `freeze`) VALUES (?, CURDATE(), ?, ?)");
+        $ins->bind_param("iii", $user_id, $xp, $freeze);
+    }
     $ins->execute();
     $ins->close();
-    award_xp($conn, $user_id, $xp, 'chest');
+    award_xp($conn, $user_id, $xp, $golden ? 'golden_chest' : 'chest');
     if ($freeze > 0) {
         $up = $conn->prepare("UPDATE users SET freeze_tokens = LEAST(3, freeze_tokens + 1) WHERE id = ?");
         $up->bind_param("i", $user_id);
@@ -44,11 +62,11 @@ try {
     }
     $conn->commit();
     $rare = ($xp >= 10 || $freeze > 0);
-    $tier = $freeze > 0 ? 'legendary' : ($xp >= 13 ? 'epic' : ($xp >= 8 ? 'rare' : 'common'));
-    $msg = "Peti dibuka! +{$xp} XP" . ($freeze > 0 ? ' + 1 freeze' : '') . ".";
+    $tier = $golden ? 'golden' : ($freeze > 0 ? 'legendary' : ($xp >= 13 ? 'epic' : ($xp >= 8 ? 'rare' : 'common')));
+    $msg = $golden ? "PETI EMAS! +{$xp} XP + 1 freeze!" : ("Peti dibuka! +{$xp} XP" . ($freeze > 0 ? ' + 1 freeze' : '') . ".");
     if ($is_ajax) {
         header('Content-Type: application/json');
-        echo json_encode(['status' => 'success', 'xp' => $xp, 'freeze' => $freeze, 'rare' => $rare, 'tier' => $tier, 'message' => $msg]);
+        echo json_encode(['status' => 'success', 'xp' => $xp, 'freeze' => $freeze, 'rare' => $rare, 'tier' => $tier, 'golden' => $golden, 'message' => $msg]);
         exit();
     }
     set_flash('success', $msg);
