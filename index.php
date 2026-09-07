@@ -202,6 +202,30 @@ require_once 'includes/navbar.php';
     </a>
     <?php endif; ?>
 
+    <section class="learning-loop" aria-labelledby="learning-loop-heading">
+        <div class="learning-loop-head">
+            <div>
+                <span class="section-eyebrow">Ritme belajar</span>
+                <h2 id="learning-loop-heading">Satu sesi kecil, progres nyata</h2>
+            </div>
+            <span class="learning-loop-status">Hari <?= (int)$user['streak'] ?> · <?= $pomodoro_today > 0 ? 'sudah fokus' : 'belum mulai' ?></span>
+        </div>
+        <div class="learning-loop-steps">
+            <a class="learning-step is-active" href="quests.php">
+                <span class="learning-step-index">1</span>
+                <span><strong>Pelajari</strong><small><?= $next_quest ? 'Lanjutkan quest berikutnya' : 'Pilih materi yang relevan' ?></small></span>
+            </a>
+            <a class="learning-step <?= $pomodoro_today > 0 ? 'is-done' : '' ?>" href="timer.php">
+                <span class="learning-step-index"><i class="fas <?= $pomodoro_today > 0 ? 'fa-check' : 'fa-play' ?>" aria-hidden="true"></i></span>
+                <span><strong>Praktikkan</strong><small><?= $pomodoro_today > 0 ? 'Sesi fokus tercatat hari ini' : 'Mulai fokus 25 menit' ?></small></span>
+            </a>
+            <a class="learning-step <?= $due_reviews === 0 && $total_completed > 0 ? 'is-done' : '' ?>" href="review.php">
+                <span class="learning-step-index"><i class="fas <?= $due_reviews === 0 && $total_completed > 0 ? 'fa-check' : 'fa-rotate-right' ?>" aria-hidden="true"></i></span>
+                <span><strong>Kunci</strong><small><?= $due_reviews > 0 ? $due_reviews . ' review menunggu' : 'Review saat materi siap' ?></small></span>
+            </a>
+        </div>
+    </section>
+
     <section class="progress-strip" aria-label="Ringkasan progres belajar">
         <div class="strip-main">
             <div class="strip-level"><strong>Level <?= $level ?></strong><span><?= htmlspecialchars($rank_title) ?></span></div>
