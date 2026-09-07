@@ -94,7 +94,16 @@ main.container{flex:1}
 .lt-menu-label{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding:8px 12px 2px}
 .lt-menu-label:first-child{padding-top:2px}
 .lt-menu .dropdown-item small{color:var(--faint);font-size:.72rem;margin-left:auto;padding-left:8px}
-.lt-menu-grouped{min-width:230px}
+.lt-menu-grouped{min-width:230px;max-height:min(70vh,560px);overflow-y:auto;overscroll-behavior:contain}
+@media(min-width:992px){
+.lt-menu-grouped{min-width:480px;display:grid;grid-template-columns:1fr 1fr;align-content:start;gap:1px}
+.lt-menu-grouped .lt-menu-label{grid-column:1/-1}
+.lt-menu-grouped li{display:contents}
+.lt-menu-grouped .dropdown-item{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
+@media(max-width:991.98px){
+.lt-menu-grouped{max-height:min(60dvh,440px)}
+}
 .quest-list,.race-list,.badge-grid,.skill-grid,.heatmap{content-visibility:auto;contain-intrinsic-size:auto 400px}
 .btn:active{transform:translateY(1px) scale(.99)}
 .tilt{transition:transform .15s ease;will-change:transform}
