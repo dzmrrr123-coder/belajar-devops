@@ -577,7 +577,7 @@ function user_badges($conn, $user_id) { return \App\Domain\Gamification\Badges::
 
 function check_and_unlock_badges($conn, $user_id) { return \App\Domain\Gamification\Badges::check($conn, (int)$user_id); }
 function mission_multiplier($conn, $user_id) { return \App\Domain\Gamification\Combo::multiplier($conn, (int)$user_id); }
-function combo_tier($done) { return \App\Domain\Gamification\Combo::tier((int)$done); }
+function combo_tier($done, $total = 3) { return \App\Domain\Gamification\Combo::tier((int)$done, (int)$total); }
 function combo_count_done($missions) { return \App\Domain\Gamification\Combo::countDone((array)$missions); }
 
 function apply_xp_multiplier($base, $mult) { return \App\Domain\Gamification\Xp::apply((int)$base, (float)$mult); }
@@ -595,7 +595,12 @@ function awarded_for_ref($c, $u, $t, $i) { return \App\Domain\Gamification\Ledge
 
 function weekly_xp($conn, $user_id) { return \App\Domain\Gamification\Ledger::weekly($conn, (int)$user_id); }
 
-function daily_mission_defs() { return \App\Domain\Gamification\Mission::defs(); }
+function daily_mission_defs() {
+    $defs = \App\Domain\Gamification\Mission::defs();
+    $b = \App\Domain\Gamification\Missions::bonusForDate();
+    $defs[$b['key']] = ['label' => $b['label'], 'xp' => $b['xp'], 'icon' => $b['icon']];
+    return $defs;
+}
 
 function get_daily_mission_status($conn, $user_id) { return \App\Domain\Gamification\Missions::status($conn, (int)$user_id); }
 

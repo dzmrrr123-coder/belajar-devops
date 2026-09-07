@@ -140,7 +140,7 @@ require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" id="main" role="main">
     <div class="page-head">
-        <div class="page-kicker" id="reviewKicker"><?= $due_count ?> perlu direview · <?= $overdue ?> terlambat · <?= $upcoming ?> minggu depan</div>
+        <div class="page-kicker" id="reviewKicker"><?= $due_count ?> perlu direview<?= $due_count > 0 ? ' · ±' . max(1, (int)ceil($due_count / 2)) . ' menit' : '' ?> · <?= $overdue ?> terlambat · <?= $upcoming ?> minggu depan</div>
         <h1 class="page-title">Review Inbox</h1>
         <p class="page-desc">Nilai jujur tiap kartu. Lagi = besok, Sulit = segera, Bisa = sesuai jadwal, Mudah = lama.</p>
         <div class="page-actions review-back">

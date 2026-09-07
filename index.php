@@ -165,8 +165,10 @@ require_once 'includes/navbar.php';
         $next_quest = $q;
         break;
     }
-    $next_action = \App\Domain\NextAction::pick(['claimable_n' => $claimable_n, 'claimable_xp' => $claimable_xp, 'due_reviews' => $due_reviews, 'next_quest' => $next_quest, 'pomo_today' => $pomodoro_today]);
-    $next_icons = ['claim' => 'fa-gift', 'review' => 'fa-rotate-right', 'quest' => 'fa-map', 'focus' => 'fa-play', 'digest' => 'fa-calendar-week'];
+    $last_active = (string)($user['last_active_date'] ?? '');
+    $streak_broken = $last_active !== '' && $last_active < date('Y-m-d', strtotime('-1 day')) && (int)$user['streak'] <= 1;
+    $next_action = \App\Domain\NextAction::pick(['claimable_n' => $claimable_n, 'claimable_xp' => $claimable_xp, 'due_reviews' => $due_reviews, 'next_quest' => $next_quest, 'pomo_today' => $pomodoro_today, 'streak_broken' => $streak_broken]);
+    $next_icons = ['claim' => 'fa-gift', 'recovery' => 'fa-heart', 'review' => 'fa-rotate-right', 'quest' => 'fa-map', 'focus' => 'fa-play', 'digest' => 'fa-calendar-week'];
     ?>
     <?php if ($next_action['type'] === 'claim'): ?>
     <div class="next-action">
@@ -227,7 +229,7 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
 
     <?php
     $mission_claimed = count(array_filter($missions, fn($m) => !empty($m['claimed'])));
-    $mission_all_done = count(array_filter($missions, fn($m) => !empty($m['done']))) === 3;
+    $mission_all_done = count(array_filter($missions, fn($m) => !empty($m['done']))) === count($missions);
     ?>
     <div class="bolt-say mb-3" data-bolt data-mood="<?= $claimable_n > 0 ? 'happy' : 'idle' ?>" data-msg="<?= $claimable_n > 0 ? 'Ada <strong>+' . $claimable_xp . ' XP</strong> nganggur. Klaim gih!' : 'Fokus satu quest, sisanya ngikut.' ?>"></div>
     <section class="mission-strip" aria-label="Misi harian">
@@ -235,8 +237,8 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
             <summary class="mission-summary">
                 <span class="mission-summary-text">
                     <strong>Misi hari ini</strong>
-                    <?php $combo_done = \App\Domain\Gamification\Combo::countDone($missions); $combo_mult = \App\Domain\Gamification\Combo::tier($combo_done); ?>
-                    <small><?= $mission_claimed ?>/3 diklaim · +5 XP tiap klaim · <span class="text-success fw-bold">Combo <?= \App\Domain\Gamification\Combo::label($combo_mult) ?></span> · <?= \App\Domain\Gamification\Combo::nextHint($combo_done) ?> · reset <span id="resetClock">--:--:--</span></small>
+                    <?php $combo_done = \App\Domain\Gamification\Combo::countDone($missions); $combo_total = count($missions) ?: 3; $combo_mult = \App\Domain\Gamification\Combo::tier($combo_done, $combo_total); ?>
+                    <small><?= $mission_claimed ?>/<?= count($missions) ?> diklaim · misi bonus rotasi tiap hari · <span class="text-success fw-bold">Combo <?= \App\Domain\Gamification\Combo::label($combo_mult) ?></span> · <?= \App\Domain\Gamification\Combo::nextHint($combo_done, $combo_total) ?> · reset <span id="resetClock">--:--:--</span></small>
                 </span>
 <script>
 (function() {
@@ -254,7 +256,7 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
     setInterval(tick, 1000);
 })();
 </script>
-                <span class="mission-summary-count" aria-hidden="true"><?= $mission_claimed ?>/3</span>
+                <span class="mission-summary-count" aria-hidden="true"><?= $mission_claimed ?>/<?= count($missions) ?></span>
                 <i class="fas fa-chevron-down mission-summary-chev" aria-hidden="true"></i>
             </summary>
             <div class="mission-body">

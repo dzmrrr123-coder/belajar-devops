@@ -230,6 +230,10 @@ check('next quest', \App\Domain\NextAction::pick(['claimable_n' => 0, 'due_revie
 check('next quest id', \App\Domain\NextAction::pick(['next_quest' => ['id' => 7, 'title' => 'Lanjut', 'xp_reward' => 20]])['quest_id'], 7);
 check('next fokus', \App\Domain\NextAction::pick(['claimable_n' => 0, 'due_reviews' => 0, 'pomo_today' => 0])['type'], 'focus');
 check('next digest', \App\Domain\NextAction::pick(['claimable_n' => 0, 'due_reviews' => 0, 'pomo_today' => 2])['type'], 'digest');
+check('next recovery', \App\Domain\NextAction::pick(['claimable_n' => 0, 'streak_broken' => true, 'due_reviews' => 5, 'pomo_today' => 0])['type'], 'recovery');
+check('next klaim dulu', \App\Domain\NextAction::pick(['claimable_n' => 1, 'claimable_xp' => 5, 'streak_broken' => true])['type'], 'claim');
+check('bonus genap', \App\Domain\Gamification\Missions::bonusForDate(strtotime('2026-09-02'))['key'], 'bonus_full');
+check('bonus ganjil', \App\Domain\Gamification\Missions::bonusForDate(strtotime('2026-09-03'))['key'], 'bonus_focus2');
 check('mastery lv1', \App\Domain\Skill\Mastery::level(0), 1);
 check('mastery lv2', \App\Domain\Skill\Mastery::level(50), 2);
 check('mastery lv2b', \App\Domain\Skill\Mastery::level(99), 2);

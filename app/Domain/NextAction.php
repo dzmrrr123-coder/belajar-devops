@@ -8,6 +8,9 @@ class NextAction {
             $xp = (int)($s['claimable_xp'] ?? 0);
             return ['type' => 'claim', 'title' => "Klaim +{$xp} XP", 'desc' => "{$claimN} misi selesai menunggumu", 'href' => null, 'cta' => 'Klaim'];
         }
+        if (!empty($s['streak_broken'])) {
+            return ['type' => 'recovery', 'title' => 'Misi comeback', 'desc' => 'streak putus? mulai lagi dari 1 quest kecil', 'href' => 'quests.php', 'cta' => 'Mulai lagi'];
+        }
         if ((int)($s['due_reviews'] ?? 0) > 0) {
             $n = (int)$s['due_reviews'];
             return ['type' => 'review', 'title' => "Sikat {$n} review", 'desc' => 'cuma 2 menit, biar tak menumpuk', 'href' => 'review.php', 'cta' => 'Review'];
@@ -23,7 +26,7 @@ class NextAction {
         return ['type' => 'digest', 'title' => 'Minggu ini beres!', 'desc' => 'lihat ringkasan & rencanakan berikutnya', 'href' => 'digest.php', 'cta' => 'Ringkasan'];
     }
     public static function signals(\mysqli $conn, int $uid): array {
-        $out = ['claimable_n' => 0, 'claimable_xp' => 0, 'due_reviews' => 0, 'pomo_today' => 0, 'next_quest' => null];
+        $out = ['claimable_n' => 0, 'claimable_xp' => 0, 'due_reviews' => 0, 'pomo_today' => 0, 'next_quest' => null, 'streak_broken' => false];
         try {
             $m = \App\Domain\Gamification\Missions::status($conn, $uid);
             foreach ($m as $mm) {
@@ -53,6 +56,13 @@ class NextAction {
                     $dq->close();
                 }
                 $out['next_quest'] = QuestPolicy::nextUnlocked($globals, $done, QuestPolicy::prevMap($globals));
+            }
+            $u = $conn->prepare("SELECT streak, last_active_date FROM users WHERE id = ?");
+            if ($u) {
+                $u->bind_param("i", $uid); $u->execute();
+                $ur = $u->get_result()->fetch_assoc() ?: []; $u->close();
+                $last = (string)($ur['last_active_date'] ?? '');
+                $out['streak_broken'] = $last !== '' && $last < date('Y-m-d', strtotime('-1 day')) && (int)($ur['streak'] ?? 0) <= 1;
             }
         } catch (\Throwable $e) {}
         return $out;

@@ -139,6 +139,11 @@ try {
     if (!isset($sig['claimable_n'], $sig['due_reviews'], $sig['pomo_today'])) smoke_fail('signals shape');
     $na = \App\Domain\NextAction::resolve($conn, $uid);
     if (empty($na['type']) || empty($na['title'])) smoke_fail('resolve shape');
+    $mst = \App\Domain\Gamification\Missions::status($conn, $uid);
+    if (count($mst) !== 4) smoke_fail('missions 4 keys');
+    $bkey = \App\Domain\Gamification\Missions::bonusForDate()['key'];
+    if (!isset($mst[$bkey]) || !isset($mst[$bkey]['xp'])) smoke_fail('missions bonus key');
+    if (array_keys(daily_mission_defs()) !== array_keys($mst)) smoke_fail('defs match status');
     foreach (['skill_nodes', 'user_skill_mastery', 'mastery_events'] as $t) {
         $chk = $conn->query("SHOW TABLES LIKE '{$t}'");
         if (!$chk || $chk->num_rows === 0) smoke_fail("missing table {$t}");
