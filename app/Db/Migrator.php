@@ -62,20 +62,30 @@ class Migrator {
         $applied = self::appliedFiles($conn);
         $files = glob($dir . '/*.sql') ?: [];
         sort($files);
-        foreach ($files as $f) {
-            $base = basename($f);
-            if (isset($applied[$base])) continue;
-            $sql = file_get_contents($f);
-            if ($sql === false || trim($sql) === '') continue;
-            $statements = array_filter(array_map('trim', explode(';', $sql)));
-            foreach ($statements as $st) {
-                if ($st === '' || strpos($st, '--') === 0) continue;
-                @$conn->query($st);
+        mysqli_report(MYSQLI_REPORT_OFF);
+        try {
+            foreach ($files as $f) {
+                $base = basename($f);
+                if (isset($applied[$base])) continue;
+                $sql = file_get_contents($f);
+                if ($sql === false || trim($sql) === '') continue;
+                $statements = array_filter(array_map('trim', explode(';', $sql)));
+                $ok = true;
+                foreach ($statements as $st) {
+                    if ($st === '' || strpos($st, '--') === 0) continue;
+                    if (!@$conn->query($st)) {
+                        $errno = $conn->errno;
+                        if (!in_array($errno, [1050, 1060, 1061, 1068, 1091], true)) { $ok = false; break; }
+                    }
+                }
+                if (!$ok) continue;
+                try {
+                    $ins = $conn->prepare("INSERT IGNORE INTO `schema_migrations` (`file`) VALUES (?)");
+                    if ($ins) { $ins->bind_param("s", $base); $ins->execute(); $ins->close(); }
+                } catch (\Throwable $e) {}
             }
-            try {
-                $ins = $conn->prepare("INSERT IGNORE INTO `schema_migrations` (`file`) VALUES (?)");
-                if ($ins) { $ins->bind_param("s", $base); $ins->execute(); $ins->close(); }
-            } catch (\Throwable $e) {}
+        } finally {
+            mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
         }
     }
 }

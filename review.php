@@ -5,7 +5,7 @@ $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
 $valid_grades = ['again', 'hard', 'good', 'easy', 'know', 'forgot'];
 $grade_map = ['know' => 'good', 'forgot' => 'again'];
-$deck_names = array_keys(skill_defs());
+$deck_names = array_keys(skill_defs(user_track($conn, $user_id)));
 $deck = trim((string)($_GET['deck'] ?? $_POST['deck'] ?? 'Semua'));
 if ($deck !== 'Semua' && !in_array($deck, $deck_names, true)) $deck = 'Semua';
 

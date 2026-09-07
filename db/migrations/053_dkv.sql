@@ -1,0 +1,1 @@
+INSERT IGNORE INTO `skill_nodes` (`slug`, `name`, `icon`, `sort`) VALUES ('desain', 'Desain & Visual', 'fas fa-palette', 12), ('uiux', 'UI/UX', 'fas fa-object-group', 13), ('motion', 'Motion', 'fas fa-film', 14);

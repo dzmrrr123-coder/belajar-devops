@@ -30,7 +30,7 @@ if (is_logged_in()) {
     }
 }
 
-$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'incident.php', 'progress.php', 'certificate.php', 'feedback.php', 'team.php', 'skills.php', 'digest.php', 'shop.php', 'leaderboard.php', 'squad.php', 'duels.php', 'season.php', 'search.php'], true);
+$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'incident.php', 'progress.php', 'certificate.php', 'feedback.php', 'team.php', 'kelas.php', 'skills.php', 'digest.php', 'shop.php', 'leaderboard.php', 'squad.php', 'duels.php', 'season.php', 'search.php'], true);
 ?>
 <nav class="lt-navbar navbar navbar-expand-lg" aria-label="Navigasi Utama">
     <div class="container lt-navbar-inner">
@@ -95,12 +95,15 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
                         <li><a class="dropdown-item <?= $current_script === 'leaderboard.php' ? 'active' : '' ?>" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'squad.php' ? 'active' : '' ?>" href="squad.php"><i class="fas fa-users"></i>Squad <small>baru</small></a></li>
                         <li><a class="dropdown-item <?= $current_script === 'team.php' ? 'active' : '' ?>" href="team.php"><i class="fas fa-briefcase"></i>Tim <small>dashboard</small></a></li>
+                        <?php $show_kelas_nav = false; try { if (!empty($_SESSION['user_id']) && isset($conn) && $conn instanceof mysqli) { $show_kelas_nav = is_admin($conn, (int)$_SESSION['user_id']) || \App\Domain\Auth\Roles::isGuru($conn, (int)$_SESSION['user_id']); } } catch (Throwable $e) {} ?>
+                        <?php if ($show_kelas_nav): ?><li><a class="dropdown-item <?= $current_script === 'kelas.php' ? 'active' : '' ?>" href="kelas.php"><i class="fas fa-chalkboard-teacher"></i>Kelas <small>guru</small></a></li><?php endif; ?>
                         <li><a class="dropdown-item <?= $current_script === 'duels.php' ? 'active' : '' ?>" href="duels.php"><i class="fas fa-hand-fist"></i>Duel 1v1 <small>baru</small></a></li>
                         <li><a class="dropdown-item <?= $current_script === 'season.php' ? 'active' : '' ?>" href="season.php"><i class="fas fa-crown"></i>Season pass <small>baru</small></a></li>
                         <li class="lt-menu-label" aria-hidden="true">Akun</li>
                         <li><a class="dropdown-item <?= $current_script === 'shop.php' ? 'active' : '' ?>" href="shop.php"><i class="fas fa-store"></i>Toko XP</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'digest.php' ? 'active' : '' ?>" href="digest.php"><i class="fas fa-calendar-week"></i>Ringkasan</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'pricing.php' ? 'active' : '' ?>" href="pricing.php"><i class="fas fa-crown"></i>Pro <small>sertifikat</small></a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'redeem.php' ? 'active' : '' ?>" href="redeem.php"><i class="fas fa-ticket"></i>Tukar voucher</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'feedback.php' ? 'active' : '' ?>" href="feedback.php"><i class="fas fa-comment"></i>Feedback</a></li>
                     </ul>
                 </li>

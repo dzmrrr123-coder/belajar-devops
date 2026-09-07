@@ -13,7 +13,7 @@ class Mastery {
         return $r === 0 ? self::PER_LEVEL : self::PER_LEVEL - $r;
     }
     public static function nodeForSkill(string $skill): ?string {
-        $map = ['Linux' => 'linux', 'Git' => 'git', 'MySQL' => 'sql', 'PHP' => 'php', 'Laravel' => 'laravel', 'Docker' => 'docker', 'AWS' => 'cloud', 'Networking' => 'networking'];
+        $map = ['Linux' => 'linux', 'Git' => 'git', 'MySQL' => 'sql', 'PHP' => 'php', 'Laravel' => 'laravel', 'Docker' => 'docker', 'AWS' => 'cloud', 'Networking' => 'networking', 'Testing' => 'testing', 'Desain' => 'desain', 'Tipografi' => 'desain', 'Branding' => 'desain', 'UI/UX' => 'uiux', 'Ilustrasi' => 'desain', 'Motion' => 'motion', 'General' => null];
         return $map[$skill] ?? null;
     }
     public static function award(\mysqli $conn, int $uid, ?string $node, int $xp, string $source, ?string $refType = null, ?int $refId = null): void {

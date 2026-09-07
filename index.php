@@ -4,6 +4,7 @@ require_login();
 
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
+$myTrack = user_track($conn, $user_id);
 
 // Get user data (kolom eksplisit: jangan tarik hash password)
 $stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, freeze_tokens, best_streak, show_on_board, public_profile, flair, avatar_frame, role, created_at, onboarded FROM users WHERE id = ?");
@@ -34,15 +35,24 @@ $auto_week = min(12, max(1, (int)floor($days_diff / 7) + 1));
 // Allow manual week preview if selected
 $selected_week = isset($_GET['week']) ? max(1, min(12, (int)$_GET['week'])) : $auto_week;
 
-// Quests for selected week (global + milik sendiri)
+// Quests for selected week (global track aktif + milik sendiri)
 $stmt = $conn->prepare("
     SELECT q.*, uq.completed_at
     FROM quests q
     LEFT JOIN user_quests uq ON q.id = uq.quest_id AND uq.user_id = ?
-    WHERE q.week = ? AND (q.user_id IS NULL OR q.user_id = ?)
+    WHERE q.week = ? AND ((q.user_id IS NULL AND (q.track = ? OR q.track = 'all' OR q.track IS NULL OR q.track = '')) OR (q.user_id = ? AND (q.track = ? OR q.track IS NULL OR q.track = '')))
     ORDER BY q.id ASC
 ");
-$stmt->bind_param("iii", $user_id, $selected_week, $user_id);
+if (!$stmt) {
+    $stmt = $conn->prepare("
+        SELECT q.*, uq.completed_at
+        FROM quests q
+        LEFT JOIN user_quests uq ON q.id = uq.quest_id AND uq.user_id = ?
+        WHERE q.week = ? AND (q.user_id IS NULL OR q.user_id = ?)
+        ORDER BY q.id ASC
+    ");
+    $stmt->bind_param("iii", $user_id, $selected_week, $user_id);
+} else $stmt->bind_param("isiss", $user_id, $selected_week, $myTrack, $user_id, $myTrack);
 $stmt->execute();
 $quests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
@@ -55,8 +65,9 @@ try {
     $ld->execute();
     foreach ($ld->get_result()->fetch_all(MYSQLI_ASSOC) as $lr) $lock_done[(int)$lr['quest_id']] = true;
     $ld->close();
-    $lg = $conn->prepare("SELECT id FROM quests WHERE user_id IS NULL ORDER BY week ASC, id ASC");
-    $lg->execute();
+    $lg = $conn->prepare("SELECT id FROM quests WHERE user_id IS NULL AND track = ? ORDER BY week ASC, id ASC");
+    if (!$lg) { $lg = $conn->prepare("SELECT id FROM quests WHERE user_id IS NULL ORDER BY week ASC, id ASC"); $lg->execute(); }
+    else { $lg->bind_param("s", $myTrack); $lg->execute(); }
     $pg = null;
     foreach ($lg->get_result()->fetch_all(MYSQLI_ASSOC) as $gr) {
         $gid = (int)$gr['id'];
@@ -67,9 +78,12 @@ try {
 } catch (Throwable $e) {}
 
 // Dashboard counts dalam 1 roundtrip, cache 60s (invalidasi di Ledger::award)
-$dash_counts = \App\Cache\Store::remember(\App\Cache\Keys::dashboard($user_id), \App\Cache\Keys::DASHBOARD_TTL, function () use ($conn, $user_id) {
-    $stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id = uq.quest_id WHERE uq.user_id = ? AND (q.user_id IS NULL OR q.user_id = ?)) AS total_done, (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS total_cnt, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS pomo_today, (SELECT COALESCE(SUM(amount),0) FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS xp_week, (SELECT COUNT(*) FROM reviews WHERE user_id = ? AND next_due <= CURDATE()) AS due_reviews");
-    $stmt->bind_param("iiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id);
+$dash_counts = \App\Cache\Store::remember(\App\Cache\Keys::dashboard($user_id), \App\Cache\Keys::DASHBOARD_TTL, function () use ($conn, $user_id, $myTrack) {
+    $stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id = uq.quest_id WHERE uq.user_id = ? AND ((q.user_id IS NULL AND (q.track = ? OR q.track = 'all' OR q.track IS NULL OR q.track = '')) OR (q.user_id = ? AND (q.track = ? OR q.track IS NULL OR q.track = '')))) AS total_done, (SELECT COUNT(*) FROM quests WHERE (user_id IS NULL AND (track = ? OR track = 'all' OR track IS NULL OR track = '')) OR (user_id = ? AND (track = ? OR track IS NULL OR track = ''))) AS total_cnt, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS pomo_today, (SELECT COALESCE(SUM(amount),0) FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS xp_week, (SELECT COUNT(*) FROM reviews WHERE user_id = ? AND next_due <= CURDATE()) AS due_reviews");
+    if (!$stmt) {
+        $stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id = uq.quest_id WHERE uq.user_id = ? AND (q.user_id IS NULL OR q.user_id = ?)) AS total_done, (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS total_cnt, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS pomo_today, (SELECT COALESCE(SUM(amount),0) FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS xp_week, (SELECT COUNT(*) FROM reviews WHERE user_id = ? AND next_due <= CURDATE()) AS due_reviews");
+        $stmt->bind_param("iiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id);
+    } else $stmt->bind_param("isisisiiii", $user_id, $myTrack, $user_id, $myTrack, $myTrack, $user_id, $myTrack, $user_id, $user_id, $user_id);
     $stmt->execute();
     $out = $stmt->get_result()->fetch_assoc() ?: [];
     $stmt->close();
@@ -219,7 +233,7 @@ require_once 'includes/navbar.php';
 document.getElementById('dashShareBtn')?.addEventListener('click', function() {
     const d = this.dataset;
     const canvas = drawProgressCard({ username: d.username, level: d.level, rank: d.rank, streak: d.streak, xp: d.xp, quests: d.quests });
-    shareCanvasImage(canvas, 'progres-' + d.username + '.png', 'Progres belajarku', d.username + ' — Level ' + d.level + ' ' + d.rank + ', ' + d.streak + ' hari streak di Learn Tracker DevOps!');
+    shareCanvasImage(canvas, 'progres-' + d.username + '.png', 'Progres belajarku', d.username + ' — Level ' + d.level + ' ' + d.rank + ', ' + d.streak + ' hari streak di Learn Tracker!');
 });
 </script>
 

@@ -2,7 +2,7 @@
 if (!defined('DB_HOST')) {
     require_once __DIR__ . '/../config.php';
 }
-$page_title = $page_title ?? 'Gamified DevOps Learning';
+$page_title = $page_title ?? 'Skill-Building untuk Siswa Vokasi';
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <!DOCTYPE html>
@@ -10,9 +10,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($page_title) ?> - Learn Tracker DevOps</title>
-    
-    <meta name="description" content="Learn Tracker - platform belajar DevOps terstruktur 12 minggu.">
+    <title><?= htmlspecialchars($page_title) ?> - Learn Tracker</title>
+
+    <meta name="description" content="Learn Tracker - tempat siswa SMK membangun skill nyata: RPL, TKJ, DKV, dan DevOps.">
     <meta name="theme-color" content="#2f6b5e">
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">

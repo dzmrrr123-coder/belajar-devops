@@ -34,6 +34,9 @@ class Roles {
     public static function isAdmin(\mysqli $conn, int $uid): bool {
         return self::hasRole($conn, $uid, 'admin');
     }
+    public static function isGuru(\mysqli $conn, int $uid): bool {
+        return self::hasRole($conn, $uid, 'guru');
+    }
     public static function countAdmins(\mysqli $conn): int {
         try {
             if (!self::tablesExist($conn)) return 0;

@@ -3,6 +3,7 @@ require_once 'config.php';
 require_login();
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
+$myTrack = user_track($conn, $user_id);
 
 $xp_now = 0; $xp_prev = 0; $fs = 0; $fm = 0; $qd = 0; $notes = 0; $due = 0;
 try {
@@ -63,8 +64,11 @@ $verdict28 = analytics_streak_verdict($score28);
 $strongest = '—'; $attention = '—'; $queue = []; $skill_rows = [];
 $total_cnt = 0; $total_done = 0;
 try {
-    $s = $conn->prepare("SELECT q.id, q.user_id AS owner, q.week, q.title, q.xp_reward, q.depends_on, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE (q.user_id IS NULL OR q.user_id = ?) ORDER BY q.week ASC, q.id ASC");
-    $s->bind_param("ii", $user_id, $user_id);
+    $s = $conn->prepare("SELECT q.id, q.user_id AS owner, q.week, q.title, q.xp_reward, q.depends_on, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE ((q.user_id IS NULL AND (q.track = ? OR q.track = 'all' OR q.track IS NULL OR q.track = '')) OR (q.user_id = ? AND (q.track = ? OR q.track IS NULL OR q.track = ''))) ORDER BY q.week ASC, q.id ASC");
+    if (!$s) {
+        $s = $conn->prepare("SELECT q.id, q.user_id AS owner, q.week, q.title, q.xp_reward, q.depends_on, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE (q.user_id IS NULL OR q.user_id = ?) ORDER BY q.week ASC, q.id ASC");
+        $s->bind_param("ii", $user_id, $user_id);
+    } else $s->bind_param("isis", $user_id, $myTrack, $user_id, $myTrack);
     $s->execute();
     $allq = $s->get_result()->fetch_all(MYSQLI_ASSOC);
     $s->close();
@@ -74,7 +78,7 @@ try {
     $per = [];
     foreach ($allq as $r) {
         $total_cnt++;
-        $sk = skill_for_week((int)$r['week']);
+        $sk = skill_for_week((int)$r['week'], $myTrack);
         $per[$sk] = $per[$sk] ?? ['done' => 0, 'total' => 0];
         $per[$sk]['total']++;
         if (!empty($r['done'])) {

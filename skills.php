@@ -3,7 +3,8 @@ require_once 'config.php';
 require_login();
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
-$defs = skill_defs();
+$myTrack = user_track($conn, $user_id);
+$defs = skill_defs($myTrack);
 $skills = [];
 foreach ($defs as $name => $d) {
     $skills[$name] = ['quest_done' => 0, 'quest_total' => 0, 'quest_xp' => 0, 'notes' => 0, 'asks' => 0] + $d;
@@ -11,11 +12,15 @@ foreach ($defs as $name => $d) {
 
 // Quest selesai + total per skill + quest tertunda berikutnya (1 roundtrip)
 try {
-    $s = $conn->prepare("SELECT q.id, q.week, q.title, q.xp_reward, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE (q.user_id IS NULL OR q.user_id = ?) ORDER BY q.week ASC, q.id ASC");
-    $s->bind_param("ii", $user_id, $user_id);
+    $s = $conn->prepare("SELECT q.id, q.week, q.title, q.xp_reward, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE ((q.user_id IS NULL AND (q.track = ? OR q.track = 'all' OR q.track IS NULL OR q.track = '')) OR (q.user_id = ? AND (q.track = ? OR q.track IS NULL OR q.track = ''))) ORDER BY q.week ASC, q.id ASC");
+    if (!$s) {
+        $s = $conn->prepare("SELECT q.id, q.week, q.title, q.xp_reward, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE (q.user_id IS NULL OR q.user_id = ?) ORDER BY q.week ASC, q.id ASC");
+        $s->bind_param("ii", $user_id, $user_id);
+    } else $s->bind_param("isis", $user_id, $myTrack, $user_id, $myTrack);
     $s->execute();
     foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $r) {
-        $sk = skill_for_week((int)$r['week']);
+        $sk = skill_for_week((int)$r['week'], $myTrack);
+        if (!isset($skills[$sk])) continue;
         $skills[$sk]['quest_total']++;
         if (!empty($r['done'])) {
             $skills[$sk]['quest_done']++;
@@ -91,8 +96,8 @@ require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
     <div class="page-head">
-        <div class="page-kicker">8 skill · <?= $total_points ?> poin · <?= $active ?>/8 aktif</div>
-        <h1 class="page-title">Skill tree</h1>
+        <div class="page-kicker"><?= count($defs) ?> skill · <?= $total_points ?> poin · <?= $active ?>/<?= count($defs) ?> aktif</div>
+        <h1 class="page-title">Skill tree <?= htmlspecialchars(\App\Domain\Track\Tracks::all()[$myTrack]['name'] ?? '') ?></h1>
         <p class="page-desc">Kekuatan tiap bidang dari quest + catatanmu. Naikkan lewat link "Lanjut" di tiap kartu.<?php if ($next_up !== null): ?> Paling dekat naik: <strong><?= htmlspecialchars($next_up) ?></strong> (<?= $next_up_need ?> poin lagi).<?php endif; ?></p>
     </div>
 

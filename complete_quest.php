@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
     $conn->begin_transaction();
     try {
     // Fetch quest info (global atau milik sendiri saja)
-    $stmt = $conn->prepare("SELECT id, user_id, week, title, xp_reward, depends_on FROM quests WHERE id = ? AND (user_id IS NULL OR user_id = ?)");
+    $stmt = $conn->prepare("SELECT id, user_id, week, title, xp_reward, depends_on, track FROM quests WHERE id = ? AND (user_id IS NULL OR user_id = ?)");
     $stmt->bind_param("ii", $quest_id, $user_id);
     $stmt->execute();
     $q_res = $stmt->get_result();
@@ -79,9 +79,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
 
     $prev_global = null;
     if (empty($quest['user_id'])) {
-        $pq = $conn->prepare("SELECT id FROM quests WHERE user_id IS NULL AND (week < ? OR (week = ? AND id < ?)) ORDER BY week DESC, id DESC LIMIT 1");
+        $pq = $conn->prepare("SELECT id FROM quests WHERE user_id IS NULL AND track = ? AND (week < ? OR (week = ? AND id < ?)) ORDER BY week DESC, id DESC LIMIT 1");
         $qw = (int)$quest['week'];
-        $pq->bind_param("iii", $qw, $qw, $quest_id);
+        $qtrack = (string)($quest['track'] ?? 'devops');
+        if ($pq) $pq->bind_param("siii", $qtrack, $qw, $qw, $quest_id);
         $pq->execute();
         $pr = $pq->get_result()->fetch_assoc();
         $pq->close();
@@ -132,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         $xp_reward = apply_xp_multiplier($xp_reward, $mult);
         // Add XP
         award_xp($conn, $user_id, $xp_reward, 'quest', 'quest', $quest_id);
-        \App\Domain\Skill\Mastery::award($conn, $user_id, \App\Domain\Skill\Mastery::nodeForSkill(skill_for_week((int)($quest['week'] ?? 1))), 10, 'quest', 'quest', $quest_id);
+        \App\Domain\Skill\Mastery::award($conn, $user_id, \App\Domain\Skill\Mastery::nodeForSkill(skill_for_week((int)($quest['week'] ?? 1), user_track($conn, $user_id))), 10, 'quest', 'quest', $quest_id);
 
         // Update streak
         $new_streak = update_user_streak($conn, $user_id);
@@ -197,8 +198,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
     if ($action === 'completed') $new_badges = check_and_unlock_badges($conn, $user_id);
     $newly_unlocked = [];
     if ($action === 'completed') {
-        $gq = $conn->prepare("SELECT id, user_id, week, title, depends_on FROM quests WHERE user_id IS NULL ORDER BY week ASC, id ASC");
-        $gq->execute();
+        $gq = $conn->prepare("SELECT id, user_id, week, title, depends_on FROM quests WHERE user_id IS NULL AND track = ? ORDER BY week ASC, id ASC");
+        if (!$gq) { $gq = $conn->prepare("SELECT id, user_id, week, title, depends_on FROM quests WHERE user_id IS NULL ORDER BY week ASC, id ASC"); $gq->execute(); }
+        else { $ntr = (string)($quest['track'] ?? 'devops'); $gq->bind_param("s", $ntr); $gq->execute(); }
         $globals = $gq->get_result()->fetch_all(MYSQLI_ASSOC);
         $gq->close();
         $pmap = quest_prev_map($globals);

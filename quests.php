@@ -4,6 +4,9 @@ require_login();
 
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
+try { @$conn->query("ALTER TABLE `quests` ADD COLUMN `track` VARCHAR(16) NOT NULL DEFAULT 'devops'"); } catch (Throwable $e) {}
+$myTrack = user_track($conn, $user_id);
+$trackName = \App\Domain\Track\Tracks::all()[$myTrack]['name'] ?? 'DevOps';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -15,8 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $xp = max(5, min(20, (int)($_POST['xp_reward'] ?? 10)));
         if ($title === '') set_flash('warning', 'Judul quest wajib diisi.');
         else {
-            $stmt = $conn->prepare("INSERT INTO quests (user_id, is_custom, week, title, description, xp_reward) VALUES (?, 1, ?, ?, ?, ?)");
-            $stmt->bind_param("iissi", $user_id, $week, $title, $desc, $xp);
+            $stmt = $conn->prepare("INSERT INTO quests (user_id, is_custom, week, title, description, xp_reward, track) VALUES (?, 1, ?, ?, ?, ?, ?)");
+            if ($stmt) $stmt->bind_param("iissis", $user_id, $week, $title, $desc, $xp, $myTrack);
+            else { $stmt = $conn->prepare("INSERT INTO quests (user_id, is_custom, week, title, description, xp_reward) VALUES (?, 1, ?, ?, ?, ?)"); $stmt->bind_param("iissi", $user_id, $week, $title, $desc, $xp); }
             $ok = $stmt->execute();
             $stmt->close();
             $nb = $ok ? check_and_unlock_badges($conn, $user_id) : [];
@@ -36,15 +40,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Get all quests with user completion status (global + milik sendiri)
+// Get all quests with user completion status (global track aktif + custom milik sendiri pada track aktif)
 $stmt = $conn->prepare("
     SELECT q.id, q.user_id, q.week, q.title, q.description, q.xp_reward, q.is_custom, q.depends_on, uq.completed_at
     FROM quests q
     LEFT JOIN user_quests uq ON q.id = uq.quest_id AND uq.user_id = ?
-    WHERE (q.user_id IS NULL OR q.user_id = ?)
+    WHERE ((q.user_id IS NULL AND (q.track = ? OR q.track = 'all' OR q.track IS NULL OR q.track = '')) OR (q.user_id = ? AND (q.track = ? OR q.track IS NULL OR q.track = '')))
     ORDER BY q.week ASC, q.id ASC
 ");
-$stmt->bind_param("ii", $user_id, $user_id);
+if (!$stmt) {
+    $stmt = $conn->prepare("
+        SELECT q.id, q.user_id, q.week, q.title, q.description, q.xp_reward, q.is_custom, q.depends_on, uq.completed_at
+        FROM quests q
+        LEFT JOIN user_quests uq ON q.id = uq.quest_id AND uq.user_id = ?
+        WHERE (q.user_id IS NULL OR q.user_id = ?)
+        ORDER BY q.week ASC, q.id ASC
+    ");
+    $stmt->bind_param("ii", $user_id, $user_id);
+} else $stmt->bind_param("isis", $user_id, $myTrack, $user_id, $myTrack);
 $stmt->execute();
 $all_quests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
@@ -57,6 +70,12 @@ foreach ($st->get_result()->fetch_all(MYSQLI_ASSOC) as $s) $subtasks_by_quest[(i
 $st->close();
 
 $ev_map = \App\Domain\Quest\Evidence::forQuests($conn, $user_id, array_map(fn($x) => (int)$x['id'], $all_quests));
+$rubric_sums = [];
+$rubric_criteria = [];
+if ($myTrack === 'dkv') {
+    $rubric_criteria = \App\Domain\Dkv\Rubric::criteria();
+    $rubric_sums = \App\Domain\Dkv\Rubric::summaries($conn, $user_id, array_map(fn($x) => (int)$x['id'], $all_quests));
+}
 
 // Compute stats
 $total_quests = count($all_quests);
@@ -92,15 +111,25 @@ $completion_rate = $total_quests > 0 ? round(($completed_quests / $total_quests)
 
 
 
-$page_title = 'Quest Board - Roadmap 12 Minggu';
+$page_title = 'Quest Board - Roadmap ' . $trackName . ' 12 Minggu';
 require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 
 <main class="container py-4" role="main">
     <div class="page-head">
-        <div class="page-kicker">Roadmap persiapan PKL · <span id="roadmapDone"><?= $completed_quests ?></span> dari <span id="roadmapTotal"><?= $total_quests ?></span> quest</div>
-        <h1 class="page-title">Roadmap DevOps 12 minggu</h1>
+        <div class="page-kicker">Roadmap <?= htmlspecialchars($trackName) ?> · <span id="roadmapDone"><?= $completed_quests ?></span> dari <span id="roadmapTotal"><?= $total_quests ?></span> quest</div>
+        <h1 class="page-title">Roadmap <?= htmlspecialchars($trackName) ?> 12 minggu</h1>
+        <form method="POST" action="switch_track.php" class="d-flex align-items-center gap-2 mt-2 mb-1" aria-label="Ganti track">
+            <?= csrf_field() ?>
+            <label class="small text-muted mb-0" for="trackSel">Track:</label>
+            <select id="trackSel" name="track" class="form-select form-select-sm" style="max-width:180px" onchange="this.form.submit()">
+                <?php foreach (\App\Domain\Track\Tracks::all() as $slug => $tr): ?>
+                <option value="<?= htmlspecialchars($slug) ?>" <?= $slug === $myTrack ? 'selected' : '' ?>><?= htmlspecialchars($tr['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <noscript><button class="btn btn-cyber-outline btn-sm" type="submit">Ganti</button></noscript>
+        </form>
         <p class="page-desc">Roadmap 12 minggu. Centang quest yang selesai = XP masuk. (<?= $xp_earned ?>/<?= $total_xp_possible ?> XP · <span id="roadmapPct"><?= $completion_rate ?></span>%)</p>
         <div class="xp-progress-bar" id="roadmapBarWrap" role="progressbar" aria-valuenow="<?= $completion_rate ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres roadmap"><div class="xp-progress-fill" id="roadmapBar" style="width: <?= $completion_rate ?>%;"></div></div>
     </div>
@@ -234,6 +263,22 @@ require_once 'includes/navbar.php';
                                                 </form>
                                             </div>
                                         </details>
+                                        <?php if ($myTrack === 'dkv' && $is_done): $rsum = $rubric_sums[$qid] ?? null; ?>
+                                        <details class="subtask-box">
+                                            <summary class="small text-secondary">Nilai karya<?= $rsum !== null ? ' · ' . htmlspecialchars((string)$rsum) . '/5' : '' ?></summary>
+                                            <div class="d-flex flex-column gap-2 mt-2">
+                                            <form method="POST" action="rubric.php" class="d-flex flex-column gap-2 m-0">
+                                                <?= csrf_field() ?>
+                                                <input type="hidden" name="quest_id" value="<?= $qid ?>">
+                                                <?php foreach ($rubric_criteria as $rc): ?>
+                                                <label class="small text-muted mb-0"><?= htmlspecialchars($rc['name']) ?> (<?= (int)$rc['weight'] ?>%)<select name="score[<?= htmlspecialchars($rc['slug']) ?>]" class="form-select form-select-sm" aria-label="<?= htmlspecialchars($rc['name']) ?>"><?php for ($sv = 1; $sv <= 5; $sv++): ?><option value="<?= $sv ?>" <?= $sv === 3 ? 'selected' : '' ?>><?= $sv ?></option><?php endfor; ?></select></label>
+                                                <?php endforeach; ?>
+                                                <input name="note" class="form-control form-control-sm" maxlength="300" placeholder="Catatan (opsional)" aria-label="Catatan rubrik">
+                                                <button class="btn btn-cyber-outline btn-sm" type="submit">Simpan nilai</button>
+                                            </form>
+                                            </div>
+                                        </details>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>

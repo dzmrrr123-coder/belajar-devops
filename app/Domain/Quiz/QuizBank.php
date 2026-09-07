@@ -1,7 +1,10 @@
 <?php
 namespace App\Domain\Quiz;
 class QuizBank {
-    public static function topics(): array { return ['Linux','Git','MySQL','PHP','Laravel','Docker','AWS','Networking','General']; }
+    public static function topics(?string $track = null): array {
+        if ($track !== null) return \App\Domain\Track\Tracks::quizTopics($track);
+        return ['Linux','Git','MySQL','PHP','Laravel','Docker','AWS','Networking','Testing','Desain','Tipografi','Branding','UI/UX','Ilustrasi','Motion','General'];
+    }
     public static function cards(): array {
         return [
             ['Linux','Perintah melihat isi direktori + file tersembunyi?','ls -la'],
@@ -28,6 +31,12 @@ class QuizBank {
             ['PHP','Bedanya == dan === di PHP?','== longgar (konversi tipe), === ketat (nilai + tipe sama)'],
             ['PHP','Apa itu PDO/MySQLi prepared statement?','Query dikirim terpisah dari data sehingga input tak dieksekusi sebagai SQL'],
             ['PHP','Fungsi redirect lalu hentikan eksekusi?','header("Location: index.php"); exit();'],
+            ['Laravel','Perintah membuat controller baru?','php artisan make:controller ProdukController'],
+            ['Laravel','Apa itu middleware?','Lapisan filter request sebelum/sesudah controller, misal auth'],
+            ['Laravel','Fungsi route redirect + validasi form?','Route::post + $request->validate([...]) di controller'],
+            ['Laravel','Apa itu Eloquent?','ORM Laravel: model PHP memetakan ke tabel, misal Produk::where(...)->get()'],
+            ['Laravel','Perintah migrasi database?','php artisan migrate (buat: php artisan make:migration ...)'],
+            ['Laravel','Apa itu Blade?','Template engine Laravel: {{ }} escape otomatis, @if/@foreach untuk logika'],
             ['Docker','Perintah membangun image dari Dockerfile?','docker build -t nama-app .'],
             ['Docker','Perintah menjalankan container dari image?','docker run -d -p 8080:80 nama-app'],
             ['Docker','File untuk orkestrasi multi-container?','docker-compose.yml + perintah docker compose up -d'],
@@ -46,6 +55,24 @@ class QuizBank {
             ['Networking','Port umum: 80, 443, 22, 3306?','80 HTTP, 443 HTTPS, 22 SSH, 3306 MySQL'],
             ['Networking','Apa itu ping dan kapan dipakai?','Menguji konektivitas & latency ke host: ping 8.8.8.8'],
             ['Networking','Bedanya TCP dan UDP?','TCP andal berurutan (web, SSH); UDP cepat tanpa jaminan (video, DNS)'],
+            ['Testing','Apa itu unit test?','Uji otomatis terkecil untuk satu fungsi/class, misal PHPUnit/Pest di PHP'],
+            ['Testing','Bedanya unit vs integration test?','Unit: satu unit terisolasi; Integration: gabungan modul + DB/API'],
+            ['Testing','Apa itu assertion?','Pernyataan benar/salah di test, misal assertEquals(200, $res->status())'],
+            ['Testing','Kapan pakai testing manual vs otomatis?','Manual untuk eksplorasi/UI awal; otomatis untuk regresi yang diulang'],
+            ['Testing','Apa itu code coverage?','Persentase kode yang dieksekusi test; target realistis 70-80% + kasus kritis'],
+            ['Testing','Sebutkan alur bug report yang baik?','Judul jelas + langkah reproduksi + hasil aktual vs ekspektasi + env/log'],
+            ['Desain','Apa itu hierarki visual?','Pengaturan bobot elemen (ukuran, warna, posisi) agar mata membaca pesan terpenting dulu'],
+            ['Desain','Sebutkan prinsip kontras dalam desain?','Bedakan jelas elemen penting vs pendukung lewat warna, ukuran, atau ketebalan agar mudah dibaca'],
+            ['Tipografi','Bedanya font serif dan sans-serif?','Serif berkaki (misal Times, formal/cetak); sans-serif tanpa kaki (misal Inter, modern/layar)'],
+            ['Tipografi','Berapa maksimal jenis font dalam satu desain?','Maksimal 2 (judul + isi) agar konsisten dan tidak ramai'],
+            ['Branding','Apa itu brand identity?','Wujud visual merek: logo, warna, tipografi, dan gaya yang konsisten di semua media'],
+            ['Branding','Apa fungsi logo yang baik?','Mudah diingat, terbaca kecil-besar, dan mewakili karakter merek (sederhana, relevan, abadi)'],
+            ['UI/UX','Bedanya UI dan UX?','UI = tampilan antar muka; UX = pengalaman memakai (mudah, jelas, memuaskan)'],
+            ['UI/UX','Apa itu wireframe?','Sketsa kerangka layout sebelum desain final; fokus struktur bukan warna/gambar'],
+            ['Ilustrasi','Kapan memakai ilustrasi vektor vs foto?','Vektor untuk ikon/grafis tegas yang diskalakan; foto untuk kesan nyata/manusiawi'],
+            ['Ilustrasi','Apa itu artboard di tools desain?','Kanvas kerja tempat menyusun satu layar/halaman desain (misal di Figma)'],
+            ['Motion','Prinsip easing dalam animasi?','Percepatan/perlambatan gerak agar terasa alami, bukan linear kaku'],
+            ['Motion','Durasi ideal animasi micro-interaction?','200-500 ms: cukup terasa, tidak membuat pengguna menunggu'],
         ];
     }
 }

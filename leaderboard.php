@@ -34,7 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $page = max(1, (int)($_GET['page'] ?? 1));
 $per = 20;
 $off = ($page - 1) * $per;
-$scope = in_array($_GET['scope'] ?? 'total', ['total', 'week', 'improve'], true) ? $_GET['scope'] : 'total';
+$scope = (string)($_GET['scope'] ?? 'total');
+$scope = in_array($scope, ['total', 'week', 'improve'], true) ? $scope : 'total';
 $lb_key = \App\Cache\Keys::leaderboard($scope, $page, $per);
 $lb_cached = \App\Cache\Store::remember($lb_key, \App\Cache\Keys::LEADERBOARD_TTL, function () use ($conn, $scope, $per, $off) {
     $total = 0;

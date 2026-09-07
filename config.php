@@ -145,10 +145,10 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 33);
+define('SCHEMA_VERSION', 37);
 function is_pro(array $user): bool { return \App\Domain\Pro::isPro($user); }
 
-function quiz_topics() { return \App\Domain\Quiz\QuizBank::topics(); }
+function quiz_topics($track = null) { return \App\Domain\Quiz\QuizBank::topics($track); }
 
 function quiz_bank_cards() { return \App\Domain\Quiz\QuizBank::cards(); }
 
@@ -431,6 +431,11 @@ function ensure_database_schema($conn) {
         @$conn->query("ALTER TABLE `users` ADD COLUMN `is_pro` TINYINT NOT NULL DEFAULT 0");
         @$conn->query("ALTER TABLE `users` ADD COLUMN `pro_until` DATETIME NULL");
         @$conn->query("ALTER TABLE `users` ADD COLUMN `pro_plan` VARCHAR(16) NULL");
+        @$conn->query("ALTER TABLE `users` ADD COLUMN `track` VARCHAR(16) NOT NULL DEFAULT 'devops'");
+        @$conn->query("ALTER TABLE `quests` ADD COLUMN `track` VARCHAR(16) NOT NULL DEFAULT 'devops'");
+        @$conn->query("INSERT IGNORE INTO `skill_nodes` (`slug`, `name`, `icon`, `sort`) VALUES ('testing', 'Testing & QA', 'fas fa-vial', 11)");
+        @$conn->query("INSERT IGNORE INTO `skill_nodes` (`slug`, `name`, `icon`, `sort`) VALUES ('desain', 'Desain & Visual', 'fas fa-palette', 12), ('uiux', 'UI/UX', 'fas fa-object-group', 13), ('motion', 'Motion', 'fas fa-film', 14)");
+        try { \App\Domain\Dkv\Rubric::ensureTables($conn); } catch (Throwable $e2) {}
         @$conn->query("CREATE TABLE IF NOT EXISTS `pro_waitlist` (`id` INT AUTO_INCREMENT PRIMARY KEY, `contact` VARCHAR(140) NOT NULL, `plan` VARCHAR(16) NOT NULL DEFAULT 'monthly', `note` VARCHAR(255) NULL, `user_id` INT NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         @$conn->query("CREATE TABLE IF NOT EXISTS `pro_payments` (`id` INT AUTO_INCREMENT PRIMARY KEY, `user_id` INT NOT NULL, `plan` VARCHAR(16) NOT NULL, `amount` INT NOT NULL DEFAULT 0, `status` ENUM('pending','paid','rejected') NOT NULL DEFAULT 'pending', `proof` VARCHAR(500) NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, `decided_at` DATETIME NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
@@ -543,8 +548,15 @@ function db_connect() {
     }
     try {
         $conn = \App\Db::connectWrite();
-        if (\App\Db\Schema::needsUpgrade($conn) && \App\Db\Schema::autoMigrateEnabled()) {
-            \App\Db\Migrator::run($conn);
+        try {
+            $chk = \App\Db\Migrator::check($conn);
+            if (!empty($chk['needsUpgrade']) && \App\Db\Schema::autoMigrateEnabled()) {
+                \App\Db\Migrator::run($conn);
+            }
+        } catch (Throwable $e) {
+            if (\App\Db\Schema::needsUpgrade($conn) && \App\Db\Schema::autoMigrateEnabled()) {
+                \App\Db\Migrator::run($conn);
+            }
         }
         $shared = $conn;
         return $conn;
@@ -618,8 +630,8 @@ function review_next_interval($c) { return \App\Domain\Review\Sm2::nextInterval(
 
 function schedule_review($conn, $user_id, $source, $source_id, $title, $detail = '', $skill = '') { \App\Domain\Review\ReviewStore::schedule($conn, (int)$user_id, (string)$source, (int)$source_id, (string)$title, (string)$detail, (string)$skill); }
 
-function skill_defs() { return \App\Domain\Skill\Skill::defs(); }
-function skill_for_week($week) { return \App\Domain\Skill\Skill::forWeek((int)$week); }
+function skill_defs($track = null) { return \App\Domain\Skill\Skill::defs($track); }
+function skill_for_week($week, $track = 'devops') { return \App\Domain\Skill\Skill::forWeek((int)$week, (string)$track); }
 function normalize_skill($topic) { return \App\Domain\Skill\Skill::normalize((string)$topic); }
 function avatar_frames() { return \App\Domain\Social::avatarFrames(); }
 function avatar_unlocked($frame, $level, $best_streak, $badges, $is_owner = false, $owned = []) { return \App\Domain\Social::avatarUnlocked((string)$frame, (int)$level, (int)$best_streak, (array)$badges, (bool)$is_owner, (array)$owned); }
@@ -648,9 +660,19 @@ function badge_share_text($u, $b) { return \App\Domain\Social::badgeShare((strin
 
 function ensure_weekly_challenge($conn) { return \App\Domain\ChallengeStore::ensureWeekly($conn); }
 
-function onboarding_targets() { return \App\Domain\Onboarding::targets(); }
+function user_track($conn, $user_id) {
+    try {
+        $s = $conn->prepare("SELECT track FROM users WHERE id = ?");
+        if (!$s) return 'devops';
+        $uid = (int)$user_id;
+        $s->bind_param("i", $uid); $s->execute();
+        $row = $s->get_result()->fetch_assoc(); $s->close();
+        return \App\Domain\Track\Tracks::normalize((string)($row['track'] ?? 'devops'));
+    } catch (Throwable $e) { return 'devops'; }
+}
+function onboarding_targets($track = 'devops') { return \App\Domain\Onboarding::targets((string)$track); }
 function onboarding_minutes() { return \App\Domain\Onboarding::minutes(); }
-function onboarding_plan($t, $m, $s) { return \App\Domain\Onboarding::plan((string)$t, (int)$m, (array)$s); }
+function onboarding_plan($t, $m, $s, $track = 'devops') { return \App\Domain\Onboarding::plan((string)$t, (int)$m, (array)$s, (string)$track); }
 function review_skill_for($s, $t, $d) { return \App\Domain\Skill\Skill::reviewSkillFor((string)$s, (string)$t, (string)$d); }
 function set_flash($t, $m) { \App\Http\Flash::set((string)$t, (string)$m); }
 function get_flash() { return \App\Http\Flash::get(); }

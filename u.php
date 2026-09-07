@@ -2,7 +2,7 @@
 require_once 'config.php';
 $conn = db_connect();
 $uname = mb_substr(trim($_GET['u'] ?? ''), 0, 100);
-$stmt = $conn->prepare("SELECT id, username, xp, streak, best_streak, public_profile, flair, avatar_frame, created_at FROM users WHERE username = ?");
+$stmt = $conn->prepare("SELECT id, username, xp, streak, best_streak, public_profile, flair, avatar_frame, track, created_at FROM users WHERE username = ?");
 $stmt->bind_param("s", $uname);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
@@ -65,6 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $me > 0) {
 }
 $level = calculate_level($user['xp']);
 $rank = get_user_rank($level);
+$userTrack = \App\Domain\Track\Tracks::normalize((string)($user['track'] ?? 'devops'));
+$trackLabel = \App\Domain\Track\Tracks::all()[$userTrack]['name'] ?? 'DevOps';
 $owned = user_badges($conn, $uid);
 $defs = badge_defs();
 
@@ -85,26 +87,32 @@ $qpct = $qt > 0 ? (int)round($qd / $qt * 100) : 0;
 $top_skills = [];
 try {
     $agg = [];
-    $s = $conn->prepare("SELECT q.week, q.xp_reward, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE (q.user_id IS NULL OR q.user_id = ?)");
-    $s->bind_param("ii", $uid, $uid); $s->execute();
+    $s = $conn->prepare("SELECT q.week, q.xp_reward, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE ((q.user_id IS NULL AND (q.track = ? OR q.track = 'all' OR q.track IS NULL OR q.track = '')) OR (q.user_id = ? AND (q.track = ? OR q.track IS NULL OR q.track = '')))");
+    if (!$s) {
+        $s = $conn->prepare("SELECT q.week, q.xp_reward, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE (q.user_id IS NULL OR q.user_id = ?)");
+        $s->bind_param("ii", $uid, $uid);
+    } else $s->bind_param("isis", $uid, $userTrack, $uid, $userTrack);
+    $s->execute();
     foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
-        $sk = skill_for_week((int)$row['week']);
+        $sk = skill_for_week((int)$row['week'], $userTrack);
         $agg[$sk] = ($agg[$sk] ?? 0) + (!empty($row['done']) ? (int)$row['xp_reward'] : 0);
     }
     $s->close();
     $s = $conn->prepare("SELECT category, COUNT(*) n FROM errors WHERE user_id = ? GROUP BY category");
     $s->bind_param("i", $uid); $s->execute();
+    $tdefs = skill_defs($userTrack);
     foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
         $cat = $row['category'] ?? 'General';
-        $sk = isset(skill_defs()[$cat]) ? $cat : 'General';
+        $sk = isset($tdefs[$cat]) ? $cat : 'General';
         $agg[$sk] = ($agg[$sk] ?? 0) + (int)$row['n'] * 5;
     }
     $s->close();
     $s = $conn->prepare("SELECT topic, COUNT(*) n FROM questions WHERE user_id = ? GROUP BY topic");
     $s->bind_param("i", $uid); $s->execute();
     foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
-        $sk = normalize_skill($row['topic'] ?? '');
-        if ($sk === '') continue;
+        $raw = normalize_skill($row['topic'] ?? '');
+        if ($raw === '') continue;
+        $sk = isset($tdefs[$raw]) ? $raw : 'General';
         $agg[$sk] = ($agg[$sk] ?? 0) + (int)$row['n'] * 3;
     }
     $s->close();
@@ -125,6 +133,7 @@ try {
     if ($s) { $s->bind_param("i", $uid); $s->execute(); $incidents = $s->get_result()->fetch_all(MYSQLI_ASSOC); $s->close(); }
 } catch (Throwable $e) {}
 $certs = \App\Domain\Incident\Certificate::forUser($conn, $uid);
+$rubric_avg = \App\Domain\Dkv\Rubric::portfolioAvg($conn, $uid);
 $avgScore = $incidents ? (int)round(array_sum(array_column($incidents, 'best')) / count($incidents)) : 0;
 $react_counts = []; $react_mine = [];
 $react_emojis = \App\Domain\Social\Reactions::emojis();
@@ -136,7 +145,7 @@ $conn->close();
 
 $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $share_url = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? '') . '/u.php?u=' . urlencode($user['username']);
-$share_text = $user['username'] . ' · ' . $rank . ' Lv ' . $level . ' · ' . $user['xp'] . ' XP di Learn Tracker DevOps';
+$share_text = $user['username'] . ' · ' . $rank . ' Lv ' . $level . ' · ' . $user['xp'] . ' XP di Learn Tracker ' . $trackLabel;
 $page_title = $user['username'] . ' · Learn Tracker';
 require_once 'includes/header.php';
 ?>
@@ -144,7 +153,7 @@ require_once 'includes/header.php';
 <meta property="og:description" content="<?= (int)$user['xp'] ?> XP · <?= $qd ?>/<?= $qt ?> quest · <?= $pomo ?> sesi fokus · <?= count($owned) ?> badge">
 <main class="container py-4" role="main">
     <div class="page-head">
-        <div class="page-kicker">Profil publik · Level <?= $level ?> · <?= htmlspecialchars($rank) ?></div>
+        <div class="page-kicker">Profil publik · Track <?= htmlspecialchars($trackLabel) ?> · Level <?= $level ?> · <?= htmlspecialchars($rank) ?></div>
         <div class="d-flex align-items-center gap-3 mb-2">
             <span class="avatar-circle avatar-xl frame-<?= htmlspecialchars($user['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($user['username'], 0, 1)) ?></span>
             <h1 class="page-title mb-0"><?= htmlspecialchars($user['username']) ?><?php if (!empty($user['flair'])): ?> <span class="flair-badge"><?= htmlspecialchars($user['flair']) ?></span><?php endif; ?></h1>
@@ -202,6 +211,12 @@ require_once 'includes/header.php';
         <?php endforeach; ?>
         </div>
         <?php endif; ?>
+    </section>
+    <?php endif; ?>
+    <?php if (!empty($rubric_avg['quests'])): ?>
+    <section class="card p-4 mb-3" aria-label="Nilai karya">
+        <h2 class="h5 fw-bold mb-1">Nilai karya · <?= htmlspecialchars((string)$rubric_avg['avg']) ?>/5</h2>
+        <p class="text-secondary small mb-0">Rubrik DKV (konsep, tipografi, warna, layout, presentasi) · <?= (int)$rubric_avg['quests'] ?> karya dinilai.</p>
     </section>
     <?php endif; ?>
     <section class="card p-4">

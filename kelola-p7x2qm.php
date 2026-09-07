@@ -10,6 +10,30 @@ $admin_id = (int)$_SESSION['user_id'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     $action = $_POST['admin_action'] ?? '';
+    if ($action === 'make_voucher') {
+        $plan = \App\Domain\Pro::plan((string)($_POST['pro_plan'] ?? 'monthly')) ? (string)$_POST['pro_plan'] : 'monthly';
+        $days = max(1, min(3650, (int)($_POST['pro_days'] ?? 30)));
+        $maxUses = max(1, min(10000, (int)($_POST['max_uses'] ?? 1)));
+        $expDays = max(0, min(3650, (int)($_POST['exp_days'] ?? 0)));
+        $exp = $expDays > 0 ? date('Y-m-d H:i:s', strtotime("+$expDays days")) : null;
+        $r = \App\Domain\ProVoucher::create($conn, $admin_id, $plan, $days, $maxUses, $exp);
+        set_flash($r['ok'] ? 'success' : 'danger', $r['ok'] ? 'Voucher dibuat: ' . $r['code'] : $r['msg']);
+        $back = 'kelola-p7x2qm.php?' . http_build_query(array_filter(['q' => $_GET['q'] ?? '', 'page' => $_GET['page'] ?? 1]));
+        redirect($back);
+    }
+    if ($action === 'make_voucher_bulk') {
+        $plan = \App\Domain\Pro::plan((string)($_POST['pro_plan'] ?? 'monthly')) ? (string)$_POST['pro_plan'] : 'monthly';
+        $days = max(1, min(3650, (int)($_POST['pro_days'] ?? 30)));
+        $maxUses = max(1, min(10000, (int)($_POST['max_uses'] ?? 1)));
+        $expDays = max(0, min(3650, (int)($_POST['exp_days'] ?? 0)));
+        $exp = $expDays > 0 ? date('Y-m-d H:i:s', strtotime("+$expDays days")) : null;
+        $qty = max(1, min(100, (int)($_POST['qty'] ?? 10)));
+        if (rate_limit_hit('voucher_bulk', 5, 3600)) { set_flash('warning', 'Bulk dibatasi 5x/jam.'); redirect('kelola-p7x2qm.php'); }
+        $codes = \App\Domain\ProVoucher::createBulk($conn, $admin_id, $plan, $days, $maxUses, $exp, $qty);
+        $_SESSION['bulk_codes'] = $codes;
+        set_flash(count($codes) === $qty ? 'success' : 'warning', 'Bulk selesai: ' . count($codes) . '/' . $qty . ' kode.');
+        redirect('kelola-p7x2qm.php');
+    }
     $target = (int)($_POST['target_id'] ?? 0);
     if ($target <= 0) {
         set_flash('warning', 'User tidak valid.');
@@ -17,18 +41,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         set_flash('warning', 'Tidak bisa mengubah akun sendiri dari panel ini.');
     } else {
         if ($action === 'set_role') {
-            $role = ($_POST['role'] ?? '') === 'admin' ? 'admin' : 'user';
+            $role = (string)($_POST['role'] ?? 'user');
+            if (!in_array($role, ['admin', 'guru', 'user'], true)) $role = 'user';
             if ($role === 'admin') {
                 if (\App\Domain\Auth\Roles::grant($conn, $target, 'admin')) {
                     set_flash('success', "User #{$target} dijadikan admin.");
                 } else {
                     set_flash('danger', 'Gagal memberi role admin.');
                 }
-            } else {
-                if (\App\Domain\Auth\Roles::revoke($conn, $target, 'admin')) {
-                    set_flash('success', "Role admin user #{$target} dicabut.");
+            } elseif ($role === 'guru') {
+                if (\App\Domain\Auth\Roles::isAdmin($conn, $target) && \App\Domain\Auth\Roles::countAdmins($conn) <= 1) {
+                    set_flash('danger', 'Admin terakhir tidak bisa dijadikan guru.');
                 } else {
-                    set_flash('danger', 'Gagal mencabut admin (minimal 1 admin harus tersisa).');
+                    \App\Domain\Auth\Roles::revoke($conn, $target, 'admin');
+                    if (\App\Domain\Auth\Roles::grant($conn, $target, 'guru')) {
+                        set_flash('success', "User #{$target} dijadikan guru.");
+                    } else {
+                        set_flash('danger', 'Gagal memberi role guru.');
+                    }
+                }
+            } else {
+                \App\Domain\Auth\Roles::revoke($conn, $target, 'guru');
+                if (\App\Domain\Auth\Roles::revoke($conn, $target, 'admin')) {
+                    set_flash('success', "Role user #{$target} dikembalikan ke user.");
+                } else {
+                    set_flash('danger', 'Gagal mencabut role (minimal 1 admin harus tersisa).');
                 }
             }
         } elseif ($action === 'adjust_xp') {
@@ -44,6 +81,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $up->bind_param("i", $target);
             $up->execute(); $up->close();
             set_flash('success', "Streak user #{$target} direset ke 0.");
+        } elseif ($action === 'grant_pro') {
+            $days = max(1, min(3650, (int)($_POST['pro_days'] ?? 30)));
+            $plan = \App\Domain\Pro::plan((string)($_POST['pro_plan'] ?? 'monthly')) ? (string)$_POST['pro_plan'] : 'monthly';
+            if (\App\Domain\ProVoucher::grantPro($conn, $target, $plan, $days)) {
+                set_flash('success', "Pro {$plan} {$days} hari diberikan ke user #{$target}.");
+            } else {
+                set_flash('danger', 'Gagal memberi Pro.');
+            }
+        } elseif ($action === 'revoke_pro') {
+            if (\App\Domain\ProVoucher::revokePro($conn, $target)) {
+                set_flash('info', "Pro user #{$target} dicabut.");
+            } else {
+                set_flash('danger', 'Gagal mencabut Pro.');
+            }
         } elseif ($action === 'delete_user') {
             clear_remember_token($conn);
             $del = $conn->prepare("DELETE FROM users WHERE id = ?");
@@ -77,10 +128,10 @@ try {
 $rows = [];
 try {
     if ($q !== '') {
-        $s = $conn->prepare("SELECT u.id, u.username, u.email, u.role, u.xp, u.streak, u.best_streak, u.created_at, (SELECT COUNT(*) FROM user_quests WHERE user_id = u.id) qd FROM users u WHERE u.username LIKE ? OR u.email LIKE ? ORDER BY u.id DESC LIMIT ? OFFSET ?");
+        $s = $conn->prepare("SELECT u.id, u.username, u.email, u.role, u.xp, u.streak, u.best_streak, u.created_at, u.is_pro, u.pro_until, (SELECT COUNT(*) FROM user_quests WHERE user_id = u.id) qd FROM users u WHERE u.username LIKE ? OR u.email LIKE ? ORDER BY u.id DESC LIMIT ? OFFSET ?");
         $s->bind_param("ssii", $like, $like, $per, $off);
     } else {
-        $s = $conn->prepare("SELECT u.id, u.username, u.email, u.role, u.xp, u.streak, u.best_streak, u.created_at, (SELECT COUNT(*) FROM user_quests WHERE user_id = u.id) qd FROM users u ORDER BY u.id DESC LIMIT ? OFFSET ?");
+        $s = $conn->prepare("SELECT u.id, u.username, u.email, u.role, u.xp, u.streak, u.best_streak, u.created_at, u.is_pro, u.pro_until, (SELECT COUNT(*) FROM user_quests WHERE user_id = u.id) qd FROM users u ORDER BY u.id DESC LIMIT ? OFFSET ?");
         $s->bind_param("ii", $per, $off);
     }
     $s->execute();
@@ -96,6 +147,15 @@ $is_row_admin = function (array $row) use ($admin_ids): bool {
     if (isset($admin_ids[(int)($row['id'] ?? 0)])) return true;
     return ($row['role'] ?? '') === 'admin';
 };
+$guru_ids = [];
+try {
+    $gr = $conn->query("SELECT ur.user_id FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE r.slug = 'guru'");
+    if ($gr) { foreach ($gr->fetch_all(MYSQLI_ASSOC) as $grow) $guru_ids[(int)$grow['user_id']] = true; $gr->free(); }
+} catch (Throwable $e) {}
+$is_row_guru = function (array $row) use ($guru_ids): bool {
+    if (isset($guru_ids[(int)($row['id'] ?? 0)])) return true;
+    return ($row['role'] ?? '') === 'guru';
+};
 
 $stat_all = ['users' => 0, 'admins' => 0, 'xp' => 0];
 try {
@@ -103,6 +163,7 @@ try {
     if ($r) { $d = $r->fetch_assoc(); $stat_all['users'] = (int)($d['u'] ?? 0); $stat_all['xp'] = (int)($d['x'] ?? 0); $r->free(); }
     $stat_all['admins'] = \App\Domain\Auth\Roles::countAdmins($conn);
 } catch (Throwable $e) {}
+$vouchers = \App\Domain\ProVoucher::list($conn, 30);
 $conn->close();
 $pages = max(1, (int)ceil($total / $per));
 $page_title = 'Kelola User';
@@ -126,6 +187,37 @@ require_once 'includes/navbar.php';
         </div>
     </div>
 
+    <div class="card p-4 mb-3" aria-label="Voucher Pro">
+        <h2 class="h5 fw-bold mb-1">Voucher Pro (<?= count($vouchers) ?>)</h2>
+        <p class="text-secondary small mb-3">Bagikan kode ke siswa / tim. Satu kode satu akun per user.</p>
+        <form method="POST" action="kelola-p7x2qm.php" class="row g-2 m-0 mb-3">
+            <?= csrf_field() ?>
+            <input type="hidden" name="admin_action" value="make_voucher">
+            <div class="col-md-2"><select name="pro_plan" class="form-select form-select-sm"><option value="monthly">Bulanan</option><option value="yearly">Tahunan</option><option value="team">Tim</option></select></div>
+            <div class="col-md-2"><input name="pro_days" type="number" class="form-control form-control-sm" value="30" min="1" max="3650" aria-label="Hari"></div>
+            <div class="col-md-2"><input name="max_uses" type="number" class="form-control form-control-sm" value="1" min="1" max="10000" aria-label="Kuota pakai"></div>
+            <div class="col-md-3"><input name="exp_days" type="number" class="form-control form-control-sm" value="0" min="0" max="3650" placeholder="Kedaluwarsa (hari, 0 = tanpa batas)" aria-label="Kedaluwarsa"></div>
+            <div class="col-md-3"><button class="btn btn-cyber btn-sm w-100" type="submit">Buat voucher</button></div>
+        </form>
+        <form method="POST" action="kelola-p7x2qm.php" class="row g-2 m-0 mb-3" aria-label="Bulk voucher kelas">
+            <?= csrf_field() ?>
+            <input type="hidden" name="admin_action" value="make_voucher_bulk">
+            <input type="hidden" name="pro_plan" value="team">
+            <input type="hidden" name="pro_days" value="365">
+            <input type="hidden" name="max_uses" value="1">
+            <input type="hidden" name="exp_days" value="90">
+            <div class="col-md-3"><input name="qty" type="number" class="form-control form-control-sm" value="20" min="1" max="100" aria-label="Jumlah kode"></div>
+            <div class="col-md-9"><button class="btn btn-cyber-outline btn-sm w-100" type="submit">Bulk lisensi kelas (Tim 1 thn, 1 pakai, 90 hari)</button></div>
+        </form>
+        <?php $bulk = $_SESSION['bulk_codes'] ?? []; unset($_SESSION['bulk_codes']); if ($bulk): ?>
+        <div class="alert alert-success small" role="status">Batch baru (<?= count($bulk) ?>): <?= htmlspecialchars(implode(', ', $bulk)) ?></div>
+        <?php endif; ?>
+        <?php foreach ($vouchers as $v): ?>
+        <div class="list-row"><div class="list-main"><p class="list-title"><?= htmlspecialchars($v['code']) ?></p><p class="list-meta"><?= htmlspecialchars($v['plan']) ?> · <?= (int)$v['days'] ?> hari · dipakai <?= (int)$v['used_count'] ?>/<?= (int)$v['max_uses'] ?><?= !empty($v['expires_at']) ? ' · exp ' . htmlspecialchars($v['expires_at']) : ' · tanpa batas' ?> · oleh <?= htmlspecialchars($v['by_name'] ?? '-') ?></p></div></div>
+        <?php endforeach; ?>
+        <?php if (!$vouchers): ?><p class="small text-muted mb-0">Belum ada voucher.</p><?php endif; ?>
+    </div>
+
     <div class="card p-2">
         <?php if (!$rows): ?>
             <p class="text-secondary small p-3 mb-0">Tidak ada user yang cocok.</p>
@@ -135,17 +227,33 @@ require_once 'includes/navbar.php';
             <div class="list-main">
                 <p class="list-title">#<?= (int)$r['id'] ?> <?= htmlspecialchars($r['username']) ?>
                     <?php if ($is_row_admin($r)): ?><span class="quest-pending">Admin</span><?php endif; ?>
+                    <?php if ($is_row_guru($r)): ?><span class="quest-pending">Guru</span><?php endif; ?>
                     <?php if ($is_self): ?><span class="quest-pending">Kamu</span><?php endif; ?>
                 </p>
-                <p class="list-meta"><?= htmlspecialchars($r['email']) ?> · Lv <?= calculate_level((int)$r['xp']) ?> · <?= (int)$r['xp'] ?> XP · streak <?= (int)$r['streak'] ?> (terbaik <?= (int)$r['best_streak'] ?>) · <?= (int)$r['qd'] ?> quest · gabung <?= date('d M Y', strtotime($r['created_at'])) ?></p>
+                <p class="list-meta"><?= htmlspecialchars($r['email']) ?> · Lv <?= calculate_level((int)$r['xp']) ?> · <?= (int)$r['xp'] ?> XP · streak <?= (int)$r['streak'] ?> (terbaik <?= (int)$r['best_streak'] ?>) · <?= (int)$r['qd'] ?> quest · gabung <?= date('d M Y', strtotime($r['created_at'])) ?><?= !empty($r['is_pro']) ? ' · Pro s/d ' . htmlspecialchars($r['pro_until'] ?? '') : '' ?></p>
                 <?php if (!$is_self): ?>
                 <div class="d-flex flex-wrap gap-2 mt-2">
+                    <form method="POST" action="kelola-p7x2qm.php?<?= http_build_query(array_filter(['q' => $q, 'page' => $page])) ?>" class="d-flex gap-1 m-0">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="admin_action" value="grant_pro">
+                        <input type="hidden" name="target_id" value="<?= (int)$r['id'] ?>">
+                        <select name="pro_plan" class="form-select form-select-sm" style="max-width:110px" aria-label="Paket Pro"><option value="monthly">Bulanan</option><option value="yearly">Tahunan</option><option value="team">Tim</option></select>
+                        <input name="pro_days" type="number" class="form-control form-control-sm" style="max-width:70px" value="30" min="1" max="3650" aria-label="Hari Pro">
+                        <button class="btn btn-cyber btn-sm" type="submit">Pro</button>
+                    </form>
+                    <form method="POST" action="kelola-p7x2qm.php?<?= http_build_query(array_filter(['q' => $q, 'page' => $page])) ?>" class="m-0" onsubmit="return confirm('Cabut Pro user ini?')">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="admin_action" value="revoke_pro">
+                        <input type="hidden" name="target_id" value="<?= (int)$r['id'] ?>">
+                        <button class="btn btn-cyber-outline btn-sm" type="submit">Cabut Pro</button>
+                    </form>
                     <form method="POST" action="kelola-p7x2qm.php?<?= http_build_query(array_filter(['q' => $q, 'page' => $page])) ?>" class="d-flex gap-1 m-0">
                         <?= csrf_field() ?>
                         <input type="hidden" name="admin_action" value="set_role">
                         <input type="hidden" name="target_id" value="<?= (int)$r['id'] ?>">
                         <select name="role" class="form-select form-select-sm" style="max-width:110px" aria-label="Role user">
-                            <option value="user" <?= !$is_row_admin($r) ? 'selected' : '' ?>>User</option>
+                            <option value="user" <?= !$is_row_admin($r) && !$is_row_guru($r) ? 'selected' : '' ?>>User</option>
+                            <option value="guru" <?= $is_row_guru($r) ? 'selected' : '' ?>>Guru</option>
                             <option value="admin" <?= $is_row_admin($r) ? 'selected' : '' ?>>Admin</option>
                         </select>
                         <button class="btn btn-cyber-outline btn-sm" type="submit">Role</button>

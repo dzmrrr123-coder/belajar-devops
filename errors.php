@@ -4,10 +4,11 @@ require_login();
 
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
+$err_cats = array_keys(skill_defs(user_track($conn, $user_id)));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_error']) || (isset($_POST['action']) && $_POST['action'] === 'add_error'))) {
     verify_csrf();
-    $allowed_cats = ['General','MySQL','PHP','Laravel','Docker','Linux','Git','AWS'];
+    $allowed_cats = $err_cats;
     $category = clean($_POST['category'] ?? 'General');
     if (!in_array($category, $allowed_cats, true)) $category = 'General';
     $error_message = mb_substr(clean($_POST['error_message'] ?? ''), 0, 2000);
@@ -41,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_error']) || (iss
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['update_error']) || (isset($_POST['action']) && $_POST['action'] === 'update_error'))) {
     verify_csrf();
     $error_id = (int)($_POST['error_id'] ?? 0);
-    $allowed_cats = ['General','MySQL','PHP','Laravel','Docker','Linux','Git','AWS'];
+    $allowed_cats = $err_cats;
     $category = clean($_POST['category'] ?? 'General');
     if (!in_array($category, $allowed_cats, true)) $category = 'General';
     $error_message = mb_substr(clean($_POST['error_message'] ?? ''), 0, 2000);
@@ -128,14 +129,9 @@ require_once 'includes/navbar.php';
                     <div class="mb-3">
                         <label for="errCategory" class="form-label">Kategori Masalah</label>
                         <select name="category" id="errCategory" class="form-select">
-                            <option value="General">General / Lainnya</option>
-                            <option value="MySQL">MySQL / Database</option>
-                            <option value="PHP">PHP Native / Syntax</option>
-                            <option value="Laravel">Laravel Framework</option>
-                            <option value="Docker">Docker & Container</option>
-                            <option value="Linux">Linux / Terminal / Bash</option>
-                            <option value="Git">Git / GitHub</option>
-                            <option value="AWS">AWS / Cloud / Nginx</option>
+                            <?php foreach ($err_cats as $ec): ?>
+                            <option value="<?= htmlspecialchars($ec) ?>"><?= htmlspecialchars($ec === 'General' ? 'General / Lainnya' : $ec) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
 
@@ -292,7 +288,7 @@ require_once 'includes/navbar.php';
                     <input type="hidden" name="source" value="error">
                     <input type="hidden" name="source_id" id="quizSourceId">
                     <input type="hidden" name="back" value="errors.php">
-                    <div class="mb-3"><label class="form-label" for="quizTopic">Topik</label><select name="topic" id="quizTopic" class="form-select"><?php foreach (quiz_topics() as $t): ?><option value="<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($t) ?></option><?php endforeach; ?></select></div>
+                    <div class="mb-3"><label class="form-label" for="quizTopic">Topik</label><select name="topic" id="quizTopic" class="form-select"><?php foreach (quiz_topics(user_track($conn, $user_id)) as $t): ?><option value="<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($t) ?></option><?php endforeach; ?></select></div>
                     <div class="mb-3"><label class="form-label" for="quizQuestion">Pertanyaan</label><textarea name="question" id="quizQuestion" class="form-control" rows="2" required maxlength="255"></textarea></div>
                     <div class="mb-1"><label class="form-label" for="quizAnswer">Jawaban</label><textarea name="answer" id="quizAnswer" class="form-control" rows="3" required></textarea></div>
                 </div>
@@ -322,14 +318,9 @@ require_once 'includes/navbar.php';
                     <div class="mb-3">
                         <label for="modalCategory" class="form-label">Kategori</label>
                         <select name="category" id="modalCategory" class="form-select">
-                            <option value="General">General / Lainnya</option>
-                            <option value="MySQL">MySQL / Database</option>
-                            <option value="PHP">PHP Native / Syntax</option>
-                            <option value="Laravel">Laravel Framework</option>
-                            <option value="Docker">Docker & Container</option>
-                            <option value="Linux">Linux / Terminal / Bash</option>
-                            <option value="Git">Git / GitHub</option>
-                            <option value="AWS">AWS / Cloud / Nginx</option>
+                            <?php foreach ($err_cats as $ec): ?>
+                            <option value="<?= htmlspecialchars($ec) ?>"><?= htmlspecialchars($ec === 'General' ? 'General / Lainnya' : $ec) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
 
@@ -361,7 +352,7 @@ require_once 'includes/navbar.php';
 let activeCat = 'all';
 let activeSolved = 'all';
 
-const QUIZ_TOPICS = <?= json_encode(quiz_topics()) ?>;
+const QUIZ_TOPICS = <?= json_encode(quiz_topics(user_track($conn, $user_id))) ?>;
 function openQuizModal(id, question, answer, topic) {
     document.getElementById('quizSourceId').value = id;
     document.getElementById('quizQuestion').value = question || '';

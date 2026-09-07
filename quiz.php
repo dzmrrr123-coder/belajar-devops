@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
     $source_id = (int)($_POST['source_id'] ?? 0);
     $question = mb_substr(trim(clean($_POST['question'] ?? '')), 0, 255);
     $answer = mb_substr(trim(clean($_POST['answer'] ?? '')), 0, 2000);
-    $qtopic = in_array($_POST['topic'] ?? '', quiz_topics(), true) ? $_POST['topic'] : 'General';
+    $qtopic = in_array($_POST['topic'] ?? '', quiz_topics(user_track($conn, $user_id)), true) ? $_POST['topic'] : 'General';
     $back = ($_POST['back'] ?? '') === 'questions.php' ? 'questions.php' : 'errors.php';
     if ($question === '' || $answer === '' || $source_id <= 0) {
         set_flash('warning', 'Pertanyaan, jawaban, dan sumber wajib diisi.');
@@ -142,9 +142,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
 // Daftar kartu sesi ini
 $mode = in_array(($_GET['mode'] ?? ''), ['review', 'blitz'], true) ? $_GET['mode'] : 'latihan';
 $is_blitz = $mode === 'blitz';
-$quiz_topics = quiz_topics();
+$quiz_topics = quiz_topics(user_track($conn, $user_id));
 $topic = in_array($_GET['topic'] ?? 'all', $quiz_topics, true) ? $_GET['topic'] : 'all';
-$topic_sql = $topic === 'all' ? '' : 'AND c.topic = ?';
+$track_in = "'" . implode("','", array_map(fn($t) => str_replace("'", "''", $t), $quiz_topics)) . "'";
+$topic_sql = $topic === 'all' ? "AND c.topic IN ($track_in)" : 'AND c.topic = ?';
 $done = !empty($_GET['done']);
 $ids = array_values(array_filter(array_map('intval', explode(',', (string)($_GET['ids'] ?? '')))));
 

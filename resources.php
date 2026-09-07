@@ -35,7 +35,7 @@ foreach ($resources as $r) {
 
 
 
-$page_title = 'Sumber Belajar Terkurasi - Roadmap DevOps';
+$page_title = 'Sumber Belajar Terkurasi';
 require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
@@ -43,7 +43,7 @@ require_once 'includes/navbar.php';
 <main class="container py-4" role="main">
     <div class="page-head">
         <div class="page-kicker">Referensi terkurasi · <?= $total_count ?> materi</div>
-        <h1 class="page-title">Resources DevOps & backend</h1>
+        <h1 class="page-title">Resources belajar</h1>
         <p class="page-desc">Bahan belajar pendamping tiap minggu. (<?= $video_count ?> video · <?= $docs_count ?> dokumen · <?= $practice_count ?> praktek)</p>
     </div>
 

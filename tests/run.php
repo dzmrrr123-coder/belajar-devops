@@ -110,7 +110,7 @@ check('challenge pct setengah', challenge_pct(50, 100), 50);
 check('cheer ok', cheer_clean('  Semangat ya!  '), 'Semangat ya!');
 check('cheer pendek', cheer_clean('a'), '');
 check('cheer panjang', mb_strlen(cheer_clean(str_repeat('x', 200))) <= 140, true);
-check('badge share', badge_share_text('budi', 'Quest Hunter 5'), 'budi meraih badge "Quest Hunter 5" di Learn Tracker DevOps');
+check('badge share', badge_share_text('budi', 'Quest Hunter 5'), 'budi meraih badge "Quest Hunter 5" di Learn Tracker');
 
 check('level 899', calculate_level(899), 3);
 check('level 900', calculate_level(900), 4);
@@ -148,7 +148,7 @@ check('frame gold belum', avatar_unlocked('gold', 4, 0, []), false);
 check('frame legend lv', avatar_unlocked('legend', 8, 0, []), true);
 check('frame asing', avatar_unlocked('x', 9, 99, []), false);
 check('frame ember kurang', avatar_unlocked('ember', 9, 6, []), false);
-check('topik 9', count(quiz_topics()), 9);
+check('topik 16', count(quiz_topics()), 16);
 check('sm2 upper', sm2_grade_to_int('AGAIN'), 0);
 check('sm2 int clamp atas', sm2_grade_to_int(7), 5);
 check('sm2 int clamp bawah', sm2_grade_to_int(-2), 0);
@@ -198,7 +198,7 @@ check('rl kena', rate_limit_hit('t_rl_1', 2, 60), true);
 check('skill q join', review_skill_for('quest', 'Belajar JOIN database', ''), 'MySQL');
 check('skill fallback src', review_skill_for('PHP', 'halo', 'dunia'), 'PHP');
 
-check('bank 42 kartu', count(quiz_bank_cards()), 42);
+check('bank 66 kartu', count(quiz_bank_cards()), 66);
 $bank_ok = true;
 foreach (quiz_bank_cards() as $c) {
     if (!is_array($c) || count($c) !== 3 || trim((string)$c[1]) === '' || trim((string)$c[2]) === '') { $bank_ok = false; break; }
@@ -242,6 +242,64 @@ check('mastery need pas', \App\Domain\Skill\Mastery::need(50), 50);
 check('mastery node', \App\Domain\Skill\Mastery::nodeForSkill('Docker'), 'docker');
 check('mastery node net', \App\Domain\Skill\Mastery::nodeForSkill('Networking'), 'networking');
 check('mastery node general', \App\Domain\Skill\Mastery::nodeForSkill('General'), null);
+check('mastery node testing', \App\Domain\Skill\Mastery::nodeForSkill('Testing'), 'testing');
+check('track default', \App\Domain\Track\Tracks::normalize('asal'), 'devops');
+check('track rpl', \App\Domain\Track\Tracks::normalize('RPL'), 'rpl');
+check('track weeks devops w7', \App\Domain\Track\Tracks::weeks('devops')[7], 'Docker');
+check('track weeks rpl w7', \App\Domain\Track\Tracks::weeks('rpl')[7], 'Git');
+check('track weeks rpl w8', \App\Domain\Track\Tracks::weeks('rpl')[8], 'Testing');
+check('skill week rpl', skill_for_week(8, 'rpl'), 'Testing');
+check('skill week devops', skill_for_week(8, 'devops'), 'Docker');
+check('skill week default', skill_for_week(8), 'Docker');
+check('skill defs rpl', array_keys(skill_defs('rpl')), ['Git','MySQL','PHP','Laravel','Testing','General']);
+check('onboarding target rpl', onboarding_targets('rpl'), ['Backend Engineer','Frontend Engineer','Fullstack Engineer','QA Engineer','Masih ragu']);
+check('onboarding target devops', onboarding_targets('devops')[0], 'DevOps Engineer');
+check('quiz topics rpl', quiz_topics('rpl'), ['Git','MySQL','PHP','Laravel','Testing','General']);
+check('quiz topics devops', quiz_topics('devops'), ['Linux','Git','MySQL','PHP','Laravel','Docker','AWS','Networking','General']);
+check('normalize testing', normalize_skill('phpunit test'), 'Testing');
+check('track tkj', \App\Domain\Track\Tracks::normalize('TKJ'), 'tkj');
+check('track weeks tkj w1', \App\Domain\Track\Tracks::weeks('tkj')[1], 'Networking');
+check('track weeks tkj w2', \App\Domain\Track\Tracks::weeks('tkj')[2], 'Linux');
+check('skill week tkj', skill_for_week(1, 'tkj'), 'Networking');
+check('skill defs tkj', array_keys(skill_defs('tkj')), ['Linux','Git','Docker','AWS','Networking','General']);
+check('onboarding target tkj', onboarding_targets('tkj'), ['Network Engineer','System Administrator','Cloud Engineer','Security Analyst','Masih ragu']);
+check('quiz topics tkj', quiz_topics('tkj'), ['Networking','Linux','Docker','AWS','Git','General']);
+check('normalize networking', normalize_skill('subnet 192.168.1.0/24'), 'Networking');
+check('mastery node networking', \App\Domain\Skill\Mastery::nodeForSkill('Networking'), 'networking');
+check('track dkv', \App\Domain\Track\Tracks::normalize('DKV'), 'dkv');
+check('track weeks dkv w1', \App\Domain\Track\Tracks::weeks('dkv')[1], 'Desain');
+check('track weeks dkv w5', \App\Domain\Track\Tracks::weeks('dkv')[5], 'UI/UX');
+check('skill week dkv', skill_for_week(1, 'dkv'), 'Desain');
+check('skill defs dkv', array_keys(skill_defs('dkv')), ['Desain','Tipografi','Branding','UI/UX','Ilustrasi','Motion','General']);
+check('onboarding target dkv', onboarding_targets('dkv'), ['UI/UX Designer','Graphic Designer','Brand Designer','Motion Designer','Masih ragu']);
+check('quiz topics dkv', quiz_topics('dkv'), ['Desain','Tipografi','Branding','UI/UX','Ilustrasi','Motion','General']);
+check('normalize branding', normalize_skill('logo brand identity'), 'Branding');
+check('normalize uiux', normalize_skill('wireframe figma'), 'UI/UX');
+check('mastery node desain', \App\Domain\Skill\Mastery::nodeForSkill('Tipografi'), 'desain');
+check('mastery node uiux', \App\Domain\Skill\Mastery::nodeForSkill('UI/UX'), 'uiux');
+check('mastery node motion', \App\Domain\Skill\Mastery::nodeForSkill('Motion'), 'motion');
+check('incident 11 lab', count(\App\Domain\Incident\IncidentBank::all()), 11);
+$incSlugs = array_column(\App\Domain\Incident\IncidentBank::all(), 'slug');
+check('incident unik', count($incSlugs) === count(array_unique($incSlugs)), true);
+$incFree = count(array_filter(\App\Domain\Incident\IncidentBank::all(), fn($c) => empty($c['is_pro'])));
+check('incident gratis 2', $incFree, 2);
+$incSkills = array_unique(array_column(\App\Domain\Incident\IncidentBank::all(), 'skill'));
+foreach (['MySQL', 'Git', 'Laravel'] as $s) check("incident skill $s", in_array($s, $incSkills, true), true);
+foreach (['Networking', 'Linux'] as $s) check("incident tkj $s", in_array($s, $incSkills, true), true);
+check('rubrik 5 kriteria', count(\App\Domain\Dkv\Rubric::criteria()), 5);
+check('rubrik bobot 100', array_sum(array_column(\App\Domain\Dkv\Rubric::criteria(), 'weight')), 100);
+check('rubrik avg penuh', \App\Domain\Dkv\Rubric::weightedAvg(['konsep' => 5, 'tipografi' => 5, 'warna' => 5, 'layout' => 5, 'presentasi' => 5]), 5.0);
+check('rubrik avg campur', \App\Domain\Dkv\Rubric::weightedAvg(['konsep' => 4, 'tipografi' => 4, 'warna' => 4, 'layout' => 4, 'presentasi' => 4]), 4.0);
+check('rubrik avg kosong', \App\Domain\Dkv\Rubric::weightedAvg([]), 0.0);
+check('rubrik clamp', \App\Domain\Dkv\Rubric::clampScore(9), 5);
+check('rubrik clamp bawah', \App\Domain\Dkv\Rubric::clampScore(-2), 1);
+$cardTopics = array_unique(array_map(fn($c) => $c[0], quiz_bank_cards()));
+foreach (['devops', 'rpl', 'tkj', 'dkv'] as $tr) {
+    foreach (quiz_topics($tr) as $tt) {
+        if ($tt === 'General') continue;
+        check("bank cover $tr:$tt", in_array($tt, $cardTopics, true), true);
+    }
+}
 
 echo "pass: {$pass}, fail: {$fail}" . PHP_EOL;
 exit($fail > 0 ? 1 : 0);

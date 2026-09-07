@@ -5,7 +5,7 @@ class Social {
         $t = trim(preg_replace('/\s+/', ' ', $b));
         return mb_strlen($t) < 2 ? '' : mb_substr($t, 0, 140);
     }
-    public static function badgeShare(string $u, string $b): string { return trim($u).' meraih badge "'.trim($b).'" di Learn Tracker DevOps'; }
+    public static function badgeShare(string $u, string $b): string { return trim($u).' meraih badge "'.trim($b).'" di Learn Tracker'; }
     public static function avatarFrames(): array {
         return ['default'=>['name'=>'Polos','hint'=>'Untuk semua orang'],'ring'=>['name'=>'Cincin','hint'=>'Capai Level 3'],'ember'=>['name'=>'Bara','hint'=>'Streak terbaik 7 hari'],'gold'=>['name'=>'Emas','hint'=>'Capai Level 5'],'legend'=>['name'=>'Legenda','hint'=>'Badge Roadmap Tuntas / Level 8'],'aurora'=>['name'=>'Aurora','hint'=>'Toko · edisi September'],'specter'=>['name'=>'Specter','hint'=>'Toko · edisi Oktober'],'solstice'=>['name'=>'Solstice','hint'=>'Toko · edisi Desember']];
     }

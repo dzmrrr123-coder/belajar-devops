@@ -1,0 +1,71 @@
+<?php
+namespace App\Domain\Track;
+class Tracks {
+    public static function all(): array {
+        return [
+            'devops' => ['slug' => 'devops', 'name' => 'DevOps', 'desc' => 'Linux, Docker, CI/CD & Cloud', 'icon' => 'fas fa-infinity'],
+            'rpl' => ['slug' => 'rpl', 'name' => 'RPL', 'desc' => 'Programming, Database, Web & Testing', 'icon' => 'fas fa-code'],
+            'tkj' => ['slug' => 'tkj', 'name' => 'TKJ', 'desc' => 'Networking, Linux, Server & Cloud', 'icon' => 'fas fa-network-wired'],
+            'dkv' => ['slug' => 'dkv', 'name' => 'DKV', 'desc' => 'Desain, Branding, UI/UX & Motion', 'icon' => 'fas fa-palette'],
+        ];
+    }
+    public static function isValid(string $t): bool {
+        return isset(self::all()[$t]);
+    }
+    public static function normalize(string $t): string {
+        $t = strtolower(trim($t));
+        return self::isValid($t) ? $t : 'devops';
+    }
+    public static function weeks(string $track): array {
+        $t = self::normalize($track);
+        if ($t === 'rpl') {
+            return [1 => 'MySQL', 2 => 'PHP', 3 => 'PHP', 4 => 'PHP', 5 => 'Laravel', 6 => 'Laravel', 7 => 'Git', 8 => 'Testing', 9 => 'Laravel', 10 => 'PHP', 11 => 'Git', 12 => 'General'];
+        }
+        if ($t === 'tkj') {
+            return [1 => 'Networking', 2 => 'Linux', 3 => 'Linux', 4 => 'Networking', 5 => 'Docker', 6 => 'Linux', 7 => 'AWS', 8 => 'Networking', 9 => 'Docker', 10 => 'AWS', 11 => 'Git', 12 => 'General'];
+        }
+        if ($t === 'dkv') {
+            return [1 => 'Desain', 2 => 'Tipografi', 3 => 'Desain', 4 => 'Branding', 5 => 'UI/UX', 6 => 'Tipografi', 7 => 'Branding', 8 => 'UI/UX', 9 => 'Ilustrasi', 10 => 'Motion', 11 => 'UI/UX', 12 => 'General'];
+        }
+        return [1 => 'MySQL', 2 => 'PHP', 3 => 'PHP', 4 => 'PHP', 5 => 'Laravel', 6 => 'Laravel', 7 => 'Docker', 8 => 'Docker', 9 => 'AWS', 10 => 'Linux', 11 => 'Git', 12 => 'General'];
+    }
+    public static function skills(string $track): array {
+        $t = self::normalize($track);
+        if ($t === 'rpl') {
+            return ['MySQL', 'PHP', 'Laravel', 'Git', 'Testing', 'General'];
+        }
+        if ($t === 'tkj') {
+            return ['Networking', 'Linux', 'Docker', 'AWS', 'Git', 'General'];
+        }
+        if ($t === 'dkv') {
+            return ['Desain', 'Tipografi', 'Branding', 'UI/UX', 'Ilustrasi', 'Motion', 'General'];
+        }
+        return ['Linux', 'Git', 'MySQL', 'PHP', 'Laravel', 'Docker', 'AWS', 'General'];
+    }
+    public static function targets(string $track): array {
+        $t = self::normalize($track);
+        if ($t === 'rpl') {
+            return ['Backend Engineer', 'Frontend Engineer', 'Fullstack Engineer', 'QA Engineer', 'Masih ragu'];
+        }
+        if ($t === 'tkj') {
+            return ['Network Engineer', 'System Administrator', 'Cloud Engineer', 'Security Analyst', 'Masih ragu'];
+        }
+        if ($t === 'dkv') {
+            return ['UI/UX Designer', 'Graphic Designer', 'Brand Designer', 'Motion Designer', 'Masih ragu'];
+        }
+        return ['DevOps Engineer', 'Backend Engineer', 'Cloud Engineer', 'Site Reliability Engineer', 'Masih ragu'];
+    }
+    public static function quizTopics(string $track): array {
+        $t = self::normalize($track);
+        if ($t === 'rpl') {
+            return ['Git', 'MySQL', 'PHP', 'Laravel', 'Testing', 'General'];
+        }
+        if ($t === 'tkj') {
+            return ['Networking', 'Linux', 'Docker', 'AWS', 'Git', 'General'];
+        }
+        if ($t === 'dkv') {
+            return ['Desain', 'Tipografi', 'Branding', 'UI/UX', 'Ilustrasi', 'Motion', 'General'];
+        }
+        return ['Linux', 'Git', 'MySQL', 'PHP', 'Laravel', 'Docker', 'AWS', 'Networking', 'General'];
+    }
+}

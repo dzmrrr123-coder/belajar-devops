@@ -82,7 +82,7 @@ require_once 'includes/navbar.php';
         <div class="text-center mb-4">
             <div class="brand-mark mx-auto mb-3" style="width: 40px; height: 40px; font-size: 0.9rem;" aria-hidden="true">LT</div>
             <h1 class="h3 fw-bold mb-1">Buat akun baru</h1>
-            <p class="text-secondary small mb-0">Daftar dan mulai roadmap DevOps 12 minggu</p>
+            <p class="text-secondary small mb-0">Daftar dan mulai roadmap 12 minggumu: RPL · TKJ · DKV · DevOps</p>
         </div>
 
         <?php if ($error): ?>
