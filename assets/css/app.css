@@ -95,6 +95,9 @@ main.container{flex:1}
 .lt-menu-grouped{min-width:230px}
 .quest-list,.race-list,.badge-grid,.skill-grid,.heatmap{content-visibility:auto;contain-intrinsic-size:auto 400px}
 .btn:active{transform:translateY(1px) scale(.99)}
+.tilt{transition:transform .15s ease;will-change:transform}
+::view-transition-old(root){animation-duration:.12s}
+::view-transition-new(root){animation-duration:.12s}
 ::selection{background:var(--primary);color:#fff}
 .btn-cyber,.btn-cyber-outline,.btn-cyber-danger{border-radius:8px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background .15s,border-color .15s;min-height:38px}
 .btn-cyber{background:var(--primary);border:1px solid var(--primary);color:#fff!important}
@@ -678,6 +681,20 @@ section.week-section .quest-desc{display:-webkit-box;-webkit-line-clamp:3;-webki
 .chart-col{min-width:34px}
 }
 .total-row{flex-wrap:wrap;gap:2px 8px}
+.ambience-canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.8}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(600px 300px at 85% -60px,rgba(99,179,155,.07),transparent 70%),radial-gradient(500px 280px at 8% 8%,rgba(201,161,59,.05),transparent 70%)}
+main,.lt-navbar,footer{position:relative;z-index:1}
+.chest-card:not(.opened) .chest-icon{filter:drop-shadow(0 0 6px rgba(201,161,59,.55))}
+.next-action,.mission-card.ready{animation:pulse-glow 2.6s ease-in-out infinite}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 0 0 rgba(99,179,155,0)}50%{box-shadow:0 0 0 4px rgba(99,179,155,.18)}}
+.streak-hot{animation:flame-pop .5s ease-out}
+@keyframes flame-pop{0%{transform:scale(.4)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+.ticker{overflow:hidden;white-space:nowrap;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:8px 0;margin-bottom:12px}
+.ticker-track{display:inline-flex;gap:2.5rem;padding:0 1.25rem;animation:ticker-scroll 36s linear infinite}
+.ticker:hover .ticker-track{animation-play-state:paused}
+.ticker-track span{font-size:.82rem;color:var(--muted)}
+.ticker-track strong{color:var(--ink)}
+@keyframes ticker-scroll{to{transform:translateX(-50%)}}
 .react-bar{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 .react-btn{display:inline-flex;align-items:center;gap:4px;min-height:36px;min-width:44px;padding:2px 10px;border-radius:999px;border:1px solid #1e293b;background:#131b2e;color:#cbd5e1;font-size:15px;cursor:pointer}
 .react-btn span{font-size:12px;color:#8b958d}

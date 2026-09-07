@@ -51,7 +51,7 @@ $flash = get_flash();
     <!-- Bootstrap 5.3 JS Bundle -->
     <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    <?php foreach (['core.js', 'lofi.js', 'quests.js', 'cards.js', 'site.js', 'sync.js', 'share-card.js', 'reactions.js'] as $js): ?>
+    <?php foreach (['core.js', 'lofi.js', 'quests.js', 'cards.js', 'site.js', 'sync.js', 'share-card.js', 'reactions.js', 'ambience.js'] as $js): ?>
     <script defer src="assets/js/<?= $js ?>?v=<?= filemtime(__DIR__ . '/../assets/js/' . $js) ?>"></script>
     <?php endforeach; ?>
 

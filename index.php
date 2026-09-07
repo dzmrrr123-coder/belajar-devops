@@ -123,7 +123,7 @@ require_once 'includes/navbar.php';
 
 <main class="container py-4" role="main">
     <div class="page-head">
-        <div class="page-kicker">Minggu <?= $selected_week ?> dari 12 · <?= count($quests) ?> quest</div>
+        <div class="page-kicker"><span data-greet>Semangat</span> · Minggu <?= $selected_week ?> dari 12 · <?= count($quests) ?> quest</div>
         <h1 class="page-title"><?= !empty($quests) ? 'Fokus: ' . htmlspecialchars($quests[0]['title']) : 'Belum ada quest minggu ini' ?></h1>
         <p class="page-desc">Pilih satu target hari ini. Selesai = XP masuk otomatis.</p>
         <div class="page-actions overview-actions">
@@ -224,6 +224,24 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
 </script>
 
     <?php
+    $ticker_items = [];
+    try {
+        $tr = $conn->query("SELECT u.username, e.amount, e.reason FROM xp_events e JOIN users u ON u.id = e.user_id WHERE e.amount > 0 AND u.show_on_board = 1 ORDER BY e.id DESC LIMIT 10");
+        if ($tr) { foreach ($tr->fetch_all(MYSQLI_ASSOC) as $trow) $ticker_items[] = $trow; $tr->free(); }
+    } catch (Throwable $e) {}
+    $ticker_labels = ['quest' => 'quest', 'chest' => 'peti', 'golden_chest' => 'peti emas', 'quiz' => 'kuis', 'duel_win' => 'duel', 'season_claim' => 'season'];
+    ?>
+    <?php if ($ticker_items): ?>
+    <div class="ticker" aria-label="Aktivitas komunitas">
+        <div class="ticker-track" id="tickerTrack">
+            <?php foreach ($ticker_items as $ti): ?>
+            <span><strong><?= htmlspecialchars($ti['username']) ?></strong> +<?= (int)$ti['amount'] ?> <?= htmlspecialchars($ticker_labels[$ti['reason']] ?? 'XP') ?></span>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php
     $mission_claimed = count(array_filter($missions, fn($m) => !empty($m['claimed'])));
     $mission_all_done = count(array_filter($missions, fn($m) => !empty($m['done']))) === 3;
     ?>
@@ -233,8 +251,24 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
                 <span class="mission-summary-text">
                     <strong>Misi hari ini</strong>
                     <?php $combo_done = \App\Domain\Gamification\Combo::countDone($missions); $combo_mult = \App\Domain\Gamification\Combo::tier($combo_done); ?>
-                    <small><?= $mission_claimed ?>/3 diklaim · +5 XP tiap klaim · <span class="text-success fw-bold">Combo <?= \App\Domain\Gamification\Combo::label($combo_mult) ?></span> · <?= \App\Domain\Gamification\Combo::nextHint($combo_done) ?></small>
+                    <small><?= $mission_claimed ?>/3 diklaim · +5 XP tiap klaim · <span class="text-success fw-bold">Combo <?= \App\Domain\Gamification\Combo::label($combo_mult) ?></span> · <?= \App\Domain\Gamification\Combo::nextHint($combo_done) ?> · reset <span id="resetClock">--:--:--</span></small>
                 </span>
+<script>
+(function() {
+    const el = document.getElementById('resetClock');
+    if (!el) return;
+    const pad = function(n) { return String(n).padStart(2, '0'); };
+    const tick = function() {
+        const now = new Date();
+        const mid = new Date(now);
+        mid.setHours(24, 0, 0, 0);
+        let s = Math.max(0, Math.floor((mid - now) / 1000));
+        el.textContent = pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60);
+    };
+    tick();
+    setInterval(tick, 1000);
+})();
+</script>
                 <span class="mission-summary-count" aria-hidden="true"><?= $mission_claimed ?>/3</span>
                 <i class="fas fa-chevron-down mission-summary-chev" aria-hidden="true"></i>
             </summary>
@@ -412,6 +446,48 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
     </div>
 </main>
 
+<script>
+(function() {
+    const track = document.getElementById('tickerTrack');
+    if (track && track.children.length > 1) track.innerHTML += track.innerHTML;
+    setInterval(async function() {
+        if (document.hidden || !track) return;
+        try {
+            const res = await fetch('public/api/v1/activity.php', { headers: { 'Accept': 'application/json' } });
+            const data = await res.json();
+            if (data && data.status === 'success' && Array.isArray(data.items) && data.items.length > 1) {
+                let html = '';
+                data.items.forEach(function(it) {
+                    const tmp = document.createElement('div');
+                    tmp.textContent = (it.user || '?') + ' +' + (it.amount || 0) + ' ' + (it.label || 'XP');
+                    html += '<span>' + tmp.innerHTML + '</span>';
+                });
+                track.innerHTML = html + html;
+            }
+        } catch (err) {}
+    }, 300000);
+    setInterval(async function() {
+        if (document.hidden) return;
+        try {
+            const res = await fetch('public/api/v1/pulse.php', { headers: { 'Accept': 'application/json' } });
+            const data = await res.json();
+            if (!data || data.status !== 'success') return;
+            const xpEl = document.getElementById('statTotalXp');
+            if (xpEl) {
+                const old = parseInt(xpEl.textContent, 10) || 0;
+                if (data.xp > old) {
+                    xpEl.textContent = data.xp;
+                    try { xpJuice(data.xp - old, xpEl, { buzz: 12 }); } catch (err) {}
+                }
+            }
+            const wk = document.getElementById('dashWeekXp');
+            if (wk) wk.textContent = data.xp_week;
+            const hs = document.getElementById('hudStreak');
+            if (hs) hs.textContent = data.streak;
+        } catch (err) {}
+    }, 60000);
+})();
+</script>
 <script>
 document.querySelector('.chest-form')?.addEventListener('submit', async function(e) {
     e.preventDefault();
