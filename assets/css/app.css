@@ -96,10 +96,10 @@ main.container{flex:1}
 .lt-menu .dropdown-item small{color:var(--faint);font-size:.72rem;margin-left:auto;padding-left:8px}
 .lt-menu-grouped{min-width:230px;max-height:min(70vh,560px);overflow-y:auto;overscroll-behavior:contain}
 @media(min-width:992px){
-.lt-menu-grouped{min-width:480px;display:grid;grid-template-columns:1fr 1fr;align-content:start;gap:1px}
-.lt-menu-grouped .lt-menu-label{grid-column:1/-1}
-.lt-menu-grouped li{display:contents}
-.lt-menu-grouped .dropdown-item{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lt-menu-grouped.show{min-width:480px;display:grid;grid-template-columns:1fr 1fr;align-content:start;gap:1px}
+.lt-menu-grouped.show .lt-menu-label{grid-column:1/-1}
+.lt-menu-grouped.show li{display:contents}
+.lt-menu-grouped.show .dropdown-item{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
 @media(max-width:991.98px){
 .lt-menu-grouped{max-height:min(60dvh,440px)}
