@@ -38,6 +38,7 @@ try {
         $new_badges = [];
     }
     $conn->commit();
+    if ($got > 0) \App\Analytics\Tracker::track($conn, $user_id, \App\Analytics\Events::MISSION_CLAIMED, ['count' => $got, 'xp' => $got_xp]);
     $msg = $got > 0
         ? ($claim_all ? "Semua misi diklaim! +{$got_xp} XP." : "Misi selesai! +{$got_xp} XP.") . (!empty($new_badges) ? ' Badge: ' . implode(', ', $new_badges) . '!' : '')
         : 'Tidak ada misi yang bisa diklaim.';

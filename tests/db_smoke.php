@@ -115,6 +115,13 @@ try {
     $bi->bind_param("i", $uid);
     if (!$bi->execute()) smoke_fail('blitz insert');
     $bi->close();
+    \App\Analytics\Tracker::track($conn, $uid, \App\Analytics\Events::QUEST_COMPLETED, ['quest_id' => $qid, 'xp' => 25]);
+    \App\Analytics\Tracker::track($conn, $uid, 'bogus_event', []);
+    $ae = $conn->prepare("SELECT COUNT(*) n FROM analytics_events WHERE user_id = ? AND event = 'quest_completed'");
+    $ae->bind_param("i", $uid);
+    $ae->execute();
+    if ((int)($ae->get_result()->fetch_assoc()['n'] ?? 0) !== 1) smoke_fail('analytics track');
+    $ae->close();
     if (in_array('aurora', \App\Domain\Shop::ownedFrames($conn, $uid), true)) smoke_fail('frame should be locked');
     if (!\App\Domain\Shop::grantFrame($conn, $uid, 'aurora')) smoke_fail('frame grant');
     if (!in_array('aurora', \App\Domain\Shop::ownedFrames($conn, $uid), true)) smoke_fail('frame owns');

@@ -56,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $new_badges = check_and_unlock_badges($conn, $user_id);
     $conn->commit();
+    if ($mode === 'focus') \App\Analytics\Tracker::track($conn, $user_id, \App\Analytics\Events::FOCUS_COMPLETED, ['duration' => $duration, 'xp' => $xp_reward]);
     } catch (Throwable $e) {
         $conn->rollback();
         error_log("pomodoro error: " . $e->getMessage());

@@ -212,6 +212,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         }
     }
     $conn->commit();
+    if ($action === 'completed') {
+        \App\Analytics\Tracker::track($conn, $user_id, \App\Analytics\Events::QUEST_COMPLETED, ['quest_id' => $quest_id, 'xp' => $xp_reward]);
+        if ($leveled_up) \App\Analytics\Tracker::track($conn, $user_id, \App\Analytics\Events::LEVEL_UP, ['level' => $new_level]);
+    }
     } catch (Throwable $e) {
         $conn->rollback();
         error_log("complete_quest error: " . $e->getMessage());

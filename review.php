@@ -47,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     award_xp($conn, $user_id, $xp_gain, 'review', 'review', $rid);
                 }
                 $nb = check_and_unlock_badges($conn, $user_id);
+                \App\Analytics\Tracker::track($conn, $user_id, \App\Analytics\Events::REVIEW_ANSWERED, ['review_id' => $rid, 'grade' => $grade, 'passed' => $passed]);
                 $msg = $grade === 'easy' ? "Mudah! Jadwal mundur {$next_int} hari. +{$xp_gain} XP." : ($grade === 'hard' ? "Sulit tapi lolos. Ketemu lagi {$next_int} hari." : "Bagus! Ketemu lagi {$next_int} hari.");
                 if ($xp_gain <= 0) $msg .= '';
                 if (!empty($nb)) $msg .= ' Badge: ' . implode(', ', $nb) . '!';

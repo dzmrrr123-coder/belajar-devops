@@ -1,0 +1,3 @@
+CREATE TABLE IF NOT EXISTS `analytics_events` (`id` BIGINT AUTO_INCREMENT PRIMARY KEY, `user_id` INT NOT NULL, `session_id` VARCHAR(128) NOT NULL DEFAULT '', `event` VARCHAR(64) NOT NULL, `surface` VARCHAR(64) NOT NULL DEFAULT '', `meta` TEXT NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT `fk_analytics_events_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_analytics_user ON `analytics_events` (`user_id`, `created_at`);
+CREATE INDEX idx_analytics_event ON `analytics_events` (`event`, `created_at`);
