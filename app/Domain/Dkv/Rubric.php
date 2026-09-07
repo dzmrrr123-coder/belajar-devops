@@ -11,6 +11,19 @@ class Rubric {
         ];
     }
     public static function clampScore(int $s): int { return max(1, min(5, $s)); }
+    public static function canRate(\mysqli $conn, int $raterId, int $ownerId): bool {
+        if ($raterId <= 0 || $ownerId <= 0) return false;
+        if ($raterId === $ownerId) return true;
+        try {
+            if (\App\Domain\Auth\Roles::isAdmin($conn, $raterId)) return true;
+            if (!\App\Domain\Auth\Roles::isGuru($conn, $raterId)) return false;
+            $s = $conn->prepare("SELECT 1 FROM squad_members m JOIN squads s ON s.id = m.squad_id WHERE m.user_id = ? AND s.created_by = ? LIMIT 1");
+            if (!$s) return false;
+            $s->bind_param("ii", $ownerId, $raterId); $s->execute();
+            $ok = (bool)$s->get_result()->fetch_assoc(); $s->close();
+            return $ok;
+        } catch (\Throwable $e) { return false; }
+    }
     public static function weightedAvg(array $scores): float {
         $num = 0; $den = 0;
         foreach (self::criteria() as $c) {

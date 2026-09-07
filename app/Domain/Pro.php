@@ -6,6 +6,7 @@ class Pro {
             'monthly' => ['slug' => 'monthly', 'name' => 'Pro Bulanan', 'price' => 29000, 'days' => 30],
             'yearly' => ['slug' => 'yearly', 'name' => 'Pro Tahunan', 'price' => 199000, 'days' => 365],
             'team' => ['slug' => 'team', 'name' => 'Tim / Kampus', 'price' => 499000, 'days' => 365],
+            'school' => ['slug' => 'school', 'name' => 'Sekolah / Kelas', 'price' => 99000, 'days' => 365],
         ];
     }
     public static function plan(string $slug): ?array {
@@ -47,6 +48,7 @@ class Pro {
     public static function features(string $tier): array {
         if ($tier === 'pro') return ['Incident simulator + nilai', 'Sertifikat verifikasi', 'Analytics 90 hari', 'Skill passport']; 
         if ($tier === 'team') return ['Semua Pro', 'Dashboard tim', 'Assignment & laporan', 'Onboarding bootcamp'];
+        if ($tier === 'school') return ['Semua Pro', 'Kelas + kode gabung', 'Nilai rubrik guru', 'Laporan CSV + sertifikat']; 
         return ['Quest 12 minggu', 'Misi harian', 'Leaderboard'];
     }
     public static function grantDays(string $plan): int {

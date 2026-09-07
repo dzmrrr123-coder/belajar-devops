@@ -34,6 +34,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         set_flash(count($codes) === $qty ? 'success' : 'warning', 'Bulk selesai: ' . count($codes) . '/' . $qty . ' kode.');
         redirect('kelola-p7x2qm.php');
     }
+    if ($action === 'approve_waitlist') {
+        $wid = (int)($_POST['wait_id'] ?? 0);
+        $w = null;
+        try { $g = $conn->prepare("SELECT id, plan, user_id FROM pro_waitlist WHERE id = ?"); if ($g) { $g->bind_param("i", $wid); $g->execute(); $w = $g->get_result()->fetch_assoc(); $g->close(); } } catch (Throwable $e) {}
+        if (!$w) { set_flash('warning', 'Waitlist tidak ada.'); redirect('kelola-p7x2qm.php'); }
+        $plan = \App\Domain\Pro::plan((string)$w['plan']) ? (string)$w['plan'] : 'monthly';
+        $days = (int)(\App\Domain\Pro::plan($plan)['days'] ?? 30);
+        $target = (int)($w['user_id'] ?? 0);
+        if ($target > 0 && \App\Domain\ProVoucher::grantPro($conn, $target, $plan, $days)) {
+            try { $d = $conn->prepare("DELETE FROM pro_waitlist WHERE id = ?"); if ($d) { $d->bind_param("i", $wid); $d->execute(); $d->close(); } } catch (Throwable $e) {}
+            set_flash('success', "Waitlist #{$wid} disetujui: Pro {$plan} {$days} hari.");
+        } else set_flash('warning', 'Butuh user_id valid untuk aktivasi otomatis.');
+        redirect('kelola-p7x2qm.php');
+    }
+    if ($action === 'decide_payment') {
+        $pid = (int)($_POST['pay_id'] ?? 0);
+        $dec = ($_POST['decision'] ?? '') === 'paid' ? 'paid' : 'rejected';
+        $p = null;
+        try { $g = $conn->prepare("SELECT id, user_id, plan FROM pro_payments WHERE id = ? AND status = 'pending'"); if ($g) { $g->bind_param("i", $pid); $g->execute(); $p = $g->get_result()->fetch_assoc(); $g->close(); } } catch (Throwable $e) {}
+        if (!$p) { set_flash('warning', 'Payment tidak pending.'); redirect('kelola-p7x2qm.php'); }
+        try { $u = $conn->prepare("UPDATE pro_payments SET status = ?, decided_at = NOW() WHERE id = ?"); if ($u) { $u->bind_param("si", $dec, $pid); $u->execute(); $u->close(); } } catch (Throwable $e) {}
+        if ($dec === 'paid') {
+            $plan = \App\Domain\Pro::plan((string)$p['plan']) ? (string)$p['plan'] : 'monthly';
+            \App\Domain\ProVoucher::grantPro($conn, (int)$p['user_id'], $plan, (int)(\App\Domain\Pro::plan($plan)['days'] ?? 30));
+        }
+        set_flash('success', "Payment #{$pid}: {$dec}.");
+        redirect('kelola-p7x2qm.php');
+    }
+    if ($action === 'add_sponsor') {
+        \App\Domain\Sponsor::ensureTables($conn);
+        $nm = \App\Domain\Sponsor::clean($_POST['sponsor_name'] ?? '');
+        $url = mb_substr(trim((string)($_POST['sponsor_url'] ?? '')), 0, 255);
+        if ($nm === '') set_flash('warning', 'Nama sponsor wajib.');
+        else { try { $s = $conn->prepare("INSERT INTO sponsors (name, url) VALUES (?, ?) ON DUPLICATE KEY UPDATE url = VALUES(url), active = 1"); if ($s) { $s->bind_param("ss", $nm, $url); $s->execute(); $s->close(); set_flash('success', 'Sponsor tersimpan.'); } } catch (Throwable $e) { set_flash('danger', 'Gagal simpan sponsor.'); } }
+        redirect('kelola-p7x2qm.php');
+    }
     $target = (int)($_POST['target_id'] ?? 0);
     if ($target <= 0) {
         set_flash('warning', 'User tidak valid.');
@@ -164,6 +200,13 @@ try {
     $stat_all['admins'] = \App\Domain\Auth\Roles::countAdmins($conn);
 } catch (Throwable $e) {}
 $vouchers = \App\Domain\ProVoucher::list($conn, 30);
+$waitlist = [];
+try { $r = $conn->query("SELECT id, contact, plan, note, user_id, created_at FROM pro_waitlist ORDER BY id DESC LIMIT 20"); if ($r) { $waitlist = $r->fetch_all(MYSQLI_ASSOC); $r->free(); } } catch (Throwable $e) {}
+$payments = [];
+try { $r = $conn->query("SELECT p.id, p.user_id, u.username, p.plan, p.amount, p.status, p.created_at FROM pro_payments p LEFT JOIN users u ON u.id = p.user_id WHERE p.status = 'pending' ORDER BY p.id DESC LIMIT 20"); if ($r) { $payments = $r->fetch_all(MYSQLI_ASSOC); $r->free(); } } catch (Throwable $e) {}
+\App\Domain\Sponsor::ensureTables($conn);
+$sponsors = [];
+try { $r = $conn->query("SELECT name, url FROM sponsors WHERE active = 1 ORDER BY name ASC"); if ($r) { $sponsors = $r->fetch_all(MYSQLI_ASSOC); $r->free(); } } catch (Throwable $e) {}
 $conn->close();
 $pages = max(1, (int)ceil($total / $per));
 $page_title = 'Kelola User';
@@ -217,6 +260,20 @@ require_once 'includes/navbar.php';
         <?php endforeach; ?>
         <?php if (!$vouchers): ?><p class="small text-muted mb-0">Belum ada voucher.</p><?php endif; ?>
     </div>
+
+    <div class="card p-4 mb-3"><h2 class="h5">Waitlist sekolah (<?= count($waitlist) ?>)</h2>
+    <?php foreach ($waitlist as $w): ?><div class="list-row"><div class="list-main"><p class="list-title">#<?= (int)$w['id'] ?> <?= htmlspecialchars($w['contact']) ?> · <?= htmlspecialchars($w['plan']) ?></p><p class="list-meta"><?= htmlspecialchars($w['note'] ?? '') ?> · user <?= (int)($w['user_id'] ?? 0) ?> · <?= htmlspecialchars($w['created_at']) ?></p></div>
+    <form method="POST" class="m-0"><?= csrf_field() ?><input type="hidden" name="admin_action" value="approve_waitlist"><input type="hidden" name="wait_id" value="<?= (int)$w['id'] ?>"><button class="btn btn-cyber btn-sm" type="submit">Setujui + aktifkan</button></form></div><?php endforeach; ?>
+    <?php if (!$waitlist): ?><p class="small text-muted mb-0">Kosong.</p><?php endif; ?></div>
+
+    <div class="card p-4 mb-3"><h2 class="h5">Payment pending (<?= count($payments) ?>)</h2>
+    <?php foreach ($payments as $p): ?><div class="list-row"><div class="list-main"><p class="list-title">#<?= (int)$p['id'] ?> <?= htmlspecialchars($p['username'] ?? '') ?> · <?= htmlspecialchars($p['plan']) ?> · Rp<?= (int)$p['amount'] ?></p></div>
+    <form method="POST" class="d-flex gap-1 m-0"><?= csrf_field() ?><input type="hidden" name="admin_action" value="decide_payment"><input type="hidden" name="pay_id" value="<?= (int)$p['id'] ?>"><button name="decision" value="paid" class="btn btn-cyber btn-sm" type="submit">Paid</button><button name="decision" value="rejected" class="btn btn-cyber-outline btn-sm" type="submit">Tolak</button></form></div><?php endforeach; ?>
+    <?php if (!$payments): ?><p class="small text-muted mb-0">Kosong.</p><?php endif; ?></div>
+
+    <div class="card p-4 mb-3"><h2 class="h5">Sponsor (<?= count($sponsors) ?>)</h2>
+    <form method="POST" class="row g-2 m-0 mb-2"><?= csrf_field() ?><input type="hidden" name="admin_action" value="add_sponsor"><div class="col-md-5"><input name="sponsor_name" class="form-control form-control-sm" maxlength="80" placeholder="Nama sponsor" required></div><div class="col-md-5"><input name="sponsor_url" class="form-control form-control-sm" maxlength="255" placeholder="https://… (opsional)"></div><div class="col-md-2"><button class="btn btn-cyber btn-sm w-100" type="submit">Simpan</button></div></form>
+    <?php foreach ($sponsors as $s): ?><p class="small mb-1"><?= htmlspecialchars($s['name']) ?><?= !empty($s['url']) ? ' · ' . htmlspecialchars($s['url']) : '' ?></p><?php endforeach; ?></div>
 
     <div class="card p-2">
         <?php if (!$rows): ?>

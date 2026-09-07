@@ -11,3 +11,8 @@ scratch/
 .env
 storage/cache/
 storage/migrate.lock
+app/storage/uploads/*
+!app/storage/uploads/.gitkeep
+.opencode/
+.playwright-mcp/
+opencode.json

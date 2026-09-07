@@ -145,7 +145,7 @@ define('DB_USER', $db_user);
 define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
-define('SCHEMA_VERSION', 37);
+define('SCHEMA_VERSION', 39);
 function is_pro(array $user): bool { return \App\Domain\Pro::isPro($user); }
 
 function quiz_topics($track = null) { return \App\Domain\Quiz\QuizBank::topics($track); }
@@ -436,8 +436,12 @@ function ensure_database_schema($conn) {
         @$conn->query("INSERT IGNORE INTO `skill_nodes` (`slug`, `name`, `icon`, `sort`) VALUES ('testing', 'Testing & QA', 'fas fa-vial', 11)");
         @$conn->query("INSERT IGNORE INTO `skill_nodes` (`slug`, `name`, `icon`, `sort`) VALUES ('desain', 'Desain & Visual', 'fas fa-palette', 12), ('uiux', 'UI/UX', 'fas fa-object-group', 13), ('motion', 'Motion', 'fas fa-film', 14)");
         try { \App\Domain\Dkv\Rubric::ensureTables($conn); } catch (Throwable $e2) {}
+        @$conn->query("CREATE TABLE IF NOT EXISTS `submission_files` (`id` INT AUTO_INCREMENT PRIMARY KEY, `owner_id` INT NOT NULL, `quest_id` INT NOT NULL, `path` VARCHAR(255) NOT NULL, `mime` VARCHAR(32) NOT NULL DEFAULT 'image/png', `size` INT NOT NULL DEFAULT 0, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT `uq_karya` UNIQUE (`owner_id`, `quest_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         @$conn->query("CREATE TABLE IF NOT EXISTS `pro_waitlist` (`id` INT AUTO_INCREMENT PRIMARY KEY, `contact` VARCHAR(140) NOT NULL, `plan` VARCHAR(16) NOT NULL DEFAULT 'monthly', `note` VARCHAR(255) NULL, `user_id` INT NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         @$conn->query("CREATE TABLE IF NOT EXISTS `pro_payments` (`id` INT AUTO_INCREMENT PRIMARY KEY, `user_id` INT NOT NULL, `plan` VARCHAR(16) NOT NULL, `amount` INT NOT NULL DEFAULT 0, `status` ENUM('pending','paid','rejected') NOT NULL DEFAULT 'pending', `proof` VARCHAR(500) NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, `decided_at` DATETIME NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `rubric_comments` (`id` INT AUTO_INCREMENT PRIMARY KEY, `quest_id` INT NOT NULL, `owner_id` INT NOT NULL, `author_id` INT NOT NULL, `note` VARCHAR(500) NOT NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `topo_saves` (`id` INT AUTO_INCREMENT PRIMARY KEY, `user_id` INT NOT NULL, `name` VARCHAR(80) NOT NULL DEFAULT 'topologi', `payload` TEXT NOT NULL, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        @$conn->query("CREATE TABLE IF NOT EXISTS `sponsors` (`id` INT AUTO_INCREMENT PRIMARY KEY, `name` VARCHAR(80) NOT NULL UNIQUE, `url` VARCHAR(255) NULL, `active` TINYINT NOT NULL DEFAULT 1, `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         // 8. Seed default quests and resources if quests table is empty
         $checkQuests = $conn->query("SELECT COUNT(*) AS total FROM `quests`");

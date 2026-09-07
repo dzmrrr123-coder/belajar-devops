@@ -134,6 +134,7 @@ try {
 } catch (Throwable $e) {}
 $certs = \App\Domain\Incident\Certificate::forUser($conn, $uid);
 $rubric_avg = \App\Domain\Dkv\Rubric::portfolioAvg($conn, $uid);
+$galeri = \App\Domain\Dkv\Karya::gallery($conn, $uid, 12);
 $avgScore = $incidents ? (int)round(array_sum(array_column($incidents, 'best')) / count($incidents)) : 0;
 $react_counts = []; $react_mine = [];
 $react_emojis = \App\Domain\Social\Reactions::emojis();
@@ -217,6 +218,17 @@ require_once 'includes/header.php';
     <section class="card p-4 mb-3" aria-label="Nilai karya">
         <h2 class="h5 fw-bold mb-1">Nilai karya · <?= htmlspecialchars((string)$rubric_avg['avg']) ?>/5</h2>
         <p class="text-secondary small mb-0">Rubrik DKV (konsep, tipografi, warna, layout, presentasi) · <?= (int)$rubric_avg['quests'] ?> karya dinilai.</p>
+    </section>
+    <?php endif; ?>
+    <?php if ($galeri): ?>
+    <section class="card p-4 mb-3" aria-label="Galeri karya">
+        <h2 class="h5 fw-bold mb-1">Galeri karya (<?= count($galeri) ?>)</h2>
+        <p class="text-secondary small mb-3">Bukti visual dari quest yang dikerjakan.</p>
+        <div class="d-flex flex-wrap gap-2">
+        <?php foreach ($galeri as $g): ?>
+            <a href="karya.php?id=<?= (int)$g['id'] ?>" target="_blank" rel="noopener" title="<?= htmlspecialchars($g['title']) ?>"><img src="karya.php?id=<?= (int)$g['id'] ?>" alt="<?= htmlspecialchars($g['title']) ?>" loading="lazy" style="width:120px;height:90px;object-fit:cover;border-radius:8px"></a>
+        <?php endforeach; ?>
+        </div>
     </section>
     <?php endif; ?>
     <section class="card p-4">

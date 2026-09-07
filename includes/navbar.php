@@ -30,7 +30,7 @@ if (is_logged_in()) {
     }
 }
 
-$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'incident.php', 'progress.php', 'certificate.php', 'feedback.php', 'team.php', 'kelas.php', 'skills.php', 'digest.php', 'shop.php', 'leaderboard.php', 'squad.php', 'duels.php', 'season.php', 'search.php'], true);
+$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'incident.php', 'lab.php', 'playground.php', 'topologi.php', 'terminal.php', 'sponsor.php', 'mentor.php', 'brief.php', 'progress.php', 'certificate.php', 'feedback.php', 'team.php', 'kelas.php', 'skills.php', 'digest.php', 'shop.php', 'leaderboard.php', 'squad.php', 'duels.php', 'season.php', 'search.php'], true);
 ?>
 <nav class="lt-navbar navbar navbar-expand-lg" aria-label="Navigasi Utama">
     <div class="container lt-navbar-inner">
@@ -84,6 +84,13 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
                     <a class="lt-nav-link dropdown-toggle <?= $more_active ? 'active' : '' ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Jelajah</a>
                     <ul class="dropdown-menu lt-menu lt-menu-grouped p-2">
                         <li class="lt-menu-label" aria-hidden="true">Belajar</li>
+                        <li><a class="dropdown-item <?= $current_script === 'mentor.php' ? 'active' : '' ?>" href="mentor.php"><i class="fas fa-robot"></i>Mentor <small>rekomendasi</small></a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'lab.php' ? 'active' : '' ?>" href="lab.php"><i class="fas fa-flask"></i>Lab <small>RPL·TKJ·DKV</small></a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'playground.php' ? 'active' : '' ?>" href="playground.php"><i class="fas fa-code"></i>Playground <small>eksekusi</small></a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'topologi.php' ? 'active' : '' ?>" href="topologi.php"><i class="fas fa-network-wired"></i>Topologi <small>subnet</small></a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'terminal.php' ? 'active' : '' ?>" href="terminal.php"><i class="fas fa-terminal"></i>Terminal <small>Linux</small></a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'brief.php' ? 'active' : '' ?>" href="brief.php"><i class="fas fa-pen-nib"></i>Brief <small>DKV</small></a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'sponsor.php' ? 'active' : '' ?>" href="sponsor.php"><i class="fas fa-handshake"></i>Sponsor</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'incident.php' ? 'active' : '' ?>" href="incident.php"><i class="fas fa-fire-extinguisher"></i>Incident <small>simulator Pro</small></a></li>
                         <li><a class="dropdown-item <?= $current_script === 'quiz.php' ? 'active' : '' ?>" href="quiz.php"><i class="fas fa-brain"></i>Kuis <small>kilat 60 dtk</small></a></li>
                         <li><a class="dropdown-item <?= $current_script === 'questions.php' ? 'active' : '' ?>" href="questions.php"><i class="fas fa-circle-question"></i>Questions</a></li>

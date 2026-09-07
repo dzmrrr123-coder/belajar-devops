@@ -81,7 +81,7 @@ require_once 'includes/navbar.php';
 <main class="container py-4" role="main">
 <div class="page-head"><div class="page-kicker eyebrow">Premium challenge · bukti skill nyata</div>
 <h1 class="page-title">Incident simulator</h1>
-<p class="page-desc">Baca log, pilih diagnosis, pilih fix aman. Dinilai: score, waktu, kesalahan + feedback.<?= $amPro ? '' : ' Gratis: 2 lab. Pro: 9 lab + sertifikat.' ?></p></div>
+<p class="page-desc">Baca log, pilih diagnosis, pilih fix aman. Dinilai: score, waktu, kesalahan + feedback.<?= $amPro ? '' : ' Gratis: 2 lab. Pro: 14 lab + sertifikat.' ?></p></div>
 <?php if ($result): $rc = $result['ch']; ?>
 <section class="card p-4 mb-3" aria-label="Hasil">
 <div class="page-kicker">Grade <?= htmlspecialchars($result['grade']) ?> · Score <?= (int)$result['score'] ?>/100</div>

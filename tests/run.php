@@ -278,7 +278,7 @@ check('normalize uiux', normalize_skill('wireframe figma'), 'UI/UX');
 check('mastery node desain', \App\Domain\Skill\Mastery::nodeForSkill('Tipografi'), 'desain');
 check('mastery node uiux', \App\Domain\Skill\Mastery::nodeForSkill('UI/UX'), 'uiux');
 check('mastery node motion', \App\Domain\Skill\Mastery::nodeForSkill('Motion'), 'motion');
-check('incident 11 lab', count(\App\Domain\Incident\IncidentBank::all()), 11);
+check('incident 16 lab', count(\App\Domain\Incident\IncidentBank::all()), 16);
 $incSlugs = array_column(\App\Domain\Incident\IncidentBank::all(), 'slug');
 check('incident unik', count($incSlugs) === count(array_unique($incSlugs)), true);
 $incFree = count(array_filter(\App\Domain\Incident\IncidentBank::all(), fn($c) => empty($c['is_pro'])));
@@ -293,6 +293,9 @@ check('rubrik avg campur', \App\Domain\Dkv\Rubric::weightedAvg(['konsep' => 4, '
 check('rubrik avg kosong', \App\Domain\Dkv\Rubric::weightedAvg([]), 0.0);
 check('rubrik clamp', \App\Domain\Dkv\Rubric::clampScore(9), 5);
 check('rubrik clamp bawah', \App\Domain\Dkv\Rubric::clampScore(-2), 1);
+check('karya tolak kosong', \App\Domain\Dkv\Karya::validate([])['ok'], false);
+check('karya maks 3mb', \App\Domain\Dkv\Karya::MAX_BYTES, 3145728);
+check('karya tipe allowed', count(\App\Domain\Dkv\Karya::ALLOWED), 4);
 $cardTopics = array_unique(array_map(fn($c) => $c[0], quiz_bank_cards()));
 foreach (['devops', 'rpl', 'tkj', 'dkv'] as $tr) {
     foreach (quiz_topics($tr) as $tt) {
@@ -300,6 +303,45 @@ foreach (['devops', 'rpl', 'tkj', 'dkv'] as $tr) {
         check("bank cover $tr:$tt", in_array($tt, $cardTopics, true), true);
     }
 }
+check('mentor 3 rec', count(\App\Domain\Mentor::recommend(['track' => 'rpl', 'due_reviews' => 2, 'incident_tries' => 0, 'incident_avg' => 0, 'quest_pct' => 40])), 3);
+check('mentor recovery', \App\Domain\Mentor::recommend(['track' => 'tkj', 'streak_broken' => true, 'quest_pct' => 100])[0]['reason'], 'recovery');
+check('mentor gap', in_array('gap', array_column(\App\Domain\Mentor::recommend(['track' => 'dkv', 'skill_gap' => 'Tipografi', 'quest_pct' => 50]), 'reason')), true);
+check('lab 9 total', count(\App\Domain\Lab\LabBank::all()), 9);
+check('lab rpl 3', count(\App\Domain\Lab\LabBank::forTrack('rpl')), 3);
+check('lab tkj 3', count(\App\Domain\Lab\LabBank::forTrack('tkj')), 3);
+check('lab dkv 3', count(\App\Domain\Lab\LabBank::forTrack('dkv')), 3);
+check('lab mcq benar', \App\Domain\Lab\LabBank::grade(\App\Domain\Lab\LabBank::find('rpl-output-php'), '1'), true);
+check('lab mcq salah', \App\Domain\Lab\LabBank::grade(\App\Domain\Lab\LabBank::find('rpl-output-php'), '0'), false);
+check('lab calc benar', \App\Domain\Lab\LabBank::grade(\App\Domain\Lab\LabBank::find('tkj-subnet-dasar'), '254'), true);
+check('lab calc salah', \App\Domain\Lab\LabBank::grade(\App\Domain\Lab\LabBank::find('tkj-subnet-dasar'), '255'), false);
+check('lab sponsor ada', in_array(true, array_map(fn($l) => !empty($l['sponsor']), \App\Domain\Lab\LabBank::all())), true);
+check('brief 6', count(\App\Domain\Dkv\Brief::all()), 6);
+check('brief minggu 5', \App\Domain\Dkv\Brief::forWeek(5)['slug'], 'landing-ppdb');
+check('pro school plan', \App\Domain\Pro::plan('school')['price'], 99000);
+check('pro school fitur', count(\App\Domain\Pro::features('school')), 4);
+check('pg tasks 4', count(\App\Domain\Playground::tasks()), 4);
+check('pg php aman', \App\Domain\Playground::safePhpOutput('$a = 5; echo $a + 3;')['output'], '8');
+check('pg php tolak eval', \App\Domain\Playground::safePhpOutput('eval("x")')['ok'], false);
+check('pg php tolak system', \App\Domain\Playground::safePhpOutput('system("ls")')['ok'], false);
+check('pg php ternary', \App\Domain\Playground::safePhpOutput('echo 5 >= 3 ? "Y" : "N";')['output'], 'Y');
+check('pg grade php', \App\Domain\Playground::grade('php-diskon', '$harga = 100000; $diskon = 10; echo $harga - ($harga * $diskon / 100);'), true);
+check('pg grade sql', \App\Domain\Playground::grade('sql-stok', 'stok > 10'), true);
+check('pg sql and', implode(',', \App\Domain\Playground::filterIds('stok > 10 AND harga < 100000')), '3');
+check('pg js grade', \App\Domain\Playground::grade('js-loop', '15'), true);
+check('topo /24 hosts', \App\Domain\Tkj\Topo::parse('192.168.1.0/24')['hosts'], 254);
+check('topo network', \App\Domain\Tkj\Topo::parse('192.168.1.0/24')['network'], '192.168.1.0');
+check('topo broadcast', \App\Domain\Tkj\Topo::parse('192.168.1.0/24')['broadcast'], '192.168.1.255');
+check('topo private', \App\Domain\Tkj\Topo::parse('10.0.0.0/8')['private'], true);
+check('topo tolak', \App\Domain\Tkj\Topo::parse('asal')['ok'], false);
+check('term help', strpos(\App\Domain\Tkj\Terminal::exec([], 'help')['out'], 'pwd') !== false, true);
+check('term unknown', strpos(\App\Domain\Tkj\Terminal::exec([], 'rm -rf /')['out'], 'unknown') !== false, true);
+$ts = \App\Domain\Tkj\Terminal::exec([], 'chown -R www-data:www-data /var/www')['state'];
+$ts = \App\Domain\Tkj\Terminal::exec($ts, 'chmod 755 /var/www')['state'];
+check('term misi www', \App\Domain\Tkj\Terminal::missionDone($ts, \App\Domain\Tkj\Terminal::find('fix-www')), true);
+check('term belum', \App\Domain\Tkj\Terminal::missionDone([], \App\Domain\Tkj\Terminal::find('fix-www')), false);
+check('critique valid', \App\Domain\Dkv\Critique::valid('Bagus, rapikan spacing'), true);
+check('critique pendek', \App\Domain\Dkv\Critique::valid('ok'), false);
+check('sponsor clean', \App\Domain\Sponsor::clean('  Studio  X  '), 'Studio X');
 
 echo "pass: {$pass}, fail: {$fail}" . PHP_EOL;
 exit($fail > 0 ? 1 : 0);

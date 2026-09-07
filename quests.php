@@ -70,11 +70,22 @@ foreach ($st->get_result()->fetch_all(MYSQLI_ASSOC) as $s) $subtasks_by_quest[(i
 $st->close();
 
 $ev_map = \App\Domain\Quest\Evidence::forQuests($conn, $user_id, array_map(fn($x) => (int)$x['id'], $all_quests));
+$karya_map = \App\Domain\Dkv\Karya::forQuests($conn, $user_id, array_map(fn($x) => (int)$x['id'], $all_quests));
 $rubric_sums = [];
 $rubric_criteria = [];
+$critique_map = [];
 if ($myTrack === 'dkv') {
     $rubric_criteria = \App\Domain\Dkv\Rubric::criteria();
     $rubric_sums = \App\Domain\Dkv\Rubric::summaries($conn, $user_id, array_map(fn($x) => (int)$x['id'], $all_quests));
+    \App\Domain\Dkv\Critique::ensureTables($conn);
+    try {
+        $ids = array_map(fn($x) => (int)$x['id'], $all_quests);
+        if ($ids) {
+            $in = implode(',', $ids);
+            $r = $conn->query("SELECT c.quest_id, c.note, c.created_at, u.username FROM rubric_comments c JOIN users u ON u.id = c.author_id WHERE c.owner_id = " . (int)$user_id . " AND c.quest_id IN ($in) ORDER BY c.id DESC LIMIT 60");
+            if ($r) { foreach ($r->fetch_all(MYSQLI_ASSOC) as $row) $critique_map[(int)$row['quest_id']][] = $row; $r->free(); }
+        }
+    } catch (Throwable $e) {}
 }
 
 // Compute stats
@@ -131,6 +142,7 @@ require_once 'includes/navbar.php';
             <noscript><button class="btn btn-cyber-outline btn-sm" type="submit">Ganti</button></noscript>
         </form>
         <p class="page-desc">Roadmap 12 minggu. Centang quest yang selesai = XP masuk. (<?= $xp_earned ?>/<?= $total_xp_possible ?> XP · <span id="roadmapPct"><?= $completion_rate ?></span>%)</p>
+        <div class="d-flex flex-wrap gap-2 mt-2"><a class="btn btn-cyber-outline btn-sm" href="mentor.php">Tanya Mentor</a><a class="btn btn-cyber-outline btn-sm" href="lab.php">Lab praktik</a><?php if ($myTrack === 'dkv'): ?><a class="btn btn-cyber-outline btn-sm" href="brief.php">Brief DKV</a><?php endif; ?></div>
         <div class="xp-progress-bar" id="roadmapBarWrap" role="progressbar" aria-valuenow="<?= $completion_rate ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres roadmap"><div class="xp-progress-fill" id="roadmapBar" style="width: <?= $completion_rate ?>%;"></div></div>
     </div>
 
@@ -238,6 +250,15 @@ require_once 'includes/navbar.php';
                                             <div class="d-flex flex-column gap-1 mt-1">
                                                 <input name="evidence_url" form="qt-<?= $qid ?>" class="form-control form-control-sm" placeholder="Link repo / output…" maxlength="500" inputmode="url" aria-label="Link bukti quest">
                                                 <input name="evidence_note" form="qt-<?= $qid ?>" class="form-control form-control-sm" placeholder="Catatan singkat…" maxlength="500" aria-label="Catatan bukti quest">
+                                                <?php $kw = $karya_map[$qid] ?? null; if ($kw): ?>
+                                                <a href="karya.php?id=<?= (int)$kw['id'] ?>" target="_blank" rel="noopener"><img src="karya.php?id=<?= (int)$kw['id'] ?>" alt="Karya quest" loading="lazy" style="max-width:120px;border-radius:8px"></a>
+                                                <?php endif; ?>
+                                                <form method="POST" action="karya_upload.php" enctype="multipart/form-data" class="d-flex gap-1 m-0">
+                                                    <?= csrf_field() ?>
+                                                    <input type="hidden" name="quest_id" value="<?= $qid ?>">
+                                                    <input type="file" name="karya" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.webp,.gif" aria-label="Upload karya">
+                                                    <button class="btn btn-cyber-outline btn-sm flex-shrink-0" type="submit">Upload</button>
+                                                </form>
                                             </div>
                                         </details>
                                         <?php endif; ?>
@@ -276,6 +297,8 @@ require_once 'includes/navbar.php';
                                                 <input name="note" class="form-control form-control-sm" maxlength="300" placeholder="Catatan (opsional)" aria-label="Catatan rubrik">
                                                 <button class="btn btn-cyber-outline btn-sm" type="submit">Simpan nilai</button>
                                             </form>
+                                            <?php foreach (($critique_map[$qid] ?? []) as $cm): ?><p class="small mb-1"><strong><?= htmlspecialchars($cm['username']) ?>:</strong> <?= htmlspecialchars($cm['note']) ?></p><?php endforeach; ?>
+                                            <form method="POST" action="critique.php" class="d-flex gap-1 m-0"><?= csrf_field() ?><input type="hidden" name="quest_id" value="<?= $qid ?>"><input type="hidden" name="owner_id" value="<?= (int)$user_id ?>"><input name="note" class="form-control form-control-sm" maxlength="500" placeholder="Minta critique / balas…" aria-label="Critique"><button class="btn btn-cyber-outline btn-sm" type="submit">Kirim</button></form>
                                             </div>
                                         </details>
                                         <?php endif; ?>
