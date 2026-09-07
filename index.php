@@ -122,8 +122,8 @@ require_once 'includes/navbar.php';
 ?>
 
 <main class="container py-4" role="main">
-    <div class="page-head">
-        <div class="page-kicker"><span data-greet>Semangat</span> · Minggu <?= $selected_week ?> dari 12 · <?= count($quests) ?> quest</div>
+    <div class="page-head arena-banner">
+        <div class="page-kicker eyebrow"><span data-greet>Semangat</span> · Minggu <?= $selected_week ?> dari 12 · <?= count($quests) ?> quest</div>
         <h1 class="page-title"><?= !empty($quests) ? 'Fokus: ' . htmlspecialchars($quests[0]['title']) : 'Belum ada quest minggu ini' ?></h1>
         <p class="page-desc">Pilih satu target hari ini. Selesai = XP masuk otomatis.</p>
         <div class="page-actions overview-actions">

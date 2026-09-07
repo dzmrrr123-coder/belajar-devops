@@ -49,9 +49,11 @@ require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
-    <div class="page-head">
-        <div class="page-kicker">Minggu <?= htmlspecialchars($week_key) ?> · pemenang +15 XP</div>
+    <?php $duel_active = count(array_filter($duels, fn($d) => in_array($d['status'] ?? '', ['pending', 'active'], true))); $duel_wins = count(array_filter($duels, fn($d) => (int)($d['winner_id'] ?? 0) === $user_id)); ?>
+    <div class="page-head arena-banner">
+        <div class="page-kicker eyebrow">Minggu <?= htmlspecialchars($week_key) ?> · pemenang +15 XP</div>
         <h1 class="page-title">Duel 1v1</h1>
+        <div class="hero-num"><?= $duel_wins ?> <small>menang · <?= $duel_active ?> berjalan</small></div>
         <p class="page-desc">Tantang teman, adu XP seminggu. Selesaikan setelah minggunya berakhir.</p>
     </div>
     <section class="card p-4 mb-3" aria-label="Tantang duel">
@@ -66,15 +68,22 @@ require_once 'includes/navbar.php';
     </section>
     <div class="card p-2">
         <?php if (!$duels): ?><p class="text-secondary small p-3 mb-0">Belum ada duel. Tantang seseorang!</p><?php endif; ?>
-        <?php foreach ($duels as $d): $did = (int)$d['id']; $is_ch = ((int)$d['challenger_id'] === $user_id); $foe = $is_ch ? $d['oname'] : $d['cname']; $sc = $scores[$did] ?? null; ?>
-        <div class="list-row align-items-start">
-            <div class="list-main">
+        <?php foreach ($duels as $d): $did = (int)$d['id']; $is_ch = ((int)$d['challenger_id'] === $user_id); $foe = $is_ch ? $d['oname'] : $d['cname']; $sc = $scores[$did] ?? null; $dwin = (int)($d['winner_id'] ?? 0) === $user_id; $dlose = !empty($d['winner_id']) && !$dwin; ?>
+        <div class="list-row align-items-start<?= $dwin ? ' vs-winner' : '' ?>">
+            <div class="list-main" style="width:100%">
+                <?php if ($sc && ($d['status'] ?? '') !== 'pending'): ?>
+                <div class="vs-arena">
+                    <div class="vs-side"><span class="avatar-circle avatar-sm" aria-hidden="true"><?= strtoupper(substr($is_ch ? $_SESSION['username'] ?? 'K' : $foe, 0, 1)) ?></span><strong><?= $is_ch ? 'Kamu' : htmlspecialchars($foe) ?></strong><span class="vs-score"><?= (int)($is_ch ? $sc['c'] : $sc['o']) ?></span></div>
+                    <div><span class="vs-emblem" aria-hidden="true">VS</span><div><small class="text-muted"><?= htmlspecialchars($d['week_key']) ?></small></div></div>
+                    <div class="vs-side"><span class="avatar-circle avatar-sm" aria-hidden="true"><?= strtoupper(substr($is_ch ? $foe : $_SESSION['username'] ?? 'K', 0, 1)) ?></span><strong><?= $is_ch ? htmlspecialchars($foe) : 'Kamu' ?></strong><span class="vs-score"><?= (int)($is_ch ? $sc['o'] : $sc['c']) ?></span></div>
+                </div>
+                <?php endif; ?>
                 <p class="list-title">vs <?= htmlspecialchars($foe) ?>
                     <?php if (($d['status'] ?? '') === 'pending'): ?><span class="quest-pending">Menunggu</span>
                     <?php elseif (($d['status'] ?? '') === 'active'): ?><span class="quest-pending">Berjalan</span>
-                    <?php else: ?><span class="quest-done"><i class="fas fa-check" aria-hidden="true"></i>Selesai<?= $d['winner_id'] ? (((int)$d['winner_id'] === $user_id) ? ' · Kamu menang!' : ' · Kamu kalah') : ' · Seri' ?></span><?php if ((int)($d['winner_id'] ?? 0) === $user_id): ?> <a href="duels.php?vs=<?= urlencode($foe) ?>" class="small">Rematch</a><?php endif; ?><?php endif; ?>
+                    <?php else: ?><span class="quest-done"><i class="fas fa-check" aria-hidden="true"></i>Selesai<?= $d['winner_id'] ? ($dwin ? ' · Kamu menang!' : ' · Kamu kalah') : ' · Seri' ?></span><?php if ($dwin): ?> <a href="duels.php?vs=<?= urlencode($foe) ?>" class="small">Rematch</a><?php endif; ?><?php endif; ?>
                 </p>
-                <p class="list-meta"><?= htmlspecialchars($d['week_key']) ?> · <?= $is_ch ? 'kamu menantang' : 'kamu ditantang' ?><?php if ($sc): ?> · <?= (int)$sc['c'] ?> vs <?= (int)$sc['o'] ?> XP<?php endif; ?></p>
+                <p class="list-meta"><?= htmlspecialchars($d['week_key']) ?> · <?= $is_ch ? 'kamu menantang' : 'kamu ditantang' ?><?php if ($sc && ($d['status'] ?? '') === 'pending'): ?> · <?= (int)$sc['c'] ?> vs <?= (int)$sc['o'] ?> XP<?php endif; ?></p>
                 <div class="d-flex flex-wrap gap-2 mt-2">
                     <?php if (($d['status'] ?? '') === 'pending' && !$is_ch): ?>
                     <form method="POST" action="duels.php" class="m-0"><<?= csrf_field() ?><input type="hidden" name="duel_action" value="accept"><input type="hidden" name="duel_id" value="<?= $did ?>"><button class="btn btn-cyber btn-sm" type="submit">Terima</button></form>

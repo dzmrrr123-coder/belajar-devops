@@ -146,8 +146,8 @@ require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
-    <div class="page-head">
-        <div class="page-kicker">Level <?= $level ?> · <?= htmlspecialchars($rank) ?></div>
+    <div class="page-head arena-banner">
+        <div class="page-kicker eyebrow">Level <?= $level ?> · <?= htmlspecialchars($rank) ?></div>
         <div class="d-flex align-items-center gap-3 mb-2">
             <span class="avatar-circle avatar-xl frame-<?= htmlspecialchars($user['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($user['username'], 0, 1)) ?></span>
             <h1 class="page-title mb-0"><?= htmlspecialchars($user['username']) ?><?php if (!empty($user['flair'])): ?> <span class="flair-badge"><?= htmlspecialchars($user['flair']) ?></span><?php endif; ?></h1>

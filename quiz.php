@@ -232,9 +232,10 @@ require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 <main class="container py-4 quiz-page" role="main">
-    <div class="page-head">
-        <div class="page-kicker"><?= $total_cards ?> kartu · <?= $due_count ?> jatuh tempo · kuota <span id="quizQuota">+<?= $quiz_quota_left ?> XP</span> hari ini</div>
+    <div class="page-head arena-banner">
+        <div class="page-kicker eyebrow"><?= $total_cards ?> kartu · <?= $due_count ?> jatuh tempo</div>
         <h1 class="page-title">Kuis</h1>
+        <div class="hero-num">+<?= $quiz_quota_left ?> <small>XP kuota hari ini</small></div>
         <p class="page-desc">Hafalan kilat satu kartu satu waktu. Tahu = +2 XP (maks +<?= QUIZ_DAILY_XP_CAP ?>/hari).</p>
         <div class="page-actions leaderboard-actions">
             <div class="segmented" role="group" aria-label="Mode kuis">

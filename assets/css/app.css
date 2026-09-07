@@ -6,6 +6,7 @@
 --ink:#1c2420;--muted:#55605a;--faint:#6d7671;
 --primary:#2f6b5e;--primary-hover:#254f46;--primary-soft:#e7efec;
 --warning:#8a6d2b;--warning-soft:#f6f0dd;
+--gold:#c9a13b;--gold-hi:#f2d57e;--gold-deep:#8a6d1f;--gold-ink:#241a08;--gold-soft:#f6efdc;
 --danger:#a44a3f;--danger-soft:#f9ecea;
 --success:#2f6b5e;--success-soft:#e7efec;
 --r-sm:10px;--r-md:10px;
@@ -515,6 +516,7 @@ section[aria-labelledby="continue-material-heading"] .list-meta,section[aria-lab
 --ink:#e8ede9;--muted:#a9b5ad;--faint:#8b958d;
 --primary:#63b39b;--primary-hover:#7cc4ae;--primary-soft:#1e2f2a;
 --warning:#d3a94e;--warning-soft:#2e2a1a;
+--gold:#d3a94e;--gold-hi:#f2d57e;--gold-deep:#8a6d1f;--gold-ink:#241a08;--gold-soft:#2e2a1a;
 --danger:#d98a7c;--danger-soft:#33201c;
 --success:#63b39b;--success-soft:#1e2f2a;
 --shadow-md:0 12px 32px rgba(0,0,0,.45);

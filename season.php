@@ -35,10 +35,11 @@ require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
-    <div class="page-head">
-        <div class="page-kicker">Season <?= htmlspecialchars(Season::label($key)) ?> · reset tiap bulan</div>
+    <div class="page-head arena-banner">
+        <div class="page-kicker eyebrow">Season <?= htmlspecialchars(Season::label($key)) ?> · reset tiap bulan<?= $premium ? ' · <span class="rar-tag rar-legendary">Emas aktif</span>' : '' ?></div>
         <h1 class="page-title">Season Pass</h1>
-        <p class="page-desc"><strong>+<?= $sxp ?> XP</strong> terkumpul musim ini · hadiah tak diklaim hangus akhir bulan.</p>
+        <div class="hero-num">+<?= $sxp ?> <small>XP musim ini</small></div>
+        <p class="page-desc">Hadiah tak diklaim hangus akhir bulan.</p>
         <?php if (!$premium): ?>
         <form method="POST" action="season.php" class="m-0 mt-2">
             <?= csrf_field() ?>
@@ -49,12 +50,13 @@ require_once 'includes/navbar.php';
         <p class="mt-2 mb-0"><span class="quest-done"><i class="fas fa-crown" aria-hidden="true"></i>Track emas aktif</span></p>
         <?php endif; ?>
     </div>
-    <div class="card p-2">
-        <?php foreach ($tiers as $t => $def): $reached = $sxp >= $def['xp']; $cf = isset($claimed[$t . ':free']); $cp = isset($claimed[$t . ':premium']); ?>
-        <div class="list-row align-items-start">
+    <div class="card p-4 tier-rail">
+        <?php foreach ($tiers as $t => $def): $reached = $sxp >= $def['xp']; $cf = isset($claimed[$t . ':free']); $cp = isset($claimed[$t . ':premium']); $tdone = $cf && ($cp || !$premium); $tnow = !$tdone && $reached; ?>
+        <div class="tier-node<?= $tdone ? ' done' : '' ?><?= $tnow ? ' now' : '' ?> mb-3">
             <div class="list-main">
                 <p class="list-title">Tier <?= $t ?> <small class="text-muted">· <?= $def['xp'] ?> XP</small>
-                    <?php if ($cf && ($cp || !$premium)): ?><span class="quest-done"><i class="fas fa-check" aria-hidden="true"></i></span><?php endif; ?>
+                    <?php if ($tdone): ?><span class="quest-done"><i class="fas fa-check" aria-hidden="true"></i></span><?php endif; ?>
+                    <?php if ($premium && !$cp && $reached): ?><span class="rar-tag rar-legendary">Emas siap</span><?php endif; ?>
                 </p>
                 <div class="d-flex flex-wrap gap-2 mt-2">
                     <?php if ($cf): ?>

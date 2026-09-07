@@ -77,46 +77,53 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $me = $stmt->get_result()->fetch_assoc() ?: ['xp' => 0, 'freeze_tokens' => 0, 'flair' => null];
 $stmt->close();
-$conn->close();
 $flair_price = !empty($me['flair']) ? SHOP_FLAIR_EDIT_PRICE : SHOP_FLAIR_PRICE;
 $loot_items = \App\Domain\Shop::lootFrames();
 $loot_owned = \App\Domain\Shop::ownedFrames($conn, $user_id);
+$conn->close();
 
 $page_title = 'Toko XP';
 require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
-    <div class="page-head">
-        <div class="page-kicker">Saldo: <?= (int)$me['xp'] ?> XP · freeze <?= (int)$me['freeze_tokens'] ?>/<?= SHOP_FREEZE_MAX ?></div>
+    <div class="page-head arena-banner">
+        <div class="page-kicker eyebrow">Toko XP · freeze <?= (int)$me['freeze_tokens'] ?>/<?= SHOP_FREEZE_MAX ?></div>
         <h1 class="page-title">Toko XP</h1>
+        <div class="hero-num"><?= number_format((int)$me['xp']) ?> <small>XP saldo</small></div>
         <p class="page-desc">Belanjakan XP: freeze penyelamat streak, flair nama, atau kocokan untung-untungan.</p>
     </div>
 
-    <div class="skill-grid">
-        <section class="card skill-card" aria-label="Beli freeze">
+    <div class="skill-grid showcase">
+        <section class="card skill-card showcase-item rar rar-rare" aria-label="Beli freeze">
+            <div class="showcase-art" aria-hidden="true"></div>
             <div class="skill-top"><span class="skill-icon" aria-hidden="true"><i class="fas fa-snowflake"></i></span><div class="skill-id"><strong>Freeze +1</strong><small>selamatkan streak 1 hari · maks <?= SHOP_FREEZE_MAX ?></small></div></div>
-            <form method="POST" action="shop.php" class="m-0">
+            <div class="showcase-price"><?= SHOP_FREEZE_PRICE ?> <small>XP</small></div>
+            <form method="POST" action="shop.php" class="m-0 mt-2">
                 <?= csrf_field() ?>
                 <input type="hidden" name="shop_action" value="buy_freeze">
-                <button class="btn btn-cyber w-100 btn-sm" type="submit" <?= (int)$me['freeze_tokens'] >= SHOP_FREEZE_MAX ? 'disabled' : '' ?>>Beli · <?= SHOP_FREEZE_PRICE ?> XP</button>
+                <button class="btn btn-cyber w-100 btn-sm" type="submit" <?= (int)$me['freeze_tokens'] >= SHOP_FREEZE_MAX ? 'disabled' : '' ?>>Beli</button>
             </form>
         </section>
-        <section class="card skill-card" aria-label="Flair profil">
+        <section class="card skill-card showcase-item rar rar-common" aria-label="Flair profil">
+            <div class="showcase-art" aria-hidden="true"></div>
             <div class="skill-top"><span class="skill-icon" aria-hidden="true"><i class="fas fa-tag"></i></span><div class="skill-id"><strong>Flair profil</strong><small>tampil di leaderboard &amp; profil · maks 24 karakter</small></div></div>
-            <form method="POST" action="shop.php" class="m-0 d-flex flex-column gap-2">
+            <div class="showcase-price"><?= $flair_price ?> <small>XP</small></div>
+            <form method="POST" action="shop.php" class="m-0 d-flex flex-column gap-2 mt-2">
                 <?= csrf_field() ?>
                 <input type="hidden" name="shop_action" value="buy_flair">
                 <input name="flair" class="form-control form-control-sm" maxlength="24" placeholder="cth: Begadang enjoyer" value="<?= htmlspecialchars($me['flair'] ?? '') ?>" aria-label="Teks flair">
-                <button class="btn btn-cyber w-100 btn-sm" type="submit">Pasang · <?= $flair_price ?> XP</button>
+                <button class="btn btn-cyber w-100 btn-sm" type="submit">Pasang</button>
             </form>
         </section>
-        <section class="card skill-card" aria-label="Kocok untung">
+        <section class="card skill-card showcase-item rar rar-epic" aria-label="Kocok untung">
+            <div class="showcase-art" aria-hidden="true"></div>
             <div class="skill-top"><span class="skill-icon" aria-hidden="true"><i class="fas fa-dice"></i></span><div class="skill-id"><strong>Kocok untung</strong><small>20 XP → 5–30 XP acak · bandar selalu menang</small></div></div>
-            <form method="POST" action="shop.php" class="m-0">
+            <div class="showcase-price"><?= SHOP_REROLL_PRICE ?> <small>XP</small></div>
+            <form method="POST" action="shop.php" class="m-0 mt-2">
                 <?= csrf_field() ?>
                 <input type="hidden" name="shop_action" value="buy_reroll">
-                <button class="btn btn-cyber w-100 btn-sm" type="submit">Kocok · <?= SHOP_REROLL_PRICE ?> XP</button>
+                <button class="btn btn-cyber w-100 btn-sm" type="submit">Kocok</button>
             </form>
         </section>
     </div>
@@ -126,10 +133,12 @@ require_once 'includes/navbar.php';
         <h2 class="page-title h4">Loot musiman</h2>
         <p class="page-desc">Bingkai avatar yang tak kembali lagi. Sekali punya, selamanya.</p>
     </div>
-    <div class="skill-grid">
+    <div class="skill-grid showcase">
         <?php foreach ($loot_items as $loot): $lopen = \App\Domain\Shop::lootAvailable($loot); $lowned = in_array($loot['frame'], $loot_owned, true); ?>
-        <section class="card skill-card" aria-label="Frame <?= htmlspecialchars($loot['name']) ?>">
-            <div class="skill-top"><span class="avatar-circle frame-<?= htmlspecialchars($loot['frame']) ?>" aria-hidden="true"><?= strtoupper(substr((string)($_SESSION['username'] ?? 'L'), 0, 1)) ?></span><div class="skill-id"><strong><?= htmlspecialchars($loot['name']) ?></strong><small><?= htmlspecialchars($loot['hint']) ?><?= $lowned ? ' · sudah milikmu' : '' ?></small></div></div>
+        <section class="card skill-card showcase-item rar rar-golden<?= ($lopen && !$lowned) ? ' rar-anim' : '' ?>" aria-label="Frame <?= htmlspecialchars($loot['name']) ?>">
+            <div class="showcase-art" aria-hidden="true"></div>
+            <div class="skill-top"><span class="avatar-circle frame-<?= htmlspecialchars($loot['frame']) ?>" aria-hidden="true"><?= strtoupper(substr((string)($_SESSION['username'] ?? 'L'), 0, 1)) ?></span><div class="skill-id"><strong><?= htmlspecialchars($loot['name']) ?></strong><small><?= htmlspecialchars($loot['hint']) ?><?= $lowned ? ' · sudah milikmu' : '' ?></small></div><span class="rar-tag rar-golden">Edisi</span></div>
+            <div class="showcase-price"><?= $loot['price'] ?> <small>XP</small></div>
             <form method="POST" action="shop.php" class="m-0">
                 <?= csrf_field() ?>
                 <input type="hidden" name="shop_action" value="buy_frame">

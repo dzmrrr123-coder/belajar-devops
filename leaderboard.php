@@ -110,9 +110,10 @@ require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
-    <div class="page-head">
-        <div class="page-kicker">Opt-in · tanpa email<?= $my_rank ? ' · peringkat #' . $my_rank . ($scope === 'week' ? ' minggu ini' : '') : '' ?></div>
+    <div class="page-head arena-banner">
+        <div class="page-kicker eyebrow">Opt-in · tanpa email</div>
         <h1 class="page-title">Leaderboard</h1>
+        <?php if ($my_rank): ?><div class="hero-num">#<?= $my_rank ?> <small>peringkatmu<?= $scope === 'week' ? ' minggu ini' : '' ?></small></div><?php endif; ?>
         <p class="page-desc">Peringkat XP antar peserta. Ikut tampil? Aktifkan dari Profil.</p>
         <div class="page-actions leaderboard-actions">
             <div class="segmented" role="group" aria-label="Rentang leaderboard">
