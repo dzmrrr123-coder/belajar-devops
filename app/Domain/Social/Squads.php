@@ -69,7 +69,7 @@ class Squads {
     }
     public static function detail(\mysqli $conn, int $sid): ?array {
         try {
-            $s = $conn->prepare("SELECT s.id, s.name, s.code, u.username AS creator FROM squads s JOIN users u ON u.id = s.created_by WHERE s.id = ?");
+            $s = $conn->prepare("SELECT s.id, s.name, s.code, s.created_by, u.username AS creator FROM squads s JOIN users u ON u.id = s.created_by WHERE s.id = ?");
             if (!$s) return null;
             $s->bind_param("i", $sid); $s->execute();
             $row = $s->get_result()->fetch_assoc(); $s->close();

@@ -30,7 +30,7 @@ if (is_logged_in()) {
     }
 }
 
-$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'incident.php', 'progress.php', 'certificate.php', 'feedback.php', 'skills.php', 'digest.php', 'shop.php', 'leaderboard.php', 'squad.php', 'duels.php', 'season.php', 'search.php'], true);
+$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'incident.php', 'progress.php', 'certificate.php', 'feedback.php', 'team.php', 'skills.php', 'digest.php', 'shop.php', 'leaderboard.php', 'squad.php', 'duels.php', 'season.php', 'search.php'], true);
 ?>
 <nav class="lt-navbar navbar navbar-expand-lg" aria-label="Navigasi Utama">
     <div class="container lt-navbar-inner">
@@ -94,6 +94,7 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
                         <li class="lt-menu-label" aria-hidden="true">Bareng</li>
                         <li><a class="dropdown-item <?= $current_script === 'leaderboard.php' ? 'active' : '' ?>" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'squad.php' ? 'active' : '' ?>" href="squad.php"><i class="fas fa-users"></i>Squad <small>baru</small></a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'team.php' ? 'active' : '' ?>" href="team.php"><i class="fas fa-briefcase"></i>Tim <small>dashboard</small></a></li>
                         <li><a class="dropdown-item <?= $current_script === 'duels.php' ? 'active' : '' ?>" href="duels.php"><i class="fas fa-hand-fist"></i>Duel 1v1 <small>baru</small></a></li>
                         <li><a class="dropdown-item <?= $current_script === 'season.php' ? 'active' : '' ?>" href="season.php"><i class="fas fa-crown"></i>Season pass <small>baru</small></a></li>
                         <li class="lt-menu-label" aria-hidden="true">Akun</li>
