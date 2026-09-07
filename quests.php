@@ -56,6 +56,8 @@ $st->execute();
 foreach ($st->get_result()->fetch_all(MYSQLI_ASSOC) as $s) $subtasks_by_quest[(int)$s['quest_id']][] = $s;
 $st->close();
 
+$ev_map = \App\Domain\Quest\Evidence::forQuests($conn, $user_id, array_map(fn($x) => (int)$x['id'], $all_quests));
+
 // Compute stats
 $total_quests = count($all_quests);
 $completed_quests = 0;
@@ -152,7 +154,7 @@ require_once 'includes/navbar.php';
                             <div class="quest-item <?= $is_done ? 'completed' : ($blocker ? 'locked' : '') ?>" data-status="<?= $is_done ? 'done' : 'todo' ?>">
                                 <div class="d-flex align-items-start gap-3">
                                     <!-- Interactive Checkbox Form -->
-                                    <form method="POST" action="complete_quest.php" class="quest-toggle-form m-0">
+                                    <form method="POST" action="complete_quest.php" class="quest-toggle-form m-0" id="qt-<?= $qid ?>">
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="quest_id" value="<?= $q['id'] ?>">
                                         <?php if ($blocker): ?>
@@ -187,6 +189,11 @@ require_once 'includes/navbar.php';
                                                 </span>
                                             <?php endif; ?>
                                             <?php if ($subs): ?><span class="small text-muted"><?= $sdone ?>/<?= count($subs) ?> langkah</span><?php endif; ?>
+                                            <?php $evq = $ev_map[$qid] ?? null; if ($evq && (!empty($evq['url']) || !empty($evq['note']))): ?>
+                                            <span class="small text-muted"><i class="fas fa-paperclip" aria-hidden="true"></i>
+                                            <?php if (!empty($evq['url'])): ?><a href="<?= htmlspecialchars($evq['url']) ?>" target="_blank" rel="noopener">bukti</a><?php endif; ?>
+                                            <?= !empty($evq['url']) && !empty($evq['note']) ? ' · ' : '' ?><?= htmlspecialchars(mb_strimwidth($evq['note'] ?? '', 0, 60, '...')) ?></span>
+                                            <?php endif; ?>
                                             <?php if (!empty($q['is_custom']) && (int)$q['user_id'] === $user_id): ?>
                                             <form method="POST" action="quests.php" class="m-0 ms-auto" onsubmit="return confirm('Hapus quest custom ini?')">
                                                 <?= csrf_field() ?>
@@ -196,6 +203,15 @@ require_once 'includes/navbar.php';
                                             </form>
                                             <?php endif; ?>
                                         </div>
+                                        <?php if (!$is_done && !$blocker): ?>
+                                        <details class="small mt-1">
+                                            <summary class="text-muted" style="cursor:pointer">+ bukti (opsional)</summary>
+                                            <div class="d-flex flex-column gap-1 mt-1">
+                                                <input name="evidence_url" form="qt-<?= $qid ?>" class="form-control form-control-sm" placeholder="Link repo / output…" maxlength="500" inputmode="url" aria-label="Link bukti quest">
+                                                <input name="evidence_note" form="qt-<?= $qid ?>" class="form-control form-control-sm" placeholder="Catatan singkat…" maxlength="500" aria-label="Catatan bukti quest">
+                                            </div>
+                                        </details>
+                                        <?php endif; ?>
                                         <details class="subtask-box">
                                             <summary class="small text-secondary">Langkah kecil (<?= $sdone ?>/<?= count($subs) ?>)</summary>
                                             <div class="subtask-list mt-2">

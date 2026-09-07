@@ -165,39 +165,23 @@ require_once 'includes/navbar.php';
         $next_quest = $q;
         break;
     }
+    $next_action = \App\Domain\NextAction::pick(['claimable_n' => $claimable_n, 'claimable_xp' => $claimable_xp, 'due_reviews' => $due_reviews, 'next_quest' => $next_quest, 'pomo_today' => $pomodoro_today]);
+    $next_icons = ['claim' => 'fa-gift', 'review' => 'fa-rotate-right', 'quest' => 'fa-map', 'focus' => 'fa-play', 'digest' => 'fa-calendar-week'];
     ?>
-    <?php if ($claimable_n > 0): ?>
+    <?php if ($next_action['type'] === 'claim'): ?>
     <div class="next-action">
         <span class="next-action-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
-        <span class="next-action-text"><strong>Klaim +<?= $claimable_xp ?> XP</strong><small><?= $claimable_n ?> misi selesai menunggumu</small></span>
+        <span class="next-action-text"><strong><?= htmlspecialchars($next_action['title']) ?></strong><small><?= htmlspecialchars($next_action['desc']) ?></small></span>
         <form method="POST" action="claim_mission.php" class="m-0 flex-shrink-0">
             <?= csrf_field() ?>
             <input type="hidden" name="mission_key" value="all">
             <button type="submit" class="btn btn-cyber btn-sm">Klaim</button>
         </form>
     </div>
-    <?php elseif ($due_reviews > 0): ?>
-    <a class="next-action" href="review.php">
-        <span class="next-action-icon" aria-hidden="true"><i class="fas fa-rotate-right"></i></span>
-        <span class="next-action-text"><strong>Sikat <?= $due_reviews ?> review</strong><small>cuma 2 menit, biar tak menumpuk</small></span>
-        <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
-    </a>
-    <?php elseif ($pomodoro_today === 0): ?>
-    <a class="next-action" href="timer.php">
-        <span class="next-action-icon" aria-hidden="true"><i class="fas fa-play"></i></span>
-        <span class="next-action-text"><strong>Mulai sesi fokus</strong><small>25 menit · +10 XP · lanjutkan quest minggu ini</small></span>
-        <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
-    </a>
-    <?php elseif ($next_quest): ?>
-    <a class="next-action" href="quests.php">
-        <span class="next-action-icon" aria-hidden="true"><i class="fas fa-map"></i></span>
-        <span class="next-action-text"><strong>Lanjutkan: <?= htmlspecialchars(mb_strimwidth($next_quest['title'], 0, 60, '...')) ?></strong><small>+<?= (int)$next_quest['xp_reward'] ?> XP menanti</small></span>
-        <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
-    </a>
     <?php else: ?>
-    <a class="next-action" href="digest.php">
-        <span class="next-action-icon" aria-hidden="true"><i class="fas fa-calendar-week"></i></span>
-        <span class="next-action-text"><strong>Minggu ini beres!</strong><small>lihat ringkasan &amp; rencanakan berikutnya</small></span>
+    <a class="next-action" href="<?= htmlspecialchars($next_action['href']) ?>">
+        <span class="next-action-icon" aria-hidden="true"><i class="fas <?= $next_icons[$next_action['type']] ?? 'fa-arrow-right' ?>"></i></span>
+        <span class="next-action-text"><strong><?= htmlspecialchars($next_action['title']) ?></strong><small><?= htmlspecialchars($next_action['desc']) ?></small></span>
         <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
     </a>
     <?php endif; ?>
@@ -334,13 +318,15 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
                 <!-- Quest items list -->
                 <div class="quest-list d-flex flex-column gap-2">
                     <?php if (!empty($quests)): ?>
-                        <?php foreach ($quests as $q): 
+                        <?php $ev_map = \App\Domain\Quest\Evidence::forQuests($conn, $user_id, array_map(fn($x) => (int)$x['id'], $quests)); ?>
+                        <?php foreach ($quests as $q):
                             $is_done = !empty($q['completed_at']);
+                            $ev = $ev_map[(int)$q['id']] ?? null;
                         ?>
                             <div class="quest-item <?= $is_done ? 'completed' : '' ?>">
                                 <div class="d-flex align-items-start gap-3">
                                     <!-- Interactive Checkbox Form -->
-                                    <form method="POST" action="complete_quest.php" class="quest-toggle-form m-0">
+                                    <form method="POST" action="complete_quest.php" class="quest-toggle-form m-0" id="qt-<?= (int)$q['id'] ?>">
                                         <?= csrf_field() ?>
                                         <input type="hidden" name="quest_id" value="<?= $q['id'] ?>">
                                         <button type="submit" class="quest-check-btn" title="<?= $is_done ? 'Batalkan selesai' : 'Tandai selesai (+'.$q['xp_reward'].' XP)' ?>" aria-label="<?= $is_done ? 'Batalkan quest selesai: ' : 'Tandai quest selesai: ' ?><?= htmlspecialchars($q['title']) ?>">
@@ -362,6 +348,20 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
                                                 <span class="quest-done">
                                                     <i class="fas fa-check" aria-hidden="true"></i>Selesai <?= date('d M Y', strtotime($q['completed_at'])) ?>
                                                 </span>
+                                            <?php endif; ?>
+                                            <?php if ($ev && (!empty($ev['url']) || !empty($ev['note']))): ?>
+                                                <span class="small text-muted"><i class="fas fa-paperclip" aria-hidden="true"></i>
+                                                <?php if (!empty($ev['url'])): ?><a href="<?= htmlspecialchars($ev['url']) ?>" target="_blank" rel="noopener">bukti</a><?php endif; ?>
+                                                <?= !empty($ev['url']) && !empty($ev['note']) ? ' · ' : '' ?><?= htmlspecialchars(mb_strimwidth($ev['note'] ?? '', 0, 60, '...')) ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!$is_done): ?>
+                                            <details class="small mt-1">
+                                                <summary class="text-muted" style="cursor:pointer">+ bukti (opsional)</summary>
+                                                <div class="d-flex flex-column gap-1 mt-1">
+                                                    <input name="evidence_url" form="qt-<?= (int)$q['id'] ?>" class="form-control form-control-sm" placeholder="Link repo / output…" maxlength="500" inputmode="url" aria-label="Link bukti quest">
+                                                    <input name="evidence_note" form="qt-<?= (int)$q['id'] ?>" class="form-control form-control-sm" placeholder="Catatan singkat…" maxlength="500" aria-label="Catatan bukti quest">
+                                                </div>
+                                            </details>
                                             <?php endif; ?>
                                         </div>
                                     </div>

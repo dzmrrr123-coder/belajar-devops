@@ -125,6 +125,20 @@ try {
     if (in_array('aurora', \App\Domain\Shop::ownedFrames($conn, $uid), true)) smoke_fail('frame should be locked');
     if (!\App\Domain\Shop::grantFrame($conn, $uid, 'aurora')) smoke_fail('frame grant');
     if (!in_array('aurora', \App\Domain\Shop::ownedFrames($conn, $uid), true)) smoke_fail('frame owns');
+    $chk = $conn->query("SHOW TABLES LIKE 'evidence_submissions'");
+    if (!$chk || $chk->num_rows === 0) smoke_fail('missing evidence_submissions');
+    if ($chk) $chk->free();
+    if (!\App\Domain\Quest\Evidence::save($conn, $uid, $qid, 'https://example.com/repo', 'selesai')) smoke_fail('evidence save');
+    if (\App\Domain\Quest\Evidence::save($conn, $uid, $qid, '', '')) smoke_fail('evidence empty should skip');
+    $evm = \App\Domain\Quest\Evidence::forQuests($conn, $uid, [$qid]);
+    if (($evm[$qid]['url'] ?? '') !== 'https://example.com/repo') smoke_fail('evidence fetch');
+    \App\Domain\Quest\Evidence::clear($conn, $uid, $qid);
+    $evm = \App\Domain\Quest\Evidence::forQuests($conn, $uid, [$qid]);
+    if (isset($evm[$qid])) smoke_fail('evidence clear');
+    $sig = \App\Domain\NextAction::signals($conn, $uid);
+    if (!isset($sig['claimable_n'], $sig['due_reviews'], $sig['pomo_today'])) smoke_fail('signals shape');
+    $na = \App\Domain\NextAction::resolve($conn, $uid);
+    if (empty($na['type']) || empty($na['title'])) smoke_fail('resolve shape');
     if (\App\Domain\Shop::grantFrame($conn, $uid, 'aurora')) smoke_fail('frame double grant should fail');
     if (!avatar_unlocked('aurora', 1, 0, [], false, \App\Domain\Shop::ownedFrames($conn, $uid))) smoke_fail('frame unlock');
 

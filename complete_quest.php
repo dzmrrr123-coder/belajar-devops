@@ -145,7 +145,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         }
 
         schedule_review($conn, $user_id, 'quest', $quest_id, $quest['title'] ?? 'Quest', '');
-        $msg = "Quest diselesaikan! +{$xp_reward} XP.";
+        $ev_saved = \App\Domain\Quest\Evidence::save($conn, $user_id, $quest_id, (string)($_POST['evidence_url'] ?? ''), (string)($_POST['evidence_note'] ?? ''));
+        $msg = "Quest diselesaikan! +{$xp_reward} XP." . ($ev_saved ? " Bukti tersimpan." : "");
         if ($leveled_up) {
             $msg .= " Naik ke Level {$new_level} (" . get_user_rank($new_level) . ")!";
         }
@@ -163,6 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         $xp_reward = $deduct;
 
         delete_review($conn, $user_id, 'quest', $quest_id);
+        \App\Domain\Quest\Evidence::clear($conn, $user_id, $quest_id);
         $new_xp = sync_user_xp($conn, $user_id);
         $new_level = calculate_level($new_xp);
         $new_streak = (int)$u_data['streak'];

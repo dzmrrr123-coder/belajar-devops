@@ -224,6 +224,12 @@ check('loot aurora okt', \App\Domain\Shop::lootAvailable(\App\Domain\Shop::lootB
 check('loot asing', \App\Domain\Shop::lootByFrame('x'), null);
 check('frame loot terkunci', avatar_unlocked('aurora', 9, 99, [], false, []), false);
 check('frame loot milik', avatar_unlocked('aurora', 1, 0, [], false, ['aurora']), true);
+check('next klaim', \App\Domain\NextAction::pick(['claimable_n' => 2, 'claimable_xp' => 10, 'due_reviews' => 3, 'next_quest' => ['id' => 1, 'title' => 'Q', 'xp_reward' => 5], 'pomo_today' => 0])['type'], 'claim');
+check('next review', \App\Domain\NextAction::pick(['claimable_n' => 0, 'due_reviews' => 2, 'next_quest' => ['id' => 1, 'title' => 'Q', 'xp_reward' => 5], 'pomo_today' => 0])['type'], 'review');
+check('next quest', \App\Domain\NextAction::pick(['claimable_n' => 0, 'due_reviews' => 0, 'next_quest' => ['id' => 7, 'title' => 'Lanjut', 'xp_reward' => 20], 'pomo_today' => 1])['type'], 'quest');
+check('next quest id', \App\Domain\NextAction::pick(['next_quest' => ['id' => 7, 'title' => 'Lanjut', 'xp_reward' => 20]])['quest_id'], 7);
+check('next fokus', \App\Domain\NextAction::pick(['claimable_n' => 0, 'due_reviews' => 0, 'pomo_today' => 0])['type'], 'focus');
+check('next digest', \App\Domain\NextAction::pick(['claimable_n' => 0, 'due_reviews' => 0, 'pomo_today' => 2])['type'], 'digest');
 
 echo "pass: {$pass}, fail: {$fail}" . PHP_EOL;
 exit($fail > 0 ? 1 : 0);
