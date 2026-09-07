@@ -6,6 +6,25 @@ $uid = (int)$_SESSION['user_id'];
 $isAdmin = is_admin($conn, $uid);
 $isGuru = \App\Domain\Auth\Roles::isGuru($conn, $uid);
 if (!$isAdmin && !$isGuru) { http_response_code(404); require __DIR__ . '/404.php'; exit(); }
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'reset_track') {
+    verify_csrf();
+    if (rate_limit_hit('reset_track', 10, 3600)) { set_flash('warning', 'Terlalu sering reset. Coba lagi nanti.'); redirect('kelas.php?squad=' . (int)($_POST['squad'] ?? 1)); }
+    $mid = (int)($_POST['member_id'] ?? 0);
+    $sq = (int)($_POST['squad'] ?? 0);
+    $ok = false;
+    if ($mid > 0) {
+        try {
+            $conn->begin_transaction();
+            $d = $conn->prepare("DELETE q FROM quests q WHERE q.user_id = ? AND q.is_custom = 1");
+            if ($d) { $d->bind_param("i", $mid); $d->execute(); $d->close(); }
+            $u = $conn->prepare("UPDATE users SET onboarded = 0 WHERE id = ?");
+            if ($u) { $u->bind_param("i", $mid); $ok = $u->execute(); $u->close(); }
+            if ($ok) $conn->commit(); else $conn->rollback();
+        } catch (Throwable $e) { try { $conn->rollback(); } catch (Throwable $e2) {} }
+    }
+    set_flash($ok ? 'success' : 'warning', $ok ? 'Track direset. Siswa pilih ulang track saat login berikutnya.' : 'Gagal reset track.');
+    redirect('kelas.php?squad=' . $sq);
+}
 $squads = [];
 try {
     if ($isAdmin) {
@@ -90,6 +109,7 @@ require_once 'includes/navbar.php';
 <?php foreach (\App\Domain\Dkv\Critique::thread($conn, $mid, (int)$rq['quest_id'], 3) as $cm): ?><p class="small text-muted mb-1"><?= htmlspecialchars($cm['username']) ?>: <?= htmlspecialchars($cm['note']) ?></p><?php endforeach; ?>
 </details>
 <?php endforeach; ?>
+<form method="POST" action="kelas.php?squad=<?= $focus ?>" class="m-0 mt-1" onsubmit="return confirm('Reset track <?= htmlspecialchars($mb['username']) ?>? Quest custom dihapus, siswa pilih ulang.');"><?= csrf_field() ?><input type="hidden" name="action" value="reset_track"><input type="hidden" name="member_id" value="<?= $mid ?>"><input type="hidden" name="squad" value="<?= $focus ?>"><button class="btn btn-cyber-outline btn-sm" type="submit">Reset track</button></form>
 </div></div>
 <?php endforeach; ?>
 <?php if ($squads && !$members): ?><p class="small text-muted p-3 mb-0">Belum ada siswa di kelas ini. Bagikan kode squad.</p><?php endif; ?>

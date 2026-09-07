@@ -13,15 +13,12 @@ if (!empty($me['onboarded'])) redirect('index.php');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
-    if (($_POST['wiz'] ?? '') === 'skip') {
-        $up = $conn->prepare("UPDATE users SET onboarded = 1 WHERE id = ?");
-        $up->bind_param("i", $user_id);
-        $up->execute();
-        $up->close();
-        set_flash('info', 'Wizard dilewati. Quest bisa dibuat manual dari Roadmap.');
-        redirect('index.php');
+    $rawTrack = strtolower(trim((string)($_POST['track'] ?? '')));
+    if (!\App\Domain\Track\Tracks::isValid($rawTrack)) {
+        set_flash('warning', 'Pilih track dulu: RPL, TKJ, DKV, atau DevOps.');
+        redirect('onboarding.php');
     }
-    $track = \App\Domain\Track\Tracks::normalize((string)($_POST['track'] ?? 'devops'));
+    $track = \App\Domain\Track\Tracks::normalize($rawTrack);
     $target = trim((string)($_POST['target'] ?? ''));
     $minutes = (int)($_POST['minutes'] ?? 25);
     $skills = array_slice((array)($_POST['skills'] ?? []), 0, 3);
@@ -137,11 +134,6 @@ require_once 'includes/navbar.php';
             </div>
             <div class="wiz-nav"><button type="button" class="btn btn-cyber-outline" data-back>Kembali</button><button type="submit" class="btn btn-cyber">Buatkan quest-ku</button></div>
         </fieldset>
-    </form>
-    <form method="POST" action="onboarding.php" class="m-0 mt-3 text-center">
-        <?= csrf_field() ?>
-        <input type="hidden" name="wiz" value="skip">
-        <button type="submit" class="page-actions-link" style="border:none;background:none;">Lewati, saya atur sendiri</button>
     </form>
 </main>
 <script>

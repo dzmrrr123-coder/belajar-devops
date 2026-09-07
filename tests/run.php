@@ -342,6 +342,17 @@ check('term belum', \App\Domain\Tkj\Terminal::missionDone([], \App\Domain\Tkj\Te
 check('critique valid', \App\Domain\Dkv\Critique::valid('Bagus, rapikan spacing'), true);
 check('critique pendek', \App\Domain\Dkv\Critique::valid('ok'), false);
 check('sponsor clean', \App\Domain\Sponsor::clean('  Studio  X  '), 'Studio X');
+foreach (['rpl', 'tkj', 'dkv'] as $tr) {
+    $rq = \App\Domain\Track\Roadmap::quests($tr);
+    check("roadmap $tr 12", count($rq), 12);
+    $weeks = array_unique(array_map(fn($r) => $r[0], $rq));
+    sort($weeks);
+    check("roadmap $tr minggu 1-12", $weeks, range(1, 12));
+    $titles = array_map(fn($r) => mb_strtolower($r[1]), $rq);
+    check("roadmap $tr judul unik", count($titles) === count(array_unique($titles)), true);
+}
+check('roadmap devops kosong', \App\Domain\Track\Roadmap::quests('devops'), []);
+check('roadmap normalize asal', \App\Domain\Track\Roadmap::quests('asal'), []);
 
 echo "pass: {$pass}, fail: {$fail}" . PHP_EOL;
 exit($fail > 0 ? 1 : 0);
