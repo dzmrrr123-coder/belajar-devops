@@ -49,6 +49,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             award_xp($conn, $user_id, -SHOP_REROLL_PRICE, 'shop_reroll');
             award_xp($conn, $user_id, $win, 'shop_reroll_win');
             $msg = 'Kocokan: +' . $win . ' XP! (modal ' . SHOP_REROLL_PRICE . ' XP)';
+        } elseif ($action === 'buy_frame') {
+            $frame = (string)($_POST['frame'] ?? '');
+            $item = \App\Domain\Shop::lootByFrame($frame);
+            if (!$item) throw new Exception('Frame tidak dikenal.');
+            if (!\App\Domain\Shop::lootAvailable($item)) throw new Exception($item['name'] . ' hanya dijual bulan ' . $item['month_label'] . '.');
+            if (in_array($frame, \App\Domain\Shop::ownedFrames($conn, $user_id), true)) throw new Exception('Kamu sudah punya frame ini.');
+            if ($balance < $item['price']) throw new Exception('XP kurang. Butuh ' . $item['price'] . ' XP.');
+            if (!\App\Domain\Shop::grantFrame($conn, $user_id, $frame)) throw new Exception('Gagal memberi frame.');
+            award_xp($conn, $user_id, -(int)$item['price'], 'shop_frame');
+            $msg = 'Frame ' . $item['name'] . ' milikmu selamanya! Pasang di Profil.';
         } else {
             throw new Exception('Aksi tidak dikenal.');
         }
@@ -69,6 +79,8 @@ $me = $stmt->get_result()->fetch_assoc() ?: ['xp' => 0, 'freeze_tokens' => 0, 'f
 $stmt->close();
 $conn->close();
 $flair_price = !empty($me['flair']) ? SHOP_FLAIR_EDIT_PRICE : SHOP_FLAIR_PRICE;
+$loot_items = \App\Domain\Shop::lootFrames();
+$loot_owned = \App\Domain\Shop::ownedFrames($conn, $user_id);
 
 $page_title = 'Toko XP';
 require_once 'includes/header.php';
@@ -107,6 +119,25 @@ require_once 'includes/navbar.php';
                 <button class="btn btn-cyber w-100 btn-sm" type="submit">Kocok · <?= SHOP_REROLL_PRICE ?> XP</button>
             </form>
         </section>
+    </div>
+
+    <div class="page-head mt-4">
+        <div class="page-kicker">Edisi terbatas · hanya bulan tertentu</div>
+        <h2 class="page-title h4">Loot musiman</h2>
+        <p class="page-desc">Bingkai avatar yang tak kembali lagi. Sekali punya, selamanya.</p>
+    </div>
+    <div class="skill-grid">
+        <?php foreach ($loot_items as $loot): $lopen = \App\Domain\Shop::lootAvailable($loot); $lowned = in_array($loot['frame'], $loot_owned, true); ?>
+        <section class="card skill-card" aria-label="Frame <?= htmlspecialchars($loot['name']) ?>">
+            <div class="skill-top"><span class="avatar-circle frame-<?= htmlspecialchars($loot['frame']) ?>" aria-hidden="true"><?= strtoupper(substr((string)($_SESSION['username'] ?? 'L'), 0, 1)) ?></span><div class="skill-id"><strong><?= htmlspecialchars($loot['name']) ?></strong><small><?= htmlspecialchars($loot['hint']) ?><?= $lowned ? ' · sudah milikmu' : '' ?></small></div></div>
+            <form method="POST" action="shop.php" class="m-0">
+                <?= csrf_field() ?>
+                <input type="hidden" name="shop_action" value="buy_frame">
+                <input type="hidden" name="frame" value="<?= htmlspecialchars($loot['frame']) ?>">
+                <button class="btn <?= $lopen && !$lowned ? 'btn-cyber' : 'btn-cyber-outline' ?> w-100 btn-sm" type="submit" <?= ($lopen && !$lowned) ? '' : 'disabled' ?>><?= $lowned ? 'Milikmu' : ($lopen ? 'Beli · ' . $loot['price'] . ' XP' : 'Edisi ' . htmlspecialchars($loot['month_label'])) ?></button>
+            </form>
+        </section>
+        <?php endforeach; ?>
     </div>
 </main>
 <?php require_once 'includes/footer.php'; ?>

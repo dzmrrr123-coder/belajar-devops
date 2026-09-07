@@ -7,13 +7,14 @@ class Social {
     }
     public static function badgeShare(string $u, string $b): string { return trim($u).' meraih badge "'.trim($b).'" di Learn Tracker DevOps'; }
     public static function avatarFrames(): array {
-        return ['default'=>['name'=>'Polos','hint'=>'Untuk semua orang'],'ring'=>['name'=>'Cincin','hint'=>'Capai Level 3'],'ember'=>['name'=>'Bara','hint'=>'Streak terbaik 7 hari'],'gold'=>['name'=>'Emas','hint'=>'Capai Level 5'],'legend'=>['name'=>'Legenda','hint'=>'Badge Roadmap Tuntas / Level 8']];
+        return ['default'=>['name'=>'Polos','hint'=>'Untuk semua orang'],'ring'=>['name'=>'Cincin','hint'=>'Capai Level 3'],'ember'=>['name'=>'Bara','hint'=>'Streak terbaik 7 hari'],'gold'=>['name'=>'Emas','hint'=>'Capai Level 5'],'legend'=>['name'=>'Legenda','hint'=>'Badge Roadmap Tuntas / Level 8'],'aurora'=>['name'=>'Aurora','hint'=>'Toko · edisi September'],'specter'=>['name'=>'Specter','hint'=>'Toko · edisi Oktober'],'solstice'=>['name'=>'Solstice','hint'=>'Toko · edisi Desember']];
     }
-    public static function avatarUnlocked(string $f, int $lv, int $best, array $badges, bool $owner=false): bool {
+    public static function avatarUnlocked(string $f, int $lv, int $best, array $badges, bool $owner=false, array $owned=[]): bool {
         if ($owner || $f==='default') return true;
         if ($f==='ring') return $lv>=3; if ($f==='ember') return $best>=7;
         if ($f==='gold') return $lv>=5;
         if ($f==='legend') return $lv>=8 || isset($badges['quest-all']);
+        if (in_array($f, ['aurora','specter','solstice'], true)) return in_array($f, $owned, true);
         return false;
     }
     public static function badgeDefs(): array {

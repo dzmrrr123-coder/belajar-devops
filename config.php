@@ -611,7 +611,7 @@ function skill_defs() { return \App\Domain\Skill\Skill::defs(); }
 function skill_for_week($week) { return \App\Domain\Skill\Skill::forWeek((int)$week); }
 function normalize_skill($topic) { return \App\Domain\Skill\Skill::normalize((string)$topic); }
 function avatar_frames() { return \App\Domain\Social::avatarFrames(); }
-function avatar_unlocked($frame, $level, $best_streak, $badges, $is_owner = false) { return \App\Domain\Social::avatarUnlocked((string)$frame, (int)$level, (int)$best_streak, (array)$badges, (bool)$is_owner); }
+function avatar_unlocked($frame, $level, $best_streak, $badges, $is_owner = false, $owned = []) { return \App\Domain\Social::avatarUnlocked((string)$frame, (int)$level, (int)$best_streak, (array)$badges, (bool)$is_owner, (array)$owned); }
 
 function analytics_trend_percent($now, $prev) { return \App\Domain\Analytics::trend((int)$now, (int)$prev); }
 function analytics_consistency_score($a, $t) { return \App\Domain\Analytics::consistency((int)$a, (int)$t); }

@@ -60,6 +60,9 @@ a:hover{color:var(--primary-hover);text-decoration:underline}
 .avatar-circle.frame-gold{border:2px solid transparent;background:linear-gradient(var(--primary),var(--primary)) padding-box,conic-gradient(from 20deg,#fff3c4,#c9a13b,#f2d57e,#c9a13b,#fff3c4) border-box;box-shadow:0 0 12px rgba(201,161,59,.45)}
 @property --frame-angle{syntax:'<angle>';initial-value:0deg;inherits:false}
 .avatar-circle.frame-legend{border:3px solid transparent;background:linear-gradient(var(--primary),var(--primary)) padding-box,conic-gradient(from var(--frame-angle),#63b39b,#c9a13b,#e09a3c,#7cc4ae,#63b39b) border-box;box-shadow:0 0 14px rgba(99,179,155,.55);animation:frame-spin 5s linear infinite}
+.avatar-circle.frame-aurora{border:2px solid transparent;background:linear-gradient(var(--primary),var(--primary)) padding-box,conic-gradient(from 20deg,#7c6cf0,#3fd0c9,#b06cf0,#3fd0c9,#7c6cf0) border-box;box-shadow:0 0 12px rgba(124,108,240,.5)}
+.avatar-circle.frame-specter{border:2px solid transparent;background:linear-gradient(var(--primary),var(--primary)) padding-box,conic-gradient(from 20deg,#5b2a86,#c65b8e,#3a1c5c,#c65b8e,#5b2a86) border-box;box-shadow:0 0 12px rgba(198,91,142,.45)}
+.avatar-circle.frame-solstice{border:2px solid transparent;background:linear-gradient(var(--primary),var(--primary)) padding-box,conic-gradient(from 20deg,#e8f6ff,#7cc4de,#ffffff,#7cc4de,#e8f6ff) border-box;box-shadow:0 0 12px rgba(124,196,222,.5)}
 @keyframes frame-spin{to{--frame-angle:360deg}}
 .frame-pick{display:flex;flex-wrap:wrap;gap:8px;border:none;padding:0;margin:0}
 .frame-opt{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 6px;cursor:pointer;flex:1 1 88px;min-width:88px;color:var(--ink);font:inherit}
@@ -83,7 +86,16 @@ a:hover{color:var(--primary-hover);text-decoration:underline}
 main.container{flex:1}
 .focus-workspace{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-sm)}
 .xp-progress-bar{background:#e9ede8;height:8px;border-radius:99px;overflow:hidden}
-.xp-progress-fill{background:var(--primary);height:100%;border-radius:99px;transition:width .4s ease}
+.xp-progress-fill{background:var(--primary);height:100%;border-radius:99px;transition:width .4s ease;position:relative;overflow:hidden}
+.xp-progress-fill::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.35) 50%,transparent 80%);transform:translateX(-100%);animation:xp-shine 3.2s ease-in-out infinite}
+@keyframes xp-shine{0%{transform:translateX(-100%)}55%,100%{transform:translateX(100%)}}
+.lt-menu-label{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding:8px 12px 2px}
+.lt-menu-label:first-child{padding-top:2px}
+.lt-menu .dropdown-item small{color:var(--faint);font-size:.72rem;margin-left:auto;padding-left:8px}
+.lt-menu-grouped{min-width:230px}
+.quest-list,.race-list,.badge-grid,.skill-grid,.heatmap{content-visibility:auto;contain-intrinsic-size:auto 400px}
+.btn:active{transform:translateY(1px) scale(.99)}
+::selection{background:var(--primary);color:#fff}
 .btn-cyber,.btn-cyber-outline,.btn-cyber-danger{border-radius:8px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background .15s,border-color .15s;min-height:38px}
 .btn-cyber{background:var(--primary);border:1px solid var(--primary);color:#fff!important}
 .btn-cyber:hover{background:var(--primary-hover);border-color:var(--primary-hover)}

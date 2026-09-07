@@ -218,6 +218,12 @@ check('combo 9', combo_tier(9), 2.0);
 check('combo count', combo_count_done(['a' => ['done' => true], 'b' => ['done' => false], 'c' => ['done' => true]]), 2);
 check('combo label', \App\Domain\Gamification\Combo::label(1.5), 'x1.5');
 check('combo hint max', \App\Domain\Gamification\Combo::nextHint(3), 'Combo maks!');
+check('loot 3 item', count(\App\Domain\Shop::lootFrames()), 3);
+check('loot aurora sept', \App\Domain\Shop::lootAvailable(\App\Domain\Shop::lootByFrame('aurora'), 9), true);
+check('loot aurora okt', \App\Domain\Shop::lootAvailable(\App\Domain\Shop::lootByFrame('aurora'), 10), false);
+check('loot asing', \App\Domain\Shop::lootByFrame('x'), null);
+check('frame loot terkunci', avatar_unlocked('aurora', 9, 99, [], false, []), false);
+check('frame loot milik', avatar_unlocked('aurora', 1, 0, [], false, ['aurora']), true);
 
 echo "pass: {$pass}, fail: {$fail}" . PHP_EOL;
 exit($fail > 0 ? 1 : 0);

@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $who->close();
             $wlv = calculate_level((int)$wrow['xp']);
             $wowner = strtolower(trim((string)($wrow['email'] ?? ''))) === OWNER_ADMIN_EMAIL;
-            if (!avatar_unlocked($frame, $wlv, (int)$wrow['best_streak'], user_badges($conn, $user_id), $wowner)) {
+            if (!avatar_unlocked($frame, $wlv, (int)$wrow['best_streak'], user_badges($conn, $user_id), $wowner, \App\Domain\Shop::ownedFrames($conn, $user_id))) {
                 set_flash('warning', 'Belum terbuka: ' . $frames[$frame]['hint'] . '.');
             } else {
                 $up = $conn->prepare("UPDATE users SET avatar_frame = ? WHERE id = ?");
@@ -139,6 +139,7 @@ for ($i = 83; $i >= 0; $i--) {
 $badges_owned = user_badges($conn, $user_id);
 $badge_list = badge_defs();
 $is_admin_me = is_admin($conn, $user_id);
+$frames_owned = \App\Domain\Shop::ownedFrames($conn, $user_id);
 $conn->close();
 $page_title = 'Profil & Statistik';
 require_once 'includes/header.php';
@@ -196,7 +197,7 @@ require_once 'includes/navbar.php';
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="update_avatar">
                     <?php $pf_owner = strtolower(trim((string)($user['email'] ?? ''))) === OWNER_ADMIN_EMAIL; ?>
-                    <?php foreach (avatar_frames() as $fkey => $fdef): $open = avatar_unlocked($fkey, $level, (int)($user['best_streak'] ?? 0), $badges_owned, $pf_owner); $sel = (($user['avatar_frame'] ?? 'default') === $fkey); ?>
+                    <?php foreach (avatar_frames() as $fkey => $fdef): $open = avatar_unlocked($fkey, $level, (int)($user['best_streak'] ?? 0), $badges_owned, $pf_owner, $frames_owned); $sel = (($user['avatar_frame'] ?? 'default') === $fkey); ?>
                     <button type="submit" name="frame" value="<?= htmlspecialchars($fkey) ?>" class="frame-opt<?= $open ? '' : ' locked' ?><?= $sel ? ' selected' : '' ?>" <?= $open ? '' : 'disabled' ?> title="<?= $open ? htmlspecialchars($fdef['name']) : 'Terkunci: ' . htmlspecialchars($fdef['hint']) ?>" aria-label="Bingkai <?= htmlspecialchars($fdef['name']) ?><?= $open ? '' : ' (terkunci)' ?>">
                         <span class="avatar-circle frame-<?= htmlspecialchars($fkey) ?>" aria-hidden="true"><?= strtoupper(substr($user['username'], 0, 1)) ?></span>
                         <strong><?= htmlspecialchars($fdef['name']) ?></strong>

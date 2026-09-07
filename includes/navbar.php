@@ -30,7 +30,7 @@ if (is_logged_in()) {
     }
 }
 
-$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'skills.php', 'digest.php', 'shop.php', 'leaderboard.php'], true);
+$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'skills.php', 'digest.php', 'shop.php', 'leaderboard.php', 'squad.php', 'duels.php', 'season.php', 'search.php'], true);
 ?>
 <nav class="lt-navbar navbar navbar-expand-lg" aria-label="Navigasi Utama">
     <div class="container lt-navbar-inner">
@@ -81,15 +81,21 @@ $more_active = in_array($current_script, ['resources.php', 'questions.php', 'qui
                 <li class="nav-item"><a class="lt-nav-link <?= $current_script === 'review.php' ? 'active' : '' ?>" <?= $current_script === 'review.php' ? 'aria-current="page"' : '' ?> href="review.php">Review</a></li>
                 <li class="nav-item"><a class="lt-nav-link <?= $current_script === 'errors.php' ? 'active' : '' ?>" <?= $current_script === 'errors.php' ? 'aria-current="page"' : '' ?> href="errors.php">Catatan</a></li>
                 <li class="nav-item dropdown">
-                    <a class="lt-nav-link dropdown-toggle <?= $more_active ? 'active' : '' ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Lainnya</a>
-                    <ul class="dropdown-menu lt-menu p-2">
-                        <li><a class="dropdown-item <?= $current_script === 'resources.php' ? 'active' : '' ?>" href="resources.php"><i class="fas fa-book-open"></i>Resources</a></li>
+                    <a class="lt-nav-link dropdown-toggle <?= $more_active ? 'active' : '' ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Jelajah</a>
+                    <ul class="dropdown-menu lt-menu lt-menu-grouped p-2">
+                        <li class="lt-menu-label" aria-hidden="true">Belajar</li>
+                        <li><a class="dropdown-item <?= $current_script === 'quiz.php' ? 'active' : '' ?>" href="quiz.php"><i class="fas fa-brain"></i>Kuis <small>kilat 60 dtk</small></a></li>
                         <li><a class="dropdown-item <?= $current_script === 'questions.php' ? 'active' : '' ?>" href="questions.php"><i class="fas fa-circle-question"></i>Questions</a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'quiz.php' ? 'active' : '' ?>" href="quiz.php"><i class="fas fa-brain"></i>Kuis</a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'resources.php' ? 'active' : '' ?>" href="resources.php"><i class="fas fa-book-open"></i>Resources</a></li>
                         <li><a class="dropdown-item <?= $current_script === 'skills.php' ? 'active' : '' ?>" href="skills.php"><i class="fas fa-layer-group"></i>Skill tree</a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'digest.php' ? 'active' : '' ?>" href="digest.php"><i class="fas fa-calendar-week"></i>Ringkasan</a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'shop.php' ? 'active' : '' ?>" href="shop.php"><i class="fas fa-store"></i>Toko XP</a></li>
+                        <li class="lt-menu-label" aria-hidden="true">Bareng</li>
                         <li><a class="dropdown-item <?= $current_script === 'leaderboard.php' ? 'active' : '' ?>" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'squad.php' ? 'active' : '' ?>" href="squad.php"><i class="fas fa-users"></i>Squad <small>baru</small></a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'duels.php' ? 'active' : '' ?>" href="duels.php"><i class="fas fa-hand-fist"></i>Duel 1v1 <small>baru</small></a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'season.php' ? 'active' : '' ?>" href="season.php"><i class="fas fa-crown"></i>Season pass <small>baru</small></a></li>
+                        <li class="lt-menu-label" aria-hidden="true">Akun</li>
+                        <li><a class="dropdown-item <?= $current_script === 'shop.php' ? 'active' : '' ?>" href="shop.php"><i class="fas fa-store"></i>Toko XP</a></li>
+                        <li><a class="dropdown-item <?= $current_script === 'digest.php' ? 'active' : '' ?>" href="digest.php"><i class="fas fa-calendar-week"></i>Ringkasan</a></li>
                     </ul>
                 </li>
             </ul>

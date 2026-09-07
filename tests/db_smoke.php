@@ -94,7 +94,7 @@ try {
     if (($rc[$uid2]['fire'] ?? 0) !== 0) smoke_fail('react count after untoggle');
     \App\Domain\Auth\Roles::reset();
 
-    foreach (['season_premium', 'season_claims', 'blitz_runs'] as $t) {
+    foreach (['season_premium', 'season_claims', 'blitz_runs', 'user_frames'] as $t) {
         $chk = $conn->query("SHOW TABLES LIKE '{$t}'");
         if (!$chk || $chk->num_rows === 0) smoke_fail("missing table {$t}");
         if ($chk) $chk->free();
@@ -115,6 +115,11 @@ try {
     $bi->bind_param("i", $uid);
     if (!$bi->execute()) smoke_fail('blitz insert');
     $bi->close();
+    if (in_array('aurora', \App\Domain\Shop::ownedFrames($conn, $uid), true)) smoke_fail('frame should be locked');
+    if (!\App\Domain\Shop::grantFrame($conn, $uid, 'aurora')) smoke_fail('frame grant');
+    if (!in_array('aurora', \App\Domain\Shop::ownedFrames($conn, $uid), true)) smoke_fail('frame owns');
+    if (\App\Domain\Shop::grantFrame($conn, $uid, 'aurora')) smoke_fail('frame double grant should fail');
+    if (!avatar_unlocked('aurora', 1, 0, [], false, \App\Domain\Shop::ownedFrames($conn, $uid))) smoke_fail('frame unlock');
 
     $conn->rollback();
 } catch (Throwable $e) {

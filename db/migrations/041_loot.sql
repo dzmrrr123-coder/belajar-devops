@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS `user_frames` (`user_id` INT NOT NULL, `frame` VARCHAR(24) NOT NULL, `earned_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`user_id`, `frame`), CONSTRAINT `fk_user_frames_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
