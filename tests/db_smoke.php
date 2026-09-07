@@ -139,6 +139,16 @@ try {
     if (!isset($sig['claimable_n'], $sig['due_reviews'], $sig['pomo_today'])) smoke_fail('signals shape');
     $na = \App\Domain\NextAction::resolve($conn, $uid);
     if (empty($na['type']) || empty($na['title'])) smoke_fail('resolve shape');
+    foreach (['skill_nodes', 'user_skill_mastery', 'mastery_events'] as $t) {
+        $chk = $conn->query("SHOW TABLES LIKE '{$t}'");
+        if (!$chk || $chk->num_rows === 0) smoke_fail("missing table {$t}");
+        if ($chk) $chk->free();
+    }
+    \App\Domain\Skill\Mastery::award($conn, $uid, 'docker', 10, 'quest', 'quest', $qid);
+    \App\Domain\Skill\Mastery::award($conn, $uid, null, 10, 'quest');
+    $mm = \App\Domain\Skill\Mastery::map($conn, $uid);
+    if (($mm['docker']['xp'] ?? -1) !== 10) smoke_fail('mastery map');
+    if (($mm['docker']['level'] ?? 0) !== 1) smoke_fail('mastery level');
     if (\App\Domain\Shop::grantFrame($conn, $uid, 'aurora')) smoke_fail('frame double grant should fail');
     if (!avatar_unlocked('aurora', 1, 0, [], false, \App\Domain\Shop::ownedFrames($conn, $uid))) smoke_fail('frame unlock');
 

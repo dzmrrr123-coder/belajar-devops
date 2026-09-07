@@ -132,6 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         $xp_reward = apply_xp_multiplier($xp_reward, $mult);
         // Add XP
         award_xp($conn, $user_id, $xp_reward, 'quest', 'quest', $quest_id);
+        \App\Domain\Skill\Mastery::award($conn, $user_id, \App\Domain\Skill\Mastery::nodeForSkill(skill_for_week((int)($quest['week'] ?? 1))), 10, 'quest', 'quest', $quest_id);
 
         // Update streak
         $new_streak = update_user_streak($conn, $user_id);

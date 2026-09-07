@@ -81,6 +81,8 @@ foreach ($skills as $sk) {
     if (!isset($sk['next_quest'])) continue;
     if ($first_quest === null || $sk['next_quest']['id'] < $first_quest['id']) $first_quest = $sk['next_quest'];
 }
+$mastery_map = \App\Domain\Skill\Mastery::map($conn, $user_id);
+$mastery_total = array_sum(array_map(fn($m) => (int)$m['xp'], $mastery_map));
 $conn->close();
 
 $page_title = 'Skill Tree';
@@ -93,6 +95,23 @@ require_once 'includes/navbar.php';
         <h1 class="page-title">Skill tree</h1>
         <p class="page-desc">Kekuatan tiap bidang dari quest + catatanmu. Naikkan lewat link "Lanjut" di tiap kartu.<?php if ($next_up !== null): ?> Paling dekat naik: <strong><?= htmlspecialchars($next_up) ?></strong> (<?= $next_up_need ?> poin lagi).<?php endif; ?></p>
     </div>
+
+    <section class="card p-4 mb-3" aria-label="Mastery map">
+        <div class="quest-section-head"><div><h2>Mastery map</h2><p>Bukti kompetensi per node · <?= $mastery_total ?> mastery XP · naik tiap 50 XP.</p></div></div>
+        <div class="skill-grid">
+            <?php foreach ($mastery_map as $mslug => $m): ?>
+            <div class="card skill-card" aria-label="Mastery <?= htmlspecialchars($m['name']) ?>">
+                <div class="skill-top">
+                    <span class="skill-icon" aria-hidden="true"><i class="<?= htmlspecialchars($m['icon']) ?>"></i></span>
+                    <div class="skill-id"><strong><?= htmlspecialchars($m['name']) ?></strong><small><?= (int)$m['xp'] ?> mastery XP</small></div>
+                    <span class="skill-lv">Lv <?= (int)$m['level'] ?></span>
+                </div>
+                <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= (int)$m['pct'] ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres <?= htmlspecialchars($m['name']) ?>"><div class="xp-progress-fill" style="width: <?= (int)$m['pct'] ?>%;"></div></div>
+                <div class="skill-meta"><span><?= (int)$m['need'] ?> XP ke Lv <?= (int)$m['level'] + 1 ?></span></div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
 
     <?php if ($total_points === 0 && $first_quest !== null): ?>
     <section class="card skill-hero" aria-label="Mulai skill pertamamu">

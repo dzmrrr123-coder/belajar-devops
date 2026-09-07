@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
     $i = max(0, (int)($_POST['i'] ?? 0));
     $run = $_SESSION['quiz_run'] ?? ['tahu' => 0, 'lupa' => 0, 'xp' => 0];
 
-    $stmt = $conn->prepare("SELECT id, user_id, source, source_id, question, answer, created_at FROM quiz_cards WHERE id = ? AND user_id = ?");
+    $stmt = $conn->prepare("SELECT id, user_id, source, source_id, question, answer, topic, created_at FROM quiz_cards WHERE id = ? AND user_id = ?");
     $stmt->bind_param("ii", $card_id, $user_id);
     $stmt->execute();
     $card = $stmt->get_result()->fetch_assoc();
@@ -89,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
                     award_xp($conn, $user_id, $gain, 'quiz', 'quiz', $card_id);
                     $run['xp'] = ($run['xp'] ?? 0) + $gain;
                 }
+                \App\Domain\Skill\Mastery::award($conn, $user_id, \App\Domain\Skill\Mastery::nodeForSkill((string)($card['topic'] ?? '')), 2, 'quiz', 'quiz', $card_id);
                 check_and_unlock_badges($conn, $user_id);
             }
             $run['tahu'] = ($run['tahu'] ?? 0) + 1;

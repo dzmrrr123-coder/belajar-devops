@@ -230,6 +230,14 @@ check('next quest', \App\Domain\NextAction::pick(['claimable_n' => 0, 'due_revie
 check('next quest id', \App\Domain\NextAction::pick(['next_quest' => ['id' => 7, 'title' => 'Lanjut', 'xp_reward' => 20]])['quest_id'], 7);
 check('next fokus', \App\Domain\NextAction::pick(['claimable_n' => 0, 'due_reviews' => 0, 'pomo_today' => 0])['type'], 'focus');
 check('next digest', \App\Domain\NextAction::pick(['claimable_n' => 0, 'due_reviews' => 0, 'pomo_today' => 2])['type'], 'digest');
+check('mastery lv1', \App\Domain\Skill\Mastery::level(0), 1);
+check('mastery lv2', \App\Domain\Skill\Mastery::level(50), 2);
+check('mastery lv2b', \App\Domain\Skill\Mastery::level(99), 2);
+check('mastery need', \App\Domain\Skill\Mastery::need(30), 20);
+check('mastery need pas', \App\Domain\Skill\Mastery::need(50), 50);
+check('mastery node', \App\Domain\Skill\Mastery::nodeForSkill('Docker'), 'docker');
+check('mastery node net', \App\Domain\Skill\Mastery::nodeForSkill('Networking'), 'networking');
+check('mastery node general', \App\Domain\Skill\Mastery::nodeForSkill('General'), null);
 
 echo "pass: {$pass}, fail: {$fail}" . PHP_EOL;
 exit($fail > 0 ? 1 : 0);

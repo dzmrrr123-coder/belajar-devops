@@ -45,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ((int)$rev['done_count'] === 0) {
                     $xp_gain = apply_xp_multiplier(5, mission_multiplier($conn, $user_id));
                     award_xp($conn, $user_id, $xp_gain, 'review', 'review', $rid);
+                    \App\Domain\Skill\Mastery::award($conn, $user_id, \App\Domain\Skill\Mastery::nodeForSkill((string)($rev['skill'] ?? '')), 3, 'review', 'review', $rid);
                 }
                 $nb = check_and_unlock_badges($conn, $user_id);
                 \App\Analytics\Tracker::track($conn, $user_id, \App\Analytics\Events::REVIEW_ANSWERED, ['review_id' => $rid, 'grade' => $grade, 'passed' => $passed]);
