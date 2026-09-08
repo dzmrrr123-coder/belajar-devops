@@ -5,7 +5,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') redirect('quests.php');
 verify_csrf();
 if (rate_limit_hit('switch_track', 10, 3600)) { set_flash('warning', 'Terlalu sering ganti track. Coba lagi nanti.'); redirect('quests.php'); }
 $conn = db_connect();
-try { @$conn->query("ALTER TABLE `users` ADD COLUMN `track` VARCHAR(16) NOT NULL DEFAULT 'devops'"); } catch (Throwable $e) {}
 $uid = (int)$_SESSION['user_id'];
 $inClass = false;
 try {

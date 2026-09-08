@@ -45,8 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csv = implode(',', $picked);
     $final_target = $target;
     $final_minutes = $minutes;
-    try { @$conn->query("ALTER TABLE `users` ADD COLUMN `track` VARCHAR(16) NOT NULL DEFAULT 'devops'"); } catch (Throwable $e2) {}
-    try { @$conn->query("ALTER TABLE `quests` ADD COLUMN `track` VARCHAR(16) NOT NULL DEFAULT 'devops'"); } catch (Throwable $e2) {}
     $conn->begin_transaction();
     try {
         $up = $conn->prepare("UPDATE users SET onboarded = 1, pkl_target = ?, daily_minutes = ?, focus_skills = ?, track = ? WHERE id = ?");

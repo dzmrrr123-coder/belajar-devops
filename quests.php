@@ -4,7 +4,6 @@ require_login();
 
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
-try { @$conn->query("ALTER TABLE `quests` ADD COLUMN `track` VARCHAR(16) NOT NULL DEFAULT 'devops'"); } catch (Throwable $e) {}
 $myTrack = user_track($conn, $user_id);
 $trackName = \App\Domain\Track\Tracks::all()[$myTrack]['name'] ?? 'DevOps';
 try { \App\Domain\Track\Roadmap::ensureSeed($conn); } catch (Throwable $e) {}
@@ -135,33 +134,42 @@ require_once 'includes/navbar.php';
 ?>
 
 <main class="container py-4" role="main">
-    <div class="page-head">
-        <div class="page-kicker">Roadmap <?= htmlspecialchars($trackName) ?> · <span id="roadmapDone"><?= $completed_quests ?></span> dari <span id="roadmapTotal"><?= $total_quests ?></span> quest</div>
-        <h1 class="page-title">Roadmap <?= htmlspecialchars($trackName) ?> 12 minggu</h1>
-        <?php if ($canSwitchTrack): ?>
-        <form method="POST" action="switch_track.php" class="d-flex align-items-center gap-2 mt-2 mb-1" aria-label="Ganti jurusan">
-            <?= csrf_field() ?>
-            <input type="hidden" name="back" value="quests.php">
-            <label class="small text-muted mb-0" for="trackSel"><i class="fas fa-graduation-cap me-1"></i>Jurusan:</label>
-            <select id="trackSel" name="track" class="form-select form-select-sm" style="max-width:210px" onchange="this.form.submit()">
-                <?php foreach (\App\Domain\Track\Tracks::all() as $slug => $tr): ?>
-                <option value="<?= htmlspecialchars($slug) ?>" <?= $slug === $myTrack ? 'selected' : '' ?>><?= htmlspecialchars($tr['name']) ?> (<?= htmlspecialchars($tr['desc']) ?>)</option>
-                <?php endforeach; ?>
-            </select>
-            <noscript><button class="btn btn-cyber-outline btn-sm" type="submit">Ganti</button></noscript>
-        </form>
-        <?php else: ?>
-        <p class="mt-2 mb-1"><span class="quest-done"><i class="fas fa-lock me-1"></i>Jurusan: <?= htmlspecialchars($trackName) ?> · Terkunci oleh kelas</span></p>
-        <?php endif; ?>
-        <p class="page-desc">Roadmap 12 minggu. Centang quest yang selesai = XP masuk. (<?= $xp_earned ?>/<?= $total_xp_possible ?> XP · <span id="roadmapPct"><?= $completion_rate ?></span>%)</p>
-        <?php $primaryFeature = \App\Domain\Track\Tracks::primaryFeature($myTrack); ?>
-        <div class="d-flex flex-wrap gap-2 mt-2">
-            <a class="btn btn-cyber btn-sm" href="<?= htmlspecialchars($primaryFeature['href']) ?>"><i class="<?= htmlspecialchars($primaryFeature['icon']) ?> me-1"></i><?= htmlspecialchars($primaryFeature['title']) ?></a>
-            <a class="btn btn-cyber-outline btn-sm" href="mentor.php"><i class="fas fa-robot me-1"></i>Tanya Mentor</a>
-            <a class="btn btn-cyber-outline btn-sm" href="lab.php"><i class="fas fa-flask me-1"></i>Lab Praktik</a>
+    <section class="overview-header progress-strip mb-4">
+        <div class="strip-main">
+            <div class="page-kicker eyebrow mb-1">Roadmap <?= htmlspecialchars($trackName) ?></div>
+            <h1 class="page-title mb-2">Roadmap 12 Minggu</h1>
+            <p class="page-desc mb-3">Centang quest yang selesai untuk mendapatkan XP.</p>
+            
+            <?php if ($canSwitchTrack): ?>
+            <form method="POST" action="switch_track.php" class="d-flex align-items-center gap-2 mb-3" aria-label="Ganti jurusan">
+                <?= csrf_field() ?>
+                <input type="hidden" name="back" value="quests.php">
+                <label class="small text-muted mb-0" for="trackSel"><i class="fas fa-graduation-cap me-1"></i>Jurusan:</label>
+                <select id="trackSel" name="track" class="form-select form-select-sm" style="max-width:210px" onchange="this.form.submit()">
+                    <?php foreach (\App\Domain\Track\Tracks::all() as $slug => $tr): ?>
+                    <option value="<?= htmlspecialchars($slug) ?>" <?= $slug === $myTrack ? 'selected' : '' ?>><?= htmlspecialchars($tr['name']) ?> (<?= htmlspecialchars($tr['desc']) ?>)</option>
+                    <?php endforeach; ?>
+                </select>
+                <noscript><button class="btn btn-cyber-outline btn-sm" type="submit">Ganti</button></noscript>
+            </form>
+            <?php else: ?>
+            <p class="mb-3"><span class="quest-done"><i class="fas fa-lock me-1"></i>Jurusan: <?= htmlspecialchars($trackName) ?> · Terkunci oleh kelas</span></p>
+            <?php endif; ?>
+
+            <div class="xp-progress-bar" id="roadmapBarWrap" role="progressbar" aria-valuenow="<?= $completion_rate ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres roadmap"><div class="xp-progress-fill" id="roadmapBar" style="width: <?= $completion_rate ?>%;"></div></div>
         </div>
-        <div class="xp-progress-bar" id="roadmapBarWrap" role="progressbar" aria-valuenow="<?= $completion_rate ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres roadmap"><div class="xp-progress-fill" id="roadmapBar" style="width: <?= $completion_rate ?>%;"></div></div>
-    </div>
+        <div class="strip-side">
+            <span><strong><span id="roadmapDone"><?= $completed_quests ?></span>/<?= $total_quests ?></strong> quest selesai</span>
+            <span><strong><?= $xp_earned ?>/<?= $total_xp_possible ?></strong> XP</span>
+            <span>Progres: <strong><span id="roadmapPct"><?= $completion_rate ?></span>%</strong></span>
+            <?php $primaryFeature = \App\Domain\Track\Tracks::primaryFeature($myTrack); ?>
+            <div class="d-flex flex-column gap-2 mt-2">
+                <a class="btn btn-cyber btn-sm" href="<?= htmlspecialchars($primaryFeature['href']) ?>"><i class="<?= htmlspecialchars($primaryFeature['icon']) ?> me-1"></i><?= htmlspecialchars($primaryFeature['title']) ?></a>
+                <a class="btn btn-cyber-outline btn-sm" href="mentor.php"><i class="fas fa-robot me-1"></i>Tanya Mentor</a>
+                <a class="btn btn-cyber-outline btn-sm" href="lab.php"><i class="fas fa-flask me-1"></i>Lab Praktik</a>
+            </div>
+        </div>
+    </section>
 
     <div class="mb-4">
         <div class="row g-3 align-items-center">

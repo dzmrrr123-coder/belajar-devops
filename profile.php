@@ -114,29 +114,21 @@ $pct = level_progress_percent($user['xp']);
 $myTrack = user_track($conn, $user_id);
 $myTrackInfo = \App\Domain\Track\Tracks::all()[$myTrack] ?? ['name' => strtoupper($myTrack), 'desc' => ''];
 $stats = ['quest_done' => 0, 'quest_total' => 0, 'pomodoro' => 0, 'notes' => 0, 'q_open' => 0];
-$stmt = $conn->prepare("SELECT 
-    (SELECT COUNT(*) FROM quests WHERE (user_id IS NULL AND (track = ? OR track = 'all' OR track IS NULL OR track = '')) OR (user_id = ? AND (track = ? OR track IS NULL OR track = ''))) AS quest_total, 
-    (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id=uq.quest_id WHERE uq.user_id=? AND ((q.user_id IS NULL AND (q.track = ? OR q.track = 'all' OR q.track IS NULL OR q.track = '')) OR (q.user_id = ? AND (q.track = ? OR q.track IS NULL OR q.track = '')))) AS quest_done, 
-    (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id=?) AS pomo, 
-    (SELECT COUNT(*) FROM errors WHERE user_id=?) AS notes, 
-    (SELECT COUNT(*) FROM questions WHERE user_id=? AND status='open') AS q_open");
-if ($stmt) {
-    $stmt->bind_param("sisisisiii", $myTrack, $user_id, $myTrack, $user_id, $myTrack, $user_id, $myTrack, $user_id, $user_id, $user_id);
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc() ?: [];
-    $stmt->close();
-} else {
-    $stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS quest_total, (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id=uq.quest_id WHERE uq.user_id=? AND (q.user_id IS NULL OR q.user_id=?)) AS quest_done, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id=?) AS pomo, (SELECT COUNT(*) FROM errors WHERE user_id=?) AS notes, (SELECT COUNT(*) FROM questions WHERE user_id=? AND status='open') AS q_open");
-    $stmt->bind_param("iiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id);
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc() ?: [];
-    $stmt->close();
-}
-$stats['quest_total'] = (int)($row['quest_total'] ?? 0);
-$stats['quest_done'] = (int)($row['quest_done'] ?? 0);
-$stats['pomodoro'] = (int)($row['pomo'] ?? 0);
-$stats['notes'] = (int)($row['notes'] ?? 0);
-$stats['q_open'] = (int)($row['q_open'] ?? 0);
+$stmt_qt = $conn->prepare("SELECT COUNT(*) AS c FROM quests WHERE (user_id IS NULL AND (track = ? OR track = 'all' OR track IS NULL OR track = '')) OR (user_id = ? AND (track = ? OR track IS NULL OR track = ''))");
+if ($stmt_qt) { $stmt_qt->bind_param("sis", $myTrack, $user_id, $myTrack); $stmt_qt->execute(); $stats['quest_total'] = (int)($stmt_qt->get_result()->fetch_assoc()['c'] ?? 0); $stmt_qt->close(); }
+
+$stmt_qd = $conn->prepare("SELECT COUNT(*) AS c FROM user_quests uq JOIN quests q ON q.id=uq.quest_id WHERE uq.user_id=? AND ((q.user_id IS NULL AND (q.track = ? OR q.track = 'all' OR q.track IS NULL OR q.track = '')) OR (q.user_id = ? AND (q.track = ? OR q.track IS NULL OR q.track = '')))");
+if ($stmt_qd) { $stmt_qd->bind_param("isis", $user_id, $myTrack, $user_id, $myTrack); $stmt_qd->execute(); $stats['quest_done'] = (int)($stmt_qd->get_result()->fetch_assoc()['c'] ?? 0); $stmt_qd->close(); }
+
+$stmt_pm = $conn->prepare("SELECT COUNT(*) AS c FROM pomodoro_sessions WHERE user_id=?");
+if ($stmt_pm) { $stmt_pm->bind_param("i", $user_id); $stmt_pm->execute(); $stats['pomodoro'] = (int)($stmt_pm->get_result()->fetch_assoc()['c'] ?? 0); $stmt_pm->close(); }
+
+$stmt_nt = $conn->prepare("SELECT COUNT(*) AS c FROM errors WHERE user_id=?");
+if ($stmt_nt) { $stmt_nt->bind_param("i", $user_id); $stmt_nt->execute(); $stats['notes'] = (int)($stmt_nt->get_result()->fetch_assoc()['c'] ?? 0); $stmt_nt->close(); }
+
+$stmt_qo = $conn->prepare("SELECT COUNT(*) AS c FROM questions WHERE user_id=? AND status='open'");
+if ($stmt_qo) { $stmt_qo->bind_param("i", $user_id); $stmt_qo->execute(); $stats['q_open'] = (int)($stmt_qo->get_result()->fetch_assoc()['c'] ?? 0); $stmt_qo->close(); }
+
 
 $activity = [];
 try {
@@ -162,23 +154,27 @@ require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
-    <div class="page-head arena-banner">
-        <div class="page-kicker eyebrow">Level <?= $level ?> · <?= htmlspecialchars($rank) ?></div>
-        <div class="d-flex align-items-center gap-3 mb-2">
-            <span class="avatar-circle avatar-xl frame-<?= htmlspecialchars($user['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($user['username'], 0, 1)) ?></span>
-            <h1 class="page-title mb-0"><?= htmlspecialchars($user['username']) ?><?php if (!empty($user['flair'])): ?> <span class="flair-badge"><?= htmlspecialchars($user['flair']) ?></span><?php endif; ?></h1>
+    <section class="overview-header progress-strip mb-4">
+        <div class="strip-main">
+            <div class="page-kicker eyebrow mb-1">Level <?= $level ?> · <?= htmlspecialchars($rank) ?></div>
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="avatar-circle avatar-xl frame-<?= htmlspecialchars($user['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($user['username'], 0, 1)) ?></span>
+                <h1 class="page-title mb-0"><?= htmlspecialchars($user['username']) ?><?php if (!empty($user['flair'])): ?> <span class="flair-badge"><?= htmlspecialchars($user['flair']) ?></span><?php endif; ?></h1>
+            </div>
+            
+            <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= $pct ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres menuju level berikutnya"><div class="xp-progress-fill" style="width:<?= $pct ?>%"></div></div>
         </div>
-        <div class="profile-stats">
+        <div class="strip-side">
             <span><strong><?= (int)$user['xp'] ?></strong> XP</span>
-            <span><strong><?= (int)$user['streak'] ?></strong> hari <small>(terbaik <?= (int)($user['best_streak'] ?? 0) ?>)</small></span>
-            <span><i class="fas fa-snowflake" aria-hidden="true"></i> <strong><?= (int)($user['freeze_tokens'] ?? 0) ?></strong> freeze</span>
-            <span>sejak <?= date('M Y', strtotime($user['created_at'])) ?></span>
+            <span><strong><?= (int)$user['streak'] ?></strong> hari beruntun <small>(terbaik <?= (int)($user['best_streak'] ?? 0) ?>)</small></span>
+            <span><i class="fas fa-snowflake text-info me-1" aria-hidden="true"></i> <strong><?= (int)($user['freeze_tokens'] ?? 0) ?></strong> freeze</span>
+            <span>Bergabung <strong><?= date('M Y', strtotime($user['created_at'])) ?></strong></span>
+            
+            <div class="mt-2">
+                <button type="button" class="btn btn-cyber-outline btn-sm w-100" onclick="openFlexCard()"><i class="fas fa-share-nodes me-1" aria-hidden="true"></i>Flex ke story</button>
+            </div>
         </div>
-        <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= $pct ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres menuju level berikutnya"><div class="xp-progress-fill" style="width:<?= $pct ?>%"></div></div>
-        <div class="page-actions mt-3">
-            <button type="button" class="btn btn-cyber-outline btn-sm" onclick="openFlexCard()"><i class="fas fa-share-nodes me-1" aria-hidden="true"></i>Flex ke story</button>
-        </div>
-    </div>
+    </section>
     <ul class="nav nav-pills mb-4 gap-2 border-bottom pb-3" id="profileTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="filter-pill active" id="tab-overview" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true"><i class="fas fa-chart-pie me-1"></i>Overview</button>
