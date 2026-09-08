@@ -163,82 +163,12 @@ require_once 'includes/navbar.php';
 ?>
 
 <main class="container py-4" id="main">
-    <div class="page-head arena-banner">
-        <div class="page-kicker eyebrow"><span data-greet>Semangat</span> · Track <?= htmlspecialchars(\App\Domain\Track\Tracks::all()[$myTrack]['name'] ?? 'DevOps') ?> · Minggu <?= $selected_week ?> dari 12 · <?= count($quests) ?> quest</div>
-        <h1 class="page-title">Dashboard</h1>
-        <p class="page-desc">Fokus hari ini: <strong><?= !empty($quests) ? htmlspecialchars($quests[0]['title']) : 'belum ada quest' ?></strong>. Selesaikan satu, XP masuk otomatis.</p>
-        <div class="page-actions overview-actions">
-            <a href="timer.php" class="btn btn-cyber"><i class="fas fa-play me-1" aria-hidden="true"></i> Mulai sesi fokus</a>
-            <a href="quests.php" class="page-actions-link">Lihat roadmap <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
-        </div>
-    </div>
-
-    <div class="chest-card<?= $chest ? ' opened' : '' ?>" id="dailyChest" data-urgent="<?= $chest ? '0' : '1' ?>">
-        <?php if ($chest): ?>
-            <span class="chest-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
-            <span class="chest-text"><strong><?= !empty($chest['is_golden']) ? 'Peti emas! ' : '' ?>+<?= (int)$chest['xp'] ?> XP<?= !empty($chest['freeze']) ? ' + 1 pelindung streak' : '' ?></strong><small>peti hari ini sudah dibuka · kembali besok</small></span>
-        <?php else: ?>
-            <span class="chest-icon closed" aria-hidden="true"><i class="fas fa-gift"></i></span>
-            <span class="chest-text"><strong>Peti harian menunggumu</strong><small>Hadiah 3–15 XP + pelindung streak sesekali</small></span>
-            <form method="POST" action="claim_chest.php" class="chest-form m-0 flex-shrink-0">
-                <?= csrf_field() ?>
-                <button type="submit" class="btn btn-cyber btn-sm">Buka</button>
-            </form>
-        <?php endif; ?>
-    </div>
-
-    <?php $streak_risk = ((int)$user['streak'] > 0) && empty($missions['quest1']['done']) && empty($missions['focus1']['done']) && empty($missions['note1']['done']); ?>
-    <?php if ($streak_risk): ?>
-    <a class="streak-banner" href="timer.php">
-        <i class="fas fa-fire" aria-hidden="true"></i>
-        <span><strong>Streak <?= (int)$user['streak'] ?> hari belum aman hari ini.</strong> Satu aksi kecil sebelum tengah malam<?php if ((int)($user['freeze_tokens'] ?? 0) > 0): ?> · freeze tersisa <?= (int)$user['freeze_tokens'] ?><?php endif; ?>.</span>
-        <i class="fas fa-chevron-right" aria-hidden="true"></i>
-    </a>
-    <?php endif; ?>
-
-    <?php
-    $claimable_xp = 0; $claimable_n = 0;
-    foreach ($missions as $m) if (!empty($m['done']) && empty($m['claimed'])) { $claimable_n++; $claimable_xp += (int)$m['xp']; }
-    $next_quest = null;
-    foreach ($quests as $q) {
-        if (!empty($q['completed_at'])) continue;
-        if (quest_blocker($q, $lock_done, $lock_prev[(int)$q['id']] ?? null) !== null) continue;
-        $next_quest = $q;
-        break;
-    }
-    $last_active = (string)($user['last_active_date'] ?? '');
-    $streak_broken = $last_active !== '' && $last_active < date('Y-m-d', strtotime('-1 day')) && (int)$user['streak'] <= 1;
-    $next_action = \App\Domain\NextAction::pick(['claimable_n' => $claimable_n, 'claimable_xp' => $claimable_xp, 'due_reviews' => $due_reviews, 'next_quest' => $next_quest, 'pomo_today' => $pomodoro_today, 'streak_broken' => $streak_broken]);
-    $next_icons = ['claim' => 'fa-gift', 'recovery' => 'fa-heart', 'review' => 'fa-rotate-right', 'quest' => 'fa-map', 'focus' => 'fa-play', 'digest' => 'fa-calendar-week'];
-    $next_urgent = in_array($next_action['type'], ['claim', 'recovery'], true) ? '1' : '0';
-    $bolt_combo_done = \App\Domain\Gamification\Combo::countDone($missions);
-    $bolt_combo_total = count($missions) ?: 3;
-    $bolt_combo_mult = \App\Domain\Gamification\Combo::tier($bolt_combo_done, $bolt_combo_total);
-    if ($claimable_n > 0) { $bolt_ctx = 'claim'; $bolt_mood = 'happy'; $bolt_msg = 'Ada <strong>+' . $claimable_xp . ' XP</strong> nganggur. Klaim gih!'; }
-    elseif ($streak_broken) { $bolt_ctx = 'recovery'; $bolt_mood = 'sleep'; $bolt_msg = 'Streak putus? Kerjakan 1 quest kecil untuk mulai lagi.'; }
-    elseif ($bolt_combo_mult >= 2.0) { $bolt_ctx = 'combo'; $bolt_mood = 'hype'; $bolt_msg = 'Semua misi beres. Bonus kombo x2 aktif!'; }
-    elseif ($next_action['type'] === 'review') { $bolt_ctx = 'review'; $bolt_mood = 'idle'; $bolt_msg = 'Ada ' . (int)$due_reviews . ' review nunggu. 2 menit saja.'; }
-    else { $bolt_ctx = 'focus'; $bolt_mood = 'idle'; $bolt_msg = 'Fokus satu quest, sisanya ngikut.'; }
-    ?>
-    <?php if ($next_action['type'] === 'claim'): ?>
-    <div class="next-action next-action-primary" data-urgent="<?= $next_urgent ?>">
-        <span class="next-action-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
-        <span class="next-action-text"><strong><?= htmlspecialchars($next_action['title']) ?></strong><small><?= htmlspecialchars($next_action['desc']) ?></small></span>
-        <form method="POST" action="claim_mission.php" class="m-0 flex-shrink-0">
-            <?= csrf_field() ?>
-            <input type="hidden" name="mission_key" value="all">
-            <button type="submit" class="btn btn-cyber btn-sm">Klaim</button>
-        </form>
-    </div>
-    <?php else: ?>
-    <a class="next-action next-action-primary" href="<?= htmlspecialchars($next_action['href']) ?>" data-urgent="<?= $next_urgent ?>">
-        <span class="next-action-icon" aria-hidden="true"><i class="fas <?= $next_icons[$next_action['type']] ?? 'fa-arrow-right' ?>"></i></span>
-        <span class="next-action-text"><strong><?= htmlspecialchars($next_action['title']) ?></strong><small><?= htmlspecialchars($next_action['desc']) ?></small></span>
-        <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
-    </a>
-    <?php endif; ?>
-    <section class="progress-strip" aria-label="Ringkasan progres belajar">
+    <!-- Hero / Header Section -->
+    <section class="overview-header progress-strip mb-4">
         <div class="strip-main">
+            <div class="page-kicker eyebrow mb-1"><span data-greet>Semangat</span> · Track <?= htmlspecialchars(\App\Domain\Track\Tracks::all()[$myTrack]['name'] ?? 'DevOps') ?> · Minggu <?= $selected_week ?></div>
+            <h1 class="page-title mb-2">Dashboard</h1>
+            <p class="page-desc mb-3">Fokus hari ini: <strong><?= !empty($quests) ? htmlspecialchars($quests[0]['title']) : 'belum ada quest' ?></strong>.</p>
             <div class="strip-level"><strong>Level <?= $level ?></strong><span><?= htmlspecialchars($rank_title) ?></span></div>
             <div class="xp-progress-bar" role="progressbar" aria-valuenow="<?= $progress_percent ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres menuju level berikutnya"><div class="xp-progress-fill" id="levelProgressBar" style="width: <?= $progress_percent ?>%;"></div></div>
             <div class="strip-meta"><span><span id="statTotalXp"><?= (int)$user['xp'] ?></span> XP</span><span id="nextLevelXpText"><?= $xp_needed ?> XP lagi</span></div>
@@ -247,16 +177,26 @@ require_once 'includes/navbar.php';
             <span><strong><?= (int)$user['streak'] ?></strong> hari konsisten</span>
             <span><strong>+<span id="dashWeekXp"><?= (int)$xp_week ?></span> XP</strong> minggu ini</span>
             <span><strong><span id="dashQuestDone"><?= $total_completed ?></span>/<?= $total_quests_cnt ?></strong> quest (<span id="dashQuestPct"><?= $overall_quest_percent ?></span>%)</span>
-            <button type="button" class="btn btn-cyber-outline btn-sm mt-2" id="dashShareBtn" data-username="<?= htmlspecialchars($user['username']) ?>" data-level="<?= $level ?>" data-rank="<?= htmlspecialchars($rank_title) ?>" data-streak="<?= (int)$user['streak'] ?>" data-xp="<?= (int)$user['xp'] ?>" data-quests="<?= $total_completed ?>/<?= $total_quests_cnt ?>"><i class="fas fa-share-nodes me-1" aria-hidden="true"></i>Bagikan</button>
+            <div class="d-flex gap-2 mt-2 justify-content-end">
+                <a href="timer.php" class="btn btn-cyber btn-sm"><i class="fas fa-play me-1" aria-hidden="true"></i> Fokus</a>
+                <button type="button" class="btn btn-cyber-outline btn-sm" id="dashShareBtn" data-username="<?= htmlspecialchars($user['username']) ?>" data-level="<?= $level ?>" data-rank="<?= htmlspecialchars($rank_title) ?>" data-streak="<?= (int)$user['streak'] ?>" data-xp="<?= (int)$user['xp'] ?>" data-quests="<?= $total_completed ?>/<?= $total_quests_cnt ?>"><i class="fas fa-share-nodes me-1" aria-hidden="true"></i> Bagikan</button>
+            </div>
         </div>
     </section>
-<script>
-document.getElementById('dashShareBtn')?.addEventListener('click', function() {
-    const d = this.dataset;
-    const canvas = drawProgressCard({ username: d.username, level: d.level, rank: d.rank, streak: d.streak, xp: d.xp, quests: d.quests });
-    shareCanvasImage(canvas, 'progres-' + d.username + '.png', 'Progres belajarku', d.username + ' — Level ' + d.level + ' ' + d.rank + ', ' + d.streak + ' hari streak di Learn Tracker!');
-});
-</script>
+    
+    <script>
+    document.getElementById('dashShareBtn')?.addEventListener('click', function() {
+        const d = this.dataset;
+        const canvas = drawProgressCard({ username: d.username, level: d.level, rank: d.rank, streak: d.streak, xp: d.xp, quests: d.quests });
+        shareCanvasImage(canvas, 'progres-' + d.username + '.png', 'Progres belajarku', d.username + ' — Level ' + d.level + ' ' + d.rank + ', ' + d.streak + ' hari streak di Learn Tracker!');
+    });
+    </script>
+
+<?php
+// Alerts logic (Will be displayed in sidebar)
+$has_alerts = $chest || $streak_risk || in_array($next_action['type'], ['claim', 'recovery'], true);
+?>
+
 
     <div class="ticker" id="communityTicker" aria-label="Aktivitas komunitas terbaru" hidden>
         <div class="ticker-track" id="tickerTrack" aria-hidden="false"></div>
@@ -289,73 +229,10 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
     })();
     </script>
 
-    <?php
-    $mission_claimed = count(array_filter($missions, fn($m) => !empty($m['claimed'])));
-    $mission_all_done = count(array_filter($missions, fn($m) => !empty($m['done']))) === count($missions);
-    ?>
-    <div class="bolt-say mb-3" data-bolt data-context="<?= htmlspecialchars($bolt_ctx) ?>" data-mood="<?= htmlspecialchars($bolt_mood) ?>" data-msg="<?= $bolt_msg ?>"></div>
-    <section class="mission-strip" aria-label="Misi harian">
-        <details class="mission-details" id="missionDetails" open>
-            <summary class="mission-summary">
-                <span class="mission-summary-text">
-                    <strong>Misi hari ini</strong>
-                    <?php $combo_done = \App\Domain\Gamification\Combo::countDone($missions); $combo_total = count($missions) ?: 3; $combo_mult = \App\Domain\Gamification\Combo::tier($combo_done, $combo_total); ?>
-                    <small><?= $mission_claimed ?>/<?= count($missions) ?> diklaim · bonus harian · <span class="text-success fw-bold">Kombo <?= \App\Domain\Gamification\Combo::label($combo_mult) ?></span> · <?= \App\Domain\Gamification\Combo::nextHint($combo_done, $combo_total) ?> · reset <span id="resetClock">--:--:--</span></small>
-                </span>
-<script>
-(function() {
-    const el = document.getElementById('resetClock');
-    if (!el) return;
-    const pad = function(n) { return String(n).padStart(2, '0'); };
-    const tick = function() {
-        const now = new Date();
-        const mid = new Date(now);
-        mid.setHours(24, 0, 0, 0);
-        let s = Math.max(0, Math.floor((mid - now) / 1000));
-        el.textContent = pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60);
-    };
-    tick();
-    setInterval(tick, 1000);
-})();
-</script>
-                <span class="mission-summary-count" aria-hidden="true"><?= $mission_claimed ?>/<?= count($missions) ?></span>
-                <i class="fas fa-chevron-down mission-summary-chev" aria-hidden="true"></i>
-            </summary>
-            <div class="mission-body">
-                <?php if ($due_reviews > 0): ?>
-                <a class="review-banner" href="review.php"><i class="fas fa-rotate-right" aria-hidden="true"></i><span><strong><?= $due_reviews ?> review</strong> jatuh tempo hari ini — 2 menit saja.</span><i class="fas fa-chevron-right" aria-hidden="true"></i></a>
-                <?php endif; ?>
-                <div class="mission-row">
-                    <?php foreach ($missions as $mkey => $m): ?>
-                    <div class="mission-card <?= !empty($m['claimed']) ? 'claimed' : (!empty($m['done']) ? 'ready' : '') ?>" data-urgent="<?= (!empty($m['done']) && empty($m['claimed'])) ? '1' : '0' ?>">
-                        <i class="fas <?= htmlspecialchars($m['icon']) ?>" aria-hidden="true"></i>
-                        <div class="mission-main"><strong><?= htmlspecialchars($m['label']) ?></strong><span>+<?= (int)$m['xp'] ?> XP</span></div>
-                        <?php if (!empty($m['claimed'])): ?>
-                            <span class="quest-done"><i class="fas fa-check" aria-hidden="true"></i>Diklaim</span>
-                        <?php elseif (!empty($m['done'])): ?>
-                            <form method="POST" action="claim_mission.php" class="mission-claim-form m-0">
-                                <?= csrf_field() ?>
-                                <input type="hidden" name="mission_key" value="<?= htmlspecialchars($mkey) ?>">
-                                <button type="submit" class="btn btn-cyber btn-sm">Klaim</button>
-                            </form>
-                        <?php else: ?>
-                            <span class="small text-muted">Belum</span>
-                        <?php endif; ?>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </details>
-        <script>
-        (function(){var d=document.getElementById('missionDetails');if(d&&matchMedia('(max-width:767.98px)').matches){d.removeAttribute('open');}})();
-        </script>
-    </section>
-
-
     <!-- Main Content Area -->
     <div class="row g-4">
         <!-- Left Column: Quest Board for Selected Week -->
-        <div class="col-lg-7">
+        <div class="col-lg-8">
             <section aria-labelledby="week-target-heading">
                 <div class="quest-section-head">
                     <div>
@@ -452,8 +329,118 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
             </section>
         </div>
 
-        <!-- Right Column: Continue -->
-        <div class="col-lg-5 d-flex flex-column gap-4">
+        <!-- Right Column: Sidebar -->
+        <div class="col-lg-4 d-flex flex-column gap-4">
+            
+            <?php if ($has_alerts): ?>
+            <section aria-labelledby="alerts-heading" class="d-flex flex-column gap-2 mb-2">
+                <h2 id="alerts-heading" class="visually-hidden">Pemberitahuan</h2>
+                
+                <?php if ($streak_risk): ?>
+                <a class="streak-banner" href="timer.php">
+                    <i class="fas fa-fire" aria-hidden="true"></i>
+                    <span><strong>Streak <?= (int)$user['streak'] ?> hari belum aman.</strong> Satu aksi kecil sebelum tengah malam<?php if ((int)($user['freeze_tokens'] ?? 0) > 0): ?> · freeze tersisa <?= (int)$user['freeze_tokens'] ?><?php endif; ?>.</span>
+                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                </a>
+                <?php endif; ?>
+
+                <?php if ($next_action['type'] === 'claim'): ?>
+                <div class="next-action next-action-primary" data-urgent="<?= $next_urgent ?>">
+                    <span class="next-action-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
+                    <span class="next-action-text"><strong><?= htmlspecialchars($next_action['title']) ?></strong><small><?= htmlspecialchars($next_action['desc']) ?></small></span>
+                    <form method="POST" action="claim_mission.php" class="m-0 flex-shrink-0">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="mission_key" value="all">
+                        <button type="submit" class="btn btn-cyber btn-sm">Klaim</button>
+                    </form>
+                </div>
+                <?php elseif ($next_action['type'] === 'recovery'): ?>
+                <a class="next-action next-action-primary" href="<?= htmlspecialchars($next_action['href']) ?>" data-urgent="<?= $next_urgent ?>">
+                    <span class="next-action-icon" aria-hidden="true"><i class="fas <?= $next_icons[$next_action['type']] ?? 'fa-arrow-right' ?>"></i></span>
+                    <span class="next-action-text"><strong><?= htmlspecialchars($next_action['title']) ?></strong><small><?= htmlspecialchars($next_action['desc']) ?></small></span>
+                    <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
+                </a>
+                <?php endif; ?>
+
+                <div class="chest-card<?= $chest ? ' opened' : '' ?>" id="dailyChest" data-urgent="<?= $chest ? '0' : '1' ?>">
+                    <?php if ($chest): ?>
+                        <span class="chest-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
+                        <span class="chest-text"><strong><?= !empty($chest['is_golden']) ? 'Peti emas! ' : '' ?>+<?= (int)$chest['xp'] ?> XP<?= !empty($chest['freeze']) ? ' + 1 pelindung streak' : '' ?></strong><small>peti hari ini sudah dibuka · kembali besok</small></span>
+                    <?php else: ?>
+                        <span class="chest-icon closed" aria-hidden="true"><i class="fas fa-gift"></i></span>
+                        <span class="chest-text"><strong>Peti harian menunggumu</strong><small>Hadiah 3–15 XP + pelindung streak sesekali</small></span>
+                        <form method="POST" action="claim_chest.php" class="chest-form m-0 flex-shrink-0">
+                            <?= csrf_field() ?>
+                            <button type="submit" class="btn btn-cyber btn-sm">Buka</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+            </section>
+            <?php endif; ?>
+
+            <?php
+            $mission_claimed = count(array_filter($missions, fn($m) => !empty($m['claimed'])));
+            $mission_all_done = count(array_filter($missions, fn($m) => !empty($m['done']))) === count($missions);
+            ?>
+            <div class="bolt-say mb-2" data-bolt data-context="<?= htmlspecialchars($bolt_ctx) ?>" data-mood="<?= htmlspecialchars($bolt_mood) ?>" data-msg="<?= $bolt_msg ?>"></div>
+            
+            <section class="mission-strip" aria-label="Misi harian">
+                <details class="mission-details" id="missionDetails" open>
+                    <summary class="mission-summary">
+                        <span class="mission-summary-text">
+                            <strong>Misi hari ini</strong>
+                            <?php $combo_done = \App\Domain\Gamification\Combo::countDone($missions); $combo_total = count($missions) ?: 3; $combo_mult = \App\Domain\Gamification\Combo::tier($combo_done, $combo_total); ?>
+                            <small><?= $mission_claimed ?>/<?= count($missions) ?> diklaim · bonus harian · <span class="text-success fw-bold">Kombo <?= \App\Domain\Gamification\Combo::label($combo_mult) ?></span> · <?= \App\Domain\Gamification\Combo::nextHint($combo_done, $combo_total) ?> · reset <span id="resetClock">--:--:--</span></small>
+                        </span>
+        <script>
+        (function() {
+            const el = document.getElementById('resetClock');
+            if (!el) return;
+            const pad = function(n) { return String(n).padStart(2, '0'); };
+            const tick = function() {
+                const now = new Date();
+                const mid = new Date(now);
+                mid.setHours(24, 0, 0, 0);
+                let s = Math.max(0, Math.floor((mid - now) / 1000));
+                el.textContent = pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60);
+            };
+            tick();
+            setInterval(tick, 1000);
+        })();
+        </script>
+                        <span class="mission-summary-count" aria-hidden="true"><?= $mission_claimed ?>/<?= count($missions) ?></span>
+                        <i class="fas fa-chevron-down mission-summary-chev" aria-hidden="true"></i>
+                    </summary>
+                    <div class="mission-body">
+                        <?php if ($due_reviews > 0): ?>
+                        <a class="review-banner" href="review.php"><i class="fas fa-rotate-right" aria-hidden="true"></i><span><strong><?= $due_reviews ?> review</strong> jatuh tempo hari ini — 2 menit saja.</span><i class="fas fa-chevron-right" aria-hidden="true"></i></a>
+                        <?php endif; ?>
+                        <div class="mission-row">
+                            <?php foreach ($missions as $mkey => $m): ?>
+                            <div class="mission-card <?= !empty($m['claimed']) ? 'claimed' : (!empty($m['done']) ? 'ready' : '') ?>" data-urgent="<?= (!empty($m['done']) && empty($m['claimed'])) ? '1' : '0' ?>">
+                                <i class="fas <?= htmlspecialchars($m['icon']) ?>" aria-hidden="true"></i>
+                                <div class="mission-main"><strong><?= htmlspecialchars($m['label']) ?></strong><span>+<?= (int)$m['xp'] ?> XP</span></div>
+                                <?php if (!empty($m['claimed'])): ?>
+                                    <span class="quest-done"><i class="fas fa-check" aria-hidden="true"></i>Diklaim</span>
+                                <?php elseif (!empty($m['done'])): ?>
+                                    <form method="POST" action="claim_mission.php" class="mission-claim-form m-0">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="mission_key" value="<?= htmlspecialchars($mkey) ?>">
+                                        <button type="submit" class="btn btn-cyber btn-sm">Klaim</button>
+                                    </form>
+                                <?php else: ?>
+                                    <span class="small text-muted">Belum</span>
+                                <?php endif; ?>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </details>
+                <script>
+                (function(){var d=document.getElementById('missionDetails');if(d&&matchMedia('(max-width:767.98px)').matches){d.removeAttribute('open');}})();
+                </script>
+            </section>
+
             <section aria-labelledby="continue-material-heading">
                 <div class="quest-section-head">
                     <div>
