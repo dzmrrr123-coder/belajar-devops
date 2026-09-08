@@ -121,7 +121,7 @@ $stmt = $conn->prepare("SELECT
     (SELECT COUNT(*) FROM errors WHERE user_id=?) AS notes, 
     (SELECT COUNT(*) FROM questions WHERE user_id=? AND status='open') AS q_open");
 if ($stmt) {
-    $stmt->bind_param("sisisisiiii", $myTrack, $user_id, $myTrack, $user_id, $myTrack, $user_id, $myTrack, $user_id, $user_id, $user_id);
+    $stmt->bind_param("sisisisiii", $myTrack, $user_id, $myTrack, $user_id, $myTrack, $user_id, $myTrack, $user_id, $user_id, $user_id);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc() ?: [];
     $stmt->close();
