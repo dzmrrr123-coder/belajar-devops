@@ -377,6 +377,27 @@ $has_alerts = $chest || $streak_risk || in_array($next_action['type'], ['claim',
                 </div>
             </section>
             <?php endif; ?>
+            
+            <section class="card p-3 mb-2" aria-label="Alat Jurusan">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1"><i class="<?= htmlspecialchars(\App\Domain\Track\Tracks::all()[$myTrack]['icon'] ?? 'fas fa-graduation-cap') ?> me-1"></i><?= htmlspecialchars(\App\Domain\Track\Tracks::all()[$myTrack]['name'] ?? 'DevOps') ?></span>
+                    <h2 class="h6 fw-bold mb-0">Alat Jurusan</h2>
+                </div>
+                <div class="d-flex flex-column gap-2">
+                    <?php foreach (\App\Domain\Track\Tracks::trackFeatures($myTrack) as $tf): ?>
+                    <a href="<?= htmlspecialchars($tf['href']) ?>" class="d-flex align-items-center gap-3 rounded p-2 text-decoration-none" style="background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); transition: border-color 0.15s, background-color 0.15s;" onmouseover="this.style.borderColor='var(--line-strong)'; this.style.backgroundColor='var(--surface)';" onmouseout="this.style.borderColor='var(--line)'; this.style.backgroundColor='var(--surface-2)';">
+                        <div class="d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px; border-radius: 10px; background: var(--primary-soft); color: var(--primary); font-size: 0.95rem;">
+                            <i class="<?= htmlspecialchars($tf['icon']) ?>"></i>
+                        </div>
+                        <div class="flex-grow-1 min-w-0">
+                            <p class="mb-0 fw-bold" style="font-size: 0.88rem;"><?= htmlspecialchars($tf['title']) ?></p>
+                            <p class="mb-0 text-muted" style="font-size: 0.75rem;"><?= htmlspecialchars($tf['desc']) ?></p>
+                        </div>
+                        <i class="fas fa-chevron-right text-muted small me-2" aria-hidden="true"></i>
+                    </a>
+                    <?php endforeach; ?>
+                </div>
+            </section>
 
             <?php
             $mission_claimed = count(array_filter($missions, fn($m) => !empty($m['claimed'])));
