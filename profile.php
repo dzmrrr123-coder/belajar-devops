@@ -121,7 +121,7 @@ $stmt = $conn->prepare("SELECT
     (SELECT COUNT(*) FROM errors WHERE user_id=?) AS notes, 
     (SELECT COUNT(*) FROM questions WHERE user_id=? AND status='open') AS q_open");
 if ($stmt) {
-    $stmt->bind_param("sisissisiii", $myTrack, $user_id, $myTrack, $user_id, $myTrack, $user_id, $myTrack, $user_id, $user_id, $user_id);
+    $stmt->bind_param("sisisisiiii", $myTrack, $user_id, $myTrack, $user_id, $myTrack, $user_id, $myTrack, $user_id, $user_id, $user_id);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc() ?: [];
     $stmt->close();
@@ -179,140 +179,157 @@ require_once 'includes/navbar.php';
             <button type="button" class="btn btn-cyber-outline btn-sm" onclick="openFlexCard()"><i class="fas fa-share-nodes me-1" aria-hidden="true"></i>Flex ke story</button>
         </div>
     </div>
-    <div class="row g-4 align-items-start">
-        <div class="col-lg-7 d-flex flex-column gap-4">
-            <section class="card p-4" aria-label="Aktivitas 12 minggu">
-                <h2 class="h5 fw-bold mb-1">Konsistensi 12 minggu</h2>
-                <p class="text-secondary small mb-3">Semakin gelap, semakin aktif. Ketuk kotak untuk detail.</p>
-                <div class="heatmap" role="img" aria-label="Heatmap aktivitas">
-                    <?php foreach ($days as $d): ?>
-                    <span class="heat lvl-<?= $d['lvl'] ?>" title="<?= $d['date'] ?> · <?= $d['count'] ?> aktivitas" tabindex="0"></span>
-                    <?php endforeach; ?>
-                </div>
-                <div class="profile-legend small text-muted mt-2"><span><strong><?= $stats['quest_done'] ?>/<?= $stats['quest_total'] ?></strong> quest</span><span><strong><?= $stats['pomodoro'] ?></strong> fokus</span><span><strong><?= $stats['notes'] ?></strong> catatan</span><span><strong><?= $stats['q_open'] ?></strong> tanya terbuka</span></div>
-            </section>
-            <section class="card p-4" aria-label="Badge">
-                <h2 class="h5 fw-bold mb-1">Badge (<?= count($badges_owned) ?>/<?= count($badge_list) ?>)</h2>
-                <p class="text-secondary small mb-3">Otomatis terbuka saat target tercapai.</p>
-                <div class="badge-grid">
-                    <?php $scheme_pf = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http'; $pf_url = $scheme_pf . '://' . ($_SERVER['HTTP_HOST'] ?? '') . '/u.php?u=' . urlencode($user['username']); ?>
-                    <?php foreach ($badge_list as $slug => $b): $has = isset($badges_owned[$slug]); $ptext = badge_share_text($user['username'], $b['name']); ?>
-                    <div class="badge-item <?= $has ? 'unlocked' : 'locked' ?>" title="<?= htmlspecialchars($b['desc']) ?>">
-                        <i class="fas <?= htmlspecialchars($b['icon']) ?>" aria-hidden="true"></i>
-                        <strong><?= htmlspecialchars($b['name']) ?></strong>
-                        <span><?= $has ? date('d M', strtotime($badges_owned[$slug]['unlocked_at'])) : htmlspecialchars($b['desc']) ?></span>
-                        <?php if ($has): ?><span class="cheer-share"><a target="_blank" rel="noopener" href="https://wa.me/?text=<?= urlencode($ptext . ' ' . $pf_url) ?>" aria-label="Bagikan badge <?= htmlspecialchars($b['name']) ?> ke WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a><a target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=<?= urlencode($ptext) ?>&url=<?= urlencode($pf_url) ?>" aria-label="Bagikan badge <?= htmlspecialchars($b['name']) ?> ke X"><i class="fab fa-x-twitter" aria-hidden="true"></i></a></span><?php endif; ?>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-            </section>
-            <section class="card p-4" aria-label="Bingkai avatar">
-                <h2 class="h5 fw-bold mb-1">Bingkai avatar</h2>
-                <p class="text-secondary small mb-3">Terbuka permanen lewat progres. Dipakai di navigasi &amp; profil.</p>
-                <form method="POST" action="profile.php" class="frame-pick">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="update_avatar">
-                    <?php $pf_owner = strtolower(trim((string)($user['email'] ?? ''))) === OWNER_ADMIN_EMAIL; ?>
-                    <?php foreach (avatar_frames() as $fkey => $fdef): $open = avatar_unlocked($fkey, $level, (int)($user['best_streak'] ?? 0), $badges_owned, $pf_owner, $frames_owned); $sel = (($user['avatar_frame'] ?? 'default') === $fkey); ?>
-                    <button type="submit" name="frame" value="<?= htmlspecialchars($fkey) ?>" class="frame-opt<?= $open ? '' : ' locked' ?><?= $sel ? ' selected' : '' ?>" <?= $open ? '' : 'disabled' ?> title="<?= $open ? htmlspecialchars($fdef['name']) : 'Terkunci: ' . htmlspecialchars($fdef['hint']) ?>" aria-label="Bingkai <?= htmlspecialchars($fdef['name']) ?><?= $open ? '' : ' (terkunci)' ?>">
-                        <span class="avatar-circle frame-<?= htmlspecialchars($fkey) ?>" aria-hidden="true"><?= strtoupper(substr($user['username'], 0, 1)) ?></span>
-                        <strong><?= htmlspecialchars($fdef['name']) ?></strong>
-                        <small><?= $open ? ($sel ? 'Dipakai' : 'Buka') : htmlspecialchars($fdef['hint']) ?></small>
-                    </button>
-                    <?php endforeach; ?>
-                </form>
-            </section>
-            <section class="card p-4" aria-label="Tanya dan catatan">
-                <h2 class="h5 fw-bold mb-1">Lanjutan</h2>
-                <p class="text-secondary small mb-3">Questions sekarang menyatu dengan Notes agar tab bawah tetap 5.</p>
-                <div>
-                    <?php if (!empty($is_admin_me)): ?>
-                    <a class="list-row" href="kelola-p7x2qm.php"><div class="list-main"><p class="list-title">Kelola user <span class="quest-pending">Admin</span></p><p class="list-meta">Area privat · role, XP, streak</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                    <?php endif; ?>
-                    <a class="list-row" href="errors.php"><div class="list-main"><p class="list-title">Notes</p><p class="list-meta"><?= $stats['notes'] ?> catatan error &amp; solusi</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                    <a class="list-row" href="questions.php"><div class="list-main"><p class="list-title">Questions</p><p class="list-meta"><?= $stats['q_open'] ?> diskusi terbuka</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                    <a class="list-row" href="squad.php"><div class="list-main"><p class="list-title">Squad</p><p class="list-meta">Belajar bareng, XP gabungan</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                    <a class="list-row" href="duels.php"><div class="list-main"><p class="list-title">Duel 1v1</p><p class="list-meta">Adu XP seminggu, pemenang +15 XP</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                    <a class="list-row" href="season.php"><div class="list-main"><p class="list-title">Season Pass</p><p class="list-meta">Hadiah bulanan, hangus akhir bulan</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                    <a class="list-row" href="quiz.php"><div class="list-main"><p class="list-title">Kuis</p><p class="list-meta">Uji ingatan +2 XP</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                    <a class="list-row" href="skills.php"><div class="list-main"><p class="list-title">Skill tree</p><p class="list-meta">Penguasaan per topik</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                    <a class="list-row" href="digest.php"><div class="list-main"><p class="list-title">Ringkasan mingguan</p><p class="list-meta">Refleksi 7 hari terakhir</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                    <a class="list-row" href="shop.php"><div class="list-main"><p class="list-title">Toko XP</p><p class="list-meta">Freeze, flair &amp; kocokan</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                    <a class="list-row" href="review.php"><div class="list-main"><p class="list-title">Review</p><p class="list-meta">Pengulangan terjadwal</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                    <a class="list-row" href="leaderboard.php"><div class="list-main"><p class="list-title">Leaderboard</p><p class="list-meta">Peringkat XP global</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                    <a class="list-row" href="export.php"><div class="list-main"><p class="list-title">Export CV</p><p class="list-meta">Unduh portofolio belajar</p></div><i class="fas fa-chevron-right list-chev" aria-hidden="true"></i></a>
-                </div>
-            </section>
-            <section class="card p-4" aria-label="Visibilitas">
-                <h2 class="h5 fw-bold mb-1">Visibilitas</h2>
-                <p class="text-secondary small mb-3">Default privat. Aktifkan hanya yang kamu mau.</p>
-                <form method="POST" action="profile.php" class="d-flex flex-column gap-2">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="visibility">
-                    <label class="d-flex align-items-center gap-2 small"><input type="checkbox" name="show_on_board" value="1" <?= !empty($user['show_on_board']) ? 'checked' : '' ?>> Tampil di leaderboard</label>
-                    <label class="d-flex align-items-center gap-2 small"><input type="checkbox" name="public_profile" value="1" <?= !empty($user['public_profile']) ? 'checked' : '' ?>> Profil publik bisa dibagikan</label>
-                    <button class="btn btn-cyber btn-sm mt-2" type="submit">Simpan visibilitas</button>
-                </form>
-                <?php if (!empty($user['public_profile'])): ?><p class="small mt-2 mb-0">Link publik: <a href="u.php?u=<?= urlencode($user['username']) ?>">u.php?u=<?= htmlspecialchars($user['username']) ?></a></p><?php endif; ?>
-            </section>
-        </div>
-        <div class="col-lg-5 d-flex flex-column gap-4">
-            <section class="card p-4" aria-label="Edit profil">
-                <h2 class="h5 fw-bold mb-3">Edit profil</h2>
-                <form method="POST" action="profile.php">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="update_profile">
-                    <div class="mb-3"><label class="form-label" for="pf-user">Username</label><input id="pf-user" name="username" class="form-control" value="<?= htmlspecialchars($user['username']) ?>" required minlength="3" maxlength="100"></div>
-                    <div class="mb-3"><label class="form-label" for="pf-email">Email</label><input id="pf-email" name="email" type="email" class="form-control" value="<?= htmlspecialchars($user['email']) ?>" required></div>
-                    <button class="btn btn-cyber w-100" type="submit">Simpan</button>
-                </form>
-            </section>
-            <section class="card p-4" aria-label="Jurusan dan Track Belajar">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <h2 class="h5 fw-bold mb-0">Jurusan Belajar</h2>
-                    <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1"><i class="<?= htmlspecialchars($myTrackInfo['icon'] ?? 'fas fa-graduation-cap') ?> me-1"></i><?= htmlspecialchars($myTrackInfo['name']) ?></span>
-                </div>
-                <p class="text-secondary small mb-3">Jurusan menentukan kurikulum roadmap, materi, lab interaktif, dan skill passport-mu.</p>
-                <form method="POST" action="switch_track.php">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="back" value="profile.php">
-                    <div class="mb-3">
-                        <label class="form-label" for="pf-track">Pilihan Jurusan</label>
-                        <select id="pf-track" name="track" class="form-select">
-                            <?php foreach (\App\Domain\Track\Tracks::all() as $slug => $tr): ?>
-                                <option value="<?= htmlspecialchars($slug) ?>" <?= $slug === $myTrack ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($tr['name']) ?> — <?= htmlspecialchars($tr['desc']) ?>
-                                </option>
+    <ul class="nav nav-pills mb-4 gap-2 border-bottom pb-3" id="profileTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="filter-pill active" id="tab-overview" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true"><i class="fas fa-chart-pie me-1"></i>Overview</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="filter-pill" id="tab-trophies" data-bs-toggle="tab" data-bs-target="#trophies" type="button" role="tab" aria-controls="trophies" aria-selected="false"><i class="fas fa-award me-1"></i>Trophy Room</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="filter-pill" id="tab-settings" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab" aria-controls="settings" aria-selected="false"><i class="fas fa-gear me-1"></i>Pengaturan</button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- Tab: Overview -->
+        <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="tab-overview" tabindex="0">
+            <div class="row g-4 align-items-start">
+                <div class="col-lg-8">
+                    <section class="card p-4" aria-label="Aktivitas 12 minggu">
+                        <h2 class="h5 fw-bold mb-1">Konsistensi 12 minggu</h2>
+                        <p class="text-secondary small mb-3">Semakin gelap, semakin aktif. Ketuk kotak untuk detail.</p>
+                        <div class="heatmap" role="img" aria-label="Heatmap aktivitas">
+                            <?php foreach ($days as $d): ?>
+                            <span class="heat lvl-<?= $d['lvl'] ?>" title="<?= $d['date'] ?> · <?= $d['count'] ?> aktivitas" tabindex="0"></span>
                             <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <button class="btn btn-cyber-outline w-100" type="submit">
-                        <i class="fas fa-arrows-rotate me-1" aria-hidden="true"></i> Ganti Jurusan
-                    </button>
-                </form>
-            </section>
-            <section class="card p-4" aria-label="Ganti password">
-                <h2 class="h5 fw-bold mb-3">Ganti password</h2>
-                <form method="POST" action="profile.php">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="change_password">
-                    <div class="mb-3"><label class="form-label" for="pf-old">Password lama</label><input id="pf-old" name="old_password" type="password" class="form-control" required autocomplete="current-password"></div>
-                    <div class="mb-3"><label class="form-label" for="pf-new">Password baru (min 6)</label><input id="pf-new" name="new_password" type="password" class="form-control" required minlength="6" autocomplete="new-password"></div>
-                    <button class="btn btn-cyber-outline w-100" type="submit">Ganti password</button>
-                </form>
-                <a href="logout.php" class="btn btn-cyber-danger w-100 mt-3">Keluar</a>
-                <button type="button" class="btn btn-cyber-outline w-100 mt-2 pwa-install-btn" onclick="installPWA()" hidden>Install Aplikasi</button>
-            </section>
-            <section class="card p-4" aria-label="Zona berbahaya">
-                <h2 class="h5 fw-bold mb-1 text-danger">Hapus akun</h2>
-                <p class="text-secondary small mb-3">Menghapus permanen semua quest, catatan, dan XP. Unduh dulu via <a href="export.php?format=json">JSON</a> bila perlu.</p>
-                <form method="POST" action="profile.php" onsubmit="return confirm('Hapus akun permanen? Tindakan ini tidak bisa dibatalkan.')">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="action" value="delete_account">
-                    <div class="mb-3"><label class="form-label" for="pf-del-pw">Password untuk konfirmasi</label><input id="pf-del-pw" name="confirm_password" type="password" class="form-control" required autocomplete="current-password"></div>
-                    <button class="btn btn-cyber-danger w-100" type="submit">Hapus permanen</button>
-                </form>
-            </section>
+                        </div>
+                        <div class="profile-legend small text-muted mt-2"><span><strong><?= $stats['quest_done'] ?>/<?= $stats['quest_total'] ?></strong> quest</span><span><strong><?= $stats['pomodoro'] ?></strong> fokus</span><span><strong><?= $stats['notes'] ?></strong> catatan</span><span><strong><?= $stats['q_open'] ?></strong> tanya terbuka</span></div>
+                    </section>
+                </div>
+                <div class="col-lg-4">
+                    <section class="card p-4" aria-label="Jurusan dan Track Belajar">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h2 class="h5 fw-bold mb-0">Jurusan Belajar</h2>
+                            <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1"><i class="<?= htmlspecialchars($myTrackInfo['icon'] ?? 'fas fa-graduation-cap') ?> me-1"></i><?= htmlspecialchars($myTrackInfo['name']) ?></span>
+                        </div>
+                        <p class="text-secondary small mb-3">Jurusan menentukan kurikulum roadmap, materi, lab interaktif, dan skill passport-mu.</p>
+                        <form method="POST" action="switch_track.php">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="back" value="profile.php">
+                            <div class="mb-3">
+                                <select id="pf-track" name="track" class="form-select form-select-sm">
+                                    <?php foreach (\App\Domain\Track\Tracks::all() as $slug => $tr): ?>
+                                        <option value="<?= htmlspecialchars($slug) ?>" <?= $slug === $myTrack ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($tr['name']) ?> — <?= htmlspecialchars($tr['desc']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <button class="btn btn-cyber-outline btn-sm w-100" type="submit">
+                                <i class="fas fa-arrows-rotate me-1" aria-hidden="true"></i> Ganti Jurusan
+                            </button>
+                        </form>
+                    </section>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Trophy Room -->
+        <div class="tab-pane fade" id="trophies" role="tabpanel" aria-labelledby="tab-trophies" tabindex="0">
+            <div class="row g-4 align-items-start">
+                <div class="col-lg-7">
+                    <section class="card p-4" aria-label="Badge">
+                        <h2 class="h5 fw-bold mb-1">Badge (<?= count($badges_owned) ?>/<?= count($badge_list) ?>)</h2>
+                        <p class="text-secondary small mb-3">Otomatis terbuka saat target tercapai.</p>
+                        <div class="badge-grid">
+                            <?php $scheme_pf = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http'; $pf_url = $scheme_pf . '://' . ($_SERVER['HTTP_HOST'] ?? '') . '/u.php?u=' . urlencode($user['username']); ?>
+                            <?php foreach ($badge_list as $slug => $b): $has = isset($badges_owned[$slug]); $ptext = badge_share_text($user['username'], $b['name']); ?>
+                            <div class="badge-item <?= $has ? 'unlocked' : 'locked' ?>" title="<?= htmlspecialchars($b['desc']) ?>">
+                                <i class="fas <?= htmlspecialchars($b['icon']) ?>" aria-hidden="true"></i>
+                                <strong><?= htmlspecialchars($b['name']) ?></strong>
+                                <span><?= $has ? date('d M', strtotime($badges_owned[$slug]['unlocked_at'])) : htmlspecialchars($b['desc']) ?></span>
+                                <?php if ($has): ?><span class="cheer-share"><a target="_blank" rel="noopener" href="https://wa.me/?text=<?= urlencode($ptext . ' ' . $pf_url) ?>" aria-label="Bagikan badge <?= htmlspecialchars($b['name']) ?> ke WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a><a target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=<?= urlencode($ptext) ?>&url=<?= urlencode($pf_url) ?>" aria-label="Bagikan badge <?= htmlspecialchars($b['name']) ?> ke X"><i class="fab fa-x-twitter" aria-hidden="true"></i></a></span><?php endif; ?>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                </div>
+                <div class="col-lg-5">
+                    <section class="card p-4" aria-label="Bingkai avatar">
+                        <h2 class="h5 fw-bold mb-1">Bingkai avatar</h2>
+                        <p class="text-secondary small mb-3">Terbuka permanen lewat progres. Dipakai di navigasi &amp; profil.</p>
+                        <form method="POST" action="profile.php" class="frame-pick">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="update_avatar">
+                            <?php $pf_owner = strtolower(trim((string)($user['email'] ?? ''))) === OWNER_ADMIN_EMAIL; ?>
+                            <?php foreach (avatar_frames() as $fkey => $fdef): $open = avatar_unlocked($fkey, $level, (int)($user['best_streak'] ?? 0), $badges_owned, $pf_owner, $frames_owned); $sel = (($user['avatar_frame'] ?? 'default') === $fkey); ?>
+                            <button type="submit" name="frame" value="<?= htmlspecialchars($fkey) ?>" class="frame-opt<?= $open ? '' : ' locked' ?><?= $sel ? ' selected' : '' ?>" <?= $open ? '' : 'disabled' ?> title="<?= $open ? htmlspecialchars($fdef['name']) : 'Terkunci: ' . htmlspecialchars($fdef['hint']) ?>" aria-label="Bingkai <?= htmlspecialchars($fdef['name']) ?><?= $open ? '' : ' (terkunci)' ?>">
+                                <span class="avatar-circle frame-<?= htmlspecialchars($fkey) ?>" aria-hidden="true"><?= strtoupper(substr($user['username'], 0, 1)) ?></span>
+                                <strong><?= htmlspecialchars($fdef['name']) ?></strong>
+                                <small><?= $open ? ($sel ? 'Dipakai' : 'Buka') : htmlspecialchars($fdef['hint']) ?></small>
+                            </button>
+                            <?php endforeach; ?>
+                        </form>
+                    </section>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Settings -->
+        <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="tab-settings" tabindex="0">
+            <div class="row g-4 align-items-start">
+                <div class="col-lg-6">
+                    <section class="card p-4 mb-4" aria-label="Edit profil">
+                        <h2 class="h5 fw-bold mb-3">Edit profil</h2>
+                        <form method="POST" action="profile.php">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="update_profile">
+                            <div class="mb-3"><label class="form-label" for="pf-user">Username</label><input id="pf-user" name="username" class="form-control" value="<?= htmlspecialchars($user['username']) ?>" required minlength="3" maxlength="100"></div>
+                            <div class="mb-3"><label class="form-label" for="pf-email">Email</label><input id="pf-email" name="email" type="email" class="form-control" value="<?= htmlspecialchars($user['email']) ?>" required></div>
+                            <button class="btn btn-cyber w-100" type="submit">Simpan</button>
+                        </form>
+                    </section>
+
+                    <section class="card p-4" aria-label="Visibilitas">
+                        <h2 class="h5 fw-bold mb-1">Visibilitas</h2>
+                        <p class="text-secondary small mb-3">Default privat. Aktifkan hanya yang kamu mau.</p>
+                        <form method="POST" action="profile.php" class="d-flex flex-column gap-2">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="visibility">
+                            <label class="d-flex align-items-center gap-2 small"><input type="checkbox" name="show_on_board" value="1" <?= !empty($user['show_on_board']) ? 'checked' : '' ?>> Tampil di leaderboard</label>
+                            <label class="d-flex align-items-center gap-2 small"><input type="checkbox" name="public_profile" value="1" <?= !empty($user['public_profile']) ? 'checked' : '' ?>> Profil publik bisa dibagikan</label>
+                            <button class="btn btn-cyber-outline btn-sm mt-2" type="submit">Simpan visibilitas</button>
+                        </form>
+                        <?php if (!empty($user['public_profile'])): ?><p class="small mt-2 mb-0">Link publik: <a href="u.php?u=<?= urlencode($user['username']) ?>">u.php?u=<?= htmlspecialchars($user['username']) ?></a></p><?php endif; ?>
+                    </section>
+                </div>
+                
+                <div class="col-lg-6">
+                    <section class="card p-4 mb-4" aria-label="Ganti password">
+                        <h2 class="h5 fw-bold mb-3">Ganti password</h2>
+                        <form method="POST" action="profile.php">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="change_password">
+                            <div class="mb-3"><label class="form-label" for="pf-old">Password lama</label><input id="pf-old" name="old_password" type="password" class="form-control" required autocomplete="current-password"></div>
+                            <div class="mb-3"><label class="form-label" for="pf-new">Password baru (min 6)</label><input id="pf-new" name="new_password" type="password" class="form-control" required minlength="6" autocomplete="new-password"></div>
+                            <button class="btn btn-cyber-outline w-100" type="submit">Ganti password</button>
+                        </form>
+                        <button type="button" class="btn btn-cyber-outline w-100 mt-3 pwa-install-btn" onclick="installPWA()" hidden>Install Aplikasi</button>
+                    </section>
+
+                    <section class="card p-4 border-danger" aria-label="Zona berbahaya">
+                        <h2 class="h5 fw-bold mb-1 text-danger">Hapus akun</h2>
+                        <p class="text-secondary small mb-3">Menghapus permanen semua quest, catatan, dan XP. Unduh dulu via <a href="export.php?format=json">JSON</a> bila perlu.</p>
+                        <form method="POST" action="profile.php" onsubmit="return confirm('Hapus akun permanen? Tindakan ini tidak bisa dibatalkan.')">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="action" value="delete_account">
+                            <div class="mb-3"><label class="form-label text-danger" for="pf-del-pw">Password untuk konfirmasi</label><input id="pf-del-pw" name="confirm_password" type="password" class="form-control border-danger" required autocomplete="current-password"></div>
+                            <button class="btn btn-cyber-danger w-100" type="submit">Hapus permanen</button>
+                        </form>
+                    </section>
+                </div>
+            </div>
         </div>
     </div>
 </main>

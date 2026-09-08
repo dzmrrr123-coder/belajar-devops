@@ -31,7 +31,6 @@ if (is_logged_in()) {
     }
 }
 
-$more_active = in_array($current_script, ['resources.php', 'questions.php', 'quiz.php', 'incident.php', 'lab.php', 'playground.php', 'topologi.php', 'terminal.php', 'sponsor.php', 'mentor.php', 'brief.php', 'progress.php', 'certificate.php', 'feedback.php', 'team.php', 'kelas.php', 'skills.php', 'digest.php', 'shop.php', 'leaderboard.php', 'squad.php', 'duels.php', 'season.php', 'search.php', 'karya.php', 'karya_upload.php', 'rubric.php', 'critique.php', 'redeem.php', 'pricing.php'], true);
 $minimal_nav = !empty($minimal_nav) || $current_script === 'onboarding.php';
 if ($minimal_nav && is_logged_in()):
 ?>
@@ -45,97 +44,95 @@ if ($minimal_nav && is_logged_in()):
     </div>
 </nav>
 <?php return; endif; ?>
+
+<?php
+if (is_logged_in() && $hud_user):
+    $layout_opened = true;
+    $nav_track = \App\Domain\Track\Tracks::normalize($hud_user['track'] ?? 'devops');
+    $nav_track_info = \App\Domain\Track\Tracks::all()[$nav_track] ?? ['name' => strtoupper($nav_track), 'icon' => 'fas fa-graduation-cap'];
+    $nav_track_features = \App\Domain\Track\Tracks::trackFeatures($nav_track);
+?>
+<div class="app-layout">
+    <!-- Desktop Sidebar -->
+    <aside class="app-sidebar">
+        <a class="sidebar-brand" href="index.php">
+            <span class="brand-mark" aria-hidden="true">LT</span>
+            <span class="brand-text">Learn Tracker</span>
+        </a>
+        <div class="sidebar-nav">
+            <div class="sidebar-section">Workspace</div>
+            <a class="sidebar-link <?= $current_script === 'hub.php' ? 'active' : '' ?>" href="hub.php"><i class="fas fa-desktop"></i>Hub Jurusan</a>
+            <a class="sidebar-link <?= $current_script === 'index.php' ? 'active' : '' ?>" href="index.php"><i class="fas fa-chart-line"></i>Statistik &amp; XP</a>
+            <div class="sidebar-section"><i class="<?= htmlspecialchars($nav_track_info['icon']) ?> me-1"></i><?= htmlspecialchars($nav_track_info['name']) ?></div>
+            <?php foreach ($nav_track_features as $nf): ?>
+            <a class="sidebar-link <?= $current_script === $nf['href'] ? 'active' : '' ?>" href="<?= htmlspecialchars($nf['href']) ?>"><i class="<?= htmlspecialchars($nf['icon']) ?>"></i><?= htmlspecialchars($nf['title']) ?></a>
+            <?php endforeach; ?>
+
+            <div class="sidebar-section">Aktivitas</div>
+            <a class="sidebar-link <?= $current_script === 'quests.php' ? 'active' : '' ?>" href="quests.php"><i class="fas fa-map"></i>Roadmap</a>
+            <a class="sidebar-link <?= $current_script === 'timer.php' ? 'active' : '' ?>" href="timer.php"><i class="fas fa-clock"></i>Fokus</a>
+            <a class="sidebar-link <?= $current_script === 'review.php' ? 'active' : '' ?>" href="review.php"><i class="fas fa-rotate-right"></i>Review</a>
+            <a class="sidebar-link <?= $current_script === 'errors.php' ? 'active' : '' ?>" href="errors.php"><i class="fas fa-note-sticky"></i>Catatan Error</a>
+            
+            <div class="sidebar-section">Latihan &amp; Materi</div>
+            <a class="sidebar-link <?= $current_script === 'mentor.php' ? 'active' : '' ?>" href="mentor.php"><i class="fas fa-robot"></i>Mentor</a>
+            <a class="sidebar-link <?= $current_script === 'quiz.php' ? 'active' : '' ?>" href="quiz.php"><i class="fas fa-brain"></i>Kuis Kilat</a>
+            <a class="sidebar-link <?= $current_script === 'resources.php' ? 'active' : '' ?>" href="resources.php"><i class="fas fa-book-open"></i>Resources</a>
+            
+            <div class="sidebar-section">Komunitas &amp; Hasil</div>
+            <a class="sidebar-link <?= $current_script === 'leaderboard.php' ? 'active' : '' ?>" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a>
+            <a class="sidebar-link <?= $current_script === 'squad.php' ? 'active' : '' ?>" href="squad.php"><i class="fas fa-users"></i>Squad</a>
+            <a class="sidebar-link <?= $current_script === 'duels.php' ? 'active' : '' ?>" href="duels.php"><i class="fas fa-hand-fist"></i>Duel 1v1</a>
+            
+            <div class="sidebar-section">Lainnya</div>
+            <a class="sidebar-link <?= $current_script === 'shop.php' ? 'active' : '' ?>" href="shop.php"><i class="fas fa-store"></i>Toko XP</a>
+        </div>
+        <div class="sidebar-footer">
+            <a href="profile.php" class="sidebar-profile">
+                <span class="avatar-circle avatar-sm frame-<?= htmlspecialchars($hud_user['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($hud_user['username'], 0, 1)) ?></span>
+                <div class="sidebar-profile-info">
+                    <strong><?= htmlspecialchars($hud_user['username']) ?></strong>
+                    <small>Lv. <?= $hud_level ?> · <?= (int)$hud_user['xp'] ?> XP</small>
+                </div>
+            </a>
+            <div class="d-flex align-items-center gap-2 mt-2">
+                <button class="theme-toggle ltThemeToggle flex-grow-0" type="button" title="Mode gelap / terang" aria-label="Ganti tema gelap atau terang">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                </button>
+                <a href="logout.php" class="btn btn-cyber-outline btn-sm flex-grow-1">Keluar</a>
+            </div>
+        </div>
+    </aside>
+
+    <div class="app-content">
+        <!-- Mobile Topbar -->
+        <header class="app-topbar">
+            <a class="app-topbar-brand" href="index.php">
+                <span class="brand-mark" aria-hidden="true">LT</span>
+                Learn Tracker
+            </a>
+            <div class="d-flex align-items-center gap-2">
+                <button class="theme-toggle ltThemeToggle me-1" type="button" title="Mode gelap / terang" aria-label="Ganti tema gelap atau terang" style="padding:4px; font-size:1.2rem;">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                </button>
+                <span class="hud-streak" title="Streak belajar">
+                    <i class="fas fa-fire" aria-hidden="true"></i>
+                    <span id="hudStreak"><?= (int)$hud_user['streak'] ?></span>
+                </span>
+                <a href="profile.php">
+                    <span class="avatar-circle avatar-sm frame-<?= htmlspecialchars($hud_user['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($hud_user['username'], 0, 1)) ?></span>
+                </a>
+            </div>
+        </header>
+
+<?php else: ?>
+<!-- Fallback for non-logged-in users -->
 <nav class="lt-navbar navbar navbar-expand-lg" aria-label="Navigasi Utama">
     <div class="container lt-navbar-inner">
         <a class="navbar-brand" href="index.php">
             <span class="brand-mark" aria-hidden="true">LT</span>
             <span class="brand-text">Learn Tracker</span>
         </a>
-
-        <?php if (is_logged_in() && $hud_user): ?>
-        <div class="d-flex align-items-center gap-2 ms-auto order-lg-2">
-            <span class="hud-streak" title="Streak belajar">
-                <i class="fas fa-fire" aria-hidden="true"></i>
-                <span id="hudStreak"><?= (int)$hud_user['streak'] ?></span>
-            </span>
-
-            <div class="dropdown">
-                <button class="avatar-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu pengguna">
-                    <span class="avatar-circle frame-<?= htmlspecialchars($hud_user['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($hud_user['username'], 0, 1)) ?></span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end lt-menu p-2">
-                    <li class="lt-menu-head">
-                        <span class="avatar-circle avatar-lg" aria-hidden="true"><?= strtoupper(substr($hud_user['username'], 0, 1)) ?></span>
-                        <span class="lt-menu-id">
-                            <strong><?= htmlspecialchars($hud_user['username']) ?></strong>
-                            <small>Lv. <?= $hud_level ?> · <?= htmlspecialchars($hud_rank) ?> · <?= (int)$hud_user['xp'] ?> XP</small>
-                        </span>
-                    </li>
-                    <li><a class="dropdown-item" href="profile.php"><i class="fas fa-user"></i>Profil &amp; badge</a></li>
-                    <li><a class="dropdown-item" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a></li>
-                    <li><a class="dropdown-item" href="export.php"><i class="fas fa-file-export"></i>Export CV</a></li>
-                    <li><button type="button" class="dropdown-item ltThemeToggle"><i class="fas fa-moon" aria-hidden="true"></i><span class="theme-toggle-label">Mode gelap</span></button></li>
-                    <li><button type="button" class="dropdown-item js-lofi-toggle"><i class="fas fa-headphones" aria-hidden="true"></i><span class="js-lofi-label">Lofi</span></button></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item is-danger" href="logout.php"><i class="fas fa-arrow-right-from-bracket"></i>Keluar</a></li>
-                </ul>
-            </div>
-
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Buka navigasi">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-        </div>
-
-        <div class="collapse navbar-collapse order-lg-1" id="navbarContent">
-            <ul class="navbar-nav lt-nav mx-lg-auto">
-                <li class="nav-item"><a class="lt-nav-link <?= $current_script === 'index.php' ? 'active' : '' ?>" <?= $current_script === 'index.php' ? 'aria-current="page"' : '' ?> href="index.php">Overview</a></li>
-                <li class="nav-item"><a class="lt-nav-link <?= $current_script === 'quests.php' ? 'active' : '' ?>" <?= $current_script === 'quests.php' ? 'aria-current="page"' : '' ?> href="quests.php">Roadmap</a></li>
-                <li class="nav-item"><a class="lt-nav-link <?= $current_script === 'timer.php' ? 'active' : '' ?>" <?= $current_script === 'timer.php' ? 'aria-current="page"' : '' ?> href="timer.php">Fokus</a></li>
-                <li class="nav-item"><a class="lt-nav-link <?= $current_script === 'review.php' ? 'active' : '' ?>" <?= $current_script === 'review.php' ? 'aria-current="page"' : '' ?> href="review.php">Review</a></li>
-                <li class="nav-item"><a class="lt-nav-link <?= $current_script === 'errors.php' ? 'active' : '' ?>" <?= $current_script === 'errors.php' ? 'aria-current="page"' : '' ?> href="errors.php">Catatan</a></li>
-                <li class="nav-item dropdown">
-                    <a class="lt-nav-link dropdown-toggle <?= $more_active ? 'active' : '' ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Jelajah</a>
-                    <ul class="dropdown-menu lt-menu lt-menu-grouped p-2">
-                        <?php
-                        $nav_track = \App\Domain\Track\Tracks::normalize($hud_user['track'] ?? 'devops');
-                        $nav_track_info = \App\Domain\Track\Tracks::all()[$nav_track] ?? ['name' => strtoupper($nav_track), 'icon' => 'fas fa-graduation-cap'];
-                        $nav_track_features = \App\Domain\Track\Tracks::trackFeatures($nav_track);
-                        ?>
-                        <li class="lt-menu-label" aria-hidden="true"><i class="<?= htmlspecialchars($nav_track_info['icon']) ?> me-1"></i>Jurusan <?= htmlspecialchars($nav_track_info['name']) ?></li>
-                        <?php foreach ($nav_track_features as $nf): ?>
-                            <li><a class="dropdown-item <?= $current_script === $nf['href'] ? 'active' : '' ?>" href="<?= htmlspecialchars($nf['href']) ?>"><i class="<?= htmlspecialchars($nf['icon']) ?>"></i><?= htmlspecialchars($nf['title']) ?> <small><?= htmlspecialchars($nf['desc']) ?></small></a></li>
-                        <?php endforeach; ?>
-
-                        <li class="lt-menu-label" aria-hidden="true">Latihan &amp; Materi</li>
-                        <li><a class="dropdown-item <?= $current_script === 'mentor.php' ? 'active' : '' ?>" href="mentor.php"><i class="fas fa-robot"></i>Mentor <small>rekomendasi</small></a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'quiz.php' ? 'active' : '' ?>" href="quiz.php"><i class="fas fa-brain"></i>Kuis Kilat <small>60 dtk</small></a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'questions.php' ? 'active' : '' ?>" href="questions.php"><i class="fas fa-circle-question"></i>Questions <small>tanya</small></a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'resources.php' ? 'active' : '' ?>" href="resources.php"><i class="fas fa-book-open"></i>Resources <small>materi</small></a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'skills.php' ? 'active' : '' ?>" href="skills.php"><i class="fas fa-layer-group"></i>Skill Tree <small>kompetensi</small></a></li>
-
-                        <li class="lt-menu-label" aria-hidden="true">Komunitas &amp; Hasil</li>
-                        <li><a class="dropdown-item <?= $current_script === 'leaderboard.php' ? 'active' : '' ?>" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'squad.php' ? 'active' : '' ?>" href="squad.php"><i class="fas fa-users"></i>Squad</a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'duels.php' ? 'active' : '' ?>" href="duels.php"><i class="fas fa-hand-fist"></i>Duel 1v1</a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'progress.php' ? 'active' : '' ?>" href="progress.php"><i class="fas fa-chart-line"></i>Progress Outcome</a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'certificate.php' ? 'active' : '' ?>" href="certificate.php"><i class="fas fa-award"></i>Sertifikat <small>verifikasi</small></a></li>
-                        <?php $show_kelas_nav = false; try { if (!empty($_SESSION['user_id']) && isset($conn) && $conn instanceof mysqli) { $show_kelas_nav = is_admin($conn, (int)$_SESSION['user_id']) || \App\Domain\Auth\Roles::isGuru($conn, (int)$_SESSION['user_id']); } } catch (Throwable $e) {} ?>
-                        <?php if ($show_kelas_nav): ?><li><a class="dropdown-item <?= $current_script === 'kelas.php' ? 'active' : '' ?>" href="kelas.php"><i class="fas fa-chalkboard-teacher"></i>Kelas <small>guru</small></a></li><?php endif; ?>
-
-                        <li class="lt-menu-label" aria-hidden="true">Akun &amp; Lainnya</li>
-                        <li><a class="dropdown-item <?= $current_script === 'shop.php' ? 'active' : '' ?>" href="shop.php"><i class="fas fa-store"></i>Toko XP</a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'digest.php' ? 'active' : '' ?>" href="digest.php"><i class="fas fa-calendar-week"></i>Ringkasan</a></li>
-                        <li><a class="dropdown-item <?= $current_script === 'feedback.php' ? 'active' : '' ?>" href="feedback.php"><i class="fas fa-comment"></i>Feedback</a></li>
-                    </ul>
-                </li>
-            </ul>
-            <form method="GET" action="search.php" class="lt-search" role="search">
-                <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
-                <label class="visually-hidden" for="ltSearch">Cari quest, materi, atau teman</label>
-                <input id="ltSearch" name="q" placeholder="Cari quest / materi…" maxlength="100" aria-label="Cari quest, materi, atau teman" value="<?= htmlspecialchars($_GET['q'] ?? '') ?>">
-            </form>
-        </div>
-        <?php else: ?>
         <div class="ms-auto d-flex align-items-center gap-2">
             <button class="theme-toggle ltThemeToggle" type="button" title="Mode gelap / terang" aria-label="Ganti tema gelap atau terang">
                 <i class="fas fa-moon" aria-hidden="true"></i>
@@ -144,6 +141,6 @@ if ($minimal_nav && is_logged_in()):
             <a href="login.php" class="btn btn-cyber-outline btn-sm">Masuk</a>
             <a href="register.php" class="btn btn-cyber btn-sm">Daftar</a>
         </div>
-        <?php endif; ?>
     </div>
 </nav>
+<?php endif; ?>

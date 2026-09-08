@@ -190,16 +190,30 @@ require_once 'includes/navbar.php';
         </div>
     </div>
 
+<?php 
+$current_active_week = 1;
+foreach ($quests_by_week as $w_num => $w_quests) {
+    $w_st = quest_week_stats($w_quests);
+    if ($w_st['pct'] < 100) {
+        $current_active_week = $w_num;
+        break;
+    }
+}
+?>
     <div id="questsContainer">
-        <?php foreach ($quests_by_week as $week_num => $week_quests): $wstat = quest_week_stats($week_quests); ?>
-            <section class="week-block week-section" data-week="<?= $week_num ?>" aria-label="Minggu <?= $week_num ?>">
-                    <div class="week-block-head">
-                        <span class="week-tag">Minggu <?= $week_num ?></span>
-                        <span class="week-count"><?= $wstat['done'] ?>/<?= $wstat['total'] ?> quest</span>
-                        <span class="rule" aria-hidden="true"></span>
-                        <a href="resources.php?week=<?= $week_num ?>" class="small text-secondary text-decoration-none">Materi</a>
+        <?php foreach ($quests_by_week as $week_num => $week_quests): $wstat = quest_week_stats($week_quests); $is_active_week = $week_num === $current_active_week; ?>
+            <details class="week-block week-section mission-details mb-3" data-week="<?= $week_num ?>" aria-label="Minggu <?= $week_num ?>" <?= $is_active_week ? 'open' : '' ?>>
+                <summary class="mission-summary bg-body-tertiary">
+                    <div class="mission-summary-text">
+                        <strong>Minggu <?= $week_num ?></strong>
+                        <small>Progres <?= $wstat['pct'] ?>% · <a href="resources.php?week=<?= $week_num ?>" class="text-primary text-decoration-none" onclick="event.stopPropagation()">Lihat Materi</a></small>
                     </div>
-                    <div class="week-progress" role="progressbar" aria-valuenow="<?= $wstat['pct'] ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres minggu <?= $week_num ?> <?= $wstat['pct'] ?> persen"><span style="width:<?= $wstat['pct'] ?>%"></span></div>
+                    <span class="mission-summary-count"><?= $wstat['done'] ?>/<?= $wstat['total'] ?></span>
+                    <i class="fas fa-chevron-down mission-summary-chev" aria-hidden="true"></i>
+                </summary>
+
+                <div class="mission-body pt-3">
+                    <div class="week-progress mb-3" role="progressbar" aria-valuenow="<?= $wstat['pct'] ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres minggu <?= $week_num ?> <?= $wstat['pct'] ?> persen"><span style="width:<?= $wstat['pct'] ?>%"></span></div>
 
                     <div class="d-flex flex-column gap-2">
                         <?php foreach ($week_quests as $q):
@@ -262,60 +276,83 @@ require_once 'includes/navbar.php';
                                             <?php endif; ?>
                                         </div>
                                         <?php if (!$is_done && !$blocker): ?>
-                                        <details class="small mt-1">
-                                            <summary class="text-muted" style="cursor:pointer">+ bukti (opsional)</summary>
-                                            <div class="d-flex flex-column gap-1 mt-1">
-                                                <input name="evidence_url" form="qt-<?= $qid ?>" class="form-control form-control-sm" placeholder="Link repo / output…" maxlength="500" inputmode="url" aria-label="Link bukti quest">
-                                                <input name="evidence_note" form="qt-<?= $qid ?>" class="form-control form-control-sm" placeholder="Catatan singkat…" maxlength="500" aria-label="Catatan bukti quest">
-                                                <?php $kw = $karya_map[$qid] ?? null; if ($kw): ?>
-                                                <a href="karya.php?id=<?= (int)$kw['id'] ?>" target="_blank" rel="noopener"><img src="karya.php?id=<?= (int)$kw['id'] ?>" alt="Karya quest" loading="lazy" style="max-width:120px;border-radius:8px"></a>
-                                                <?php endif; ?>
-                                                <form method="POST" action="karya_upload.php" enctype="multipart/form-data" class="d-flex gap-1 m-0">
-                                                    <?= csrf_field() ?>
-                                                    <input type="hidden" name="quest_id" value="<?= $qid ?>">
-                                                    <input type="file" name="karya" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.webp,.gif" aria-label="Upload karya">
-                                                    <button class="btn btn-cyber-outline btn-sm flex-shrink-0" type="submit">Upload</button>
-                                                </form>
+                                        <details class="collapsible-card mt-2">
+                                            <summary class="collapsible-summary bg-body-tertiary">
+                                                <div class="collapsible-text">
+                                                    <strong class="small">+ Bukti Output / Karya (opsional)</strong>
+                                                </div>
+                                                <i class="fas fa-chevron-down collapsible-chev" aria-hidden="true"></i>
+                                            </summary>
+                                            <div class="collapsible-body">
+                                                <div class="d-flex flex-column gap-2 mt-2">
+                                                    <input name="evidence_url" form="qt-<?= $qid ?>" class="form-control form-control-sm" placeholder="Link repo / output…" maxlength="500" inputmode="url" aria-label="Link bukti quest">
+                                                    <input name="evidence_note" form="qt-<?= $qid ?>" class="form-control form-control-sm" placeholder="Catatan singkat…" maxlength="500" aria-label="Catatan bukti quest">
+                                                    <?php $kw = $karya_map[$qid] ?? null; if ($kw): ?>
+                                                    <a href="karya.php?id=<?= (int)$kw['id'] ?>" target="_blank" rel="noopener"><img src="karya.php?id=<?= (int)$kw['id'] ?>" alt="Karya quest" loading="lazy" style="max-width:120px;border-radius:8px"></a>
+                                                    <?php endif; ?>
+                                                    <form method="POST" action="karya_upload.php" enctype="multipart/form-data" class="d-flex gap-2 m-0">
+                                                        <?= csrf_field() ?>
+                                                        <input type="hidden" name="quest_id" value="<?= $qid ?>">
+                                                        <input type="file" name="karya" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.webp,.gif" aria-label="Upload karya">
+                                                        <button class="btn btn-cyber-outline btn-sm flex-shrink-0" type="submit">Upload Gambar</button>
+                                                    </form>
+                                                </div>
                                             </div>
                                         </details>
                                         <?php endif; ?>
-                                        <details class="subtask-box">
-                                            <summary class="small text-secondary">Langkah kecil (<?= $sdone ?>/<?= count($subs) ?>)</summary>
-                                            <div class="subtask-list mt-2">
-                                                <?php foreach ($subs as $s): ?>
-                                                <form method="POST" action="subtask.php" class="subtask-toggle-form d-flex align-items-center gap-2">
-                                                    <?= csrf_field() ?>
-                                                    <input type="hidden" name="action" value="toggle">
-                                                    <input type="hidden" name="quest_id" value="<?= (int)$q['id'] ?>">
-                                                    <input type="hidden" name="subtask_id" value="<?= (int)$s['id'] ?>">
-                                                    <button type="submit" class="subtask-check <?= !empty($s['done_at']) ? 'done' : '' ?>" aria-label="Toggle subtask"><i class="fas <?= !empty($s['done_at']) ? 'fa-check' : 'fa-circle' ?>"></i></button>
-                                                    <span class="flex-grow-1 <?= !empty($s['done_at']) ? 'text-decoration-line-through text-muted' : '' ?>"><?= htmlspecialchars($s['title']) ?></span>
-                                                </form>
-                                                <?php endforeach; ?>
-                                                <form method="POST" action="subtask.php" class="subtask-add-form d-flex gap-2 mt-2">
-                                                    <?= csrf_field() ?>
-                                                    <input type="hidden" name="action" value="create">
-                                                    <input type="hidden" name="quest_id" value="<?= (int)$q['id'] ?>">
-                                                    <input name="title" class="form-control form-control-sm" maxlength="255" placeholder="+ Tambah langkah…" aria-label="Tambah langkah">
-                                                    <button type="submit" class="btn btn-cyber-outline btn-sm flex-shrink-0">Tambah</button>
-                                                </form>
+                                        <details class="collapsible-card mt-2">
+                                            <summary class="collapsible-summary bg-body-tertiary">
+                                                <div class="collapsible-text">
+                                                    <strong class="small">Langkah Kecil (Subtasks)</strong>
+                                                    <small><?= $sdone ?>/<?= count($subs) ?> Selesai</small>
+                                                </div>
+                                                <i class="fas fa-chevron-down collapsible-chev" aria-hidden="true"></i>
+                                            </summary>
+                                            <div class="collapsible-body">
+                                                <div class="subtask-list mt-2">
+                                                    <?php foreach ($subs as $s): ?>
+                                                    <form method="POST" action="subtask.php" class="subtask-toggle-form d-flex align-items-center gap-2">
+                                                        <?= csrf_field() ?>
+                                                        <input type="hidden" name="action" value="toggle">
+                                                        <input type="hidden" name="quest_id" value="<?= (int)$q['id'] ?>">
+                                                        <input type="hidden" name="subtask_id" value="<?= (int)$s['id'] ?>">
+                                                        <button type="submit" class="subtask-check <?= !empty($s['done_at']) ? 'done' : '' ?>" aria-label="Toggle subtask"><i class="fas <?= !empty($s['done_at']) ? 'fa-check' : 'fa-circle' ?>"></i></button>
+                                                        <span class="flex-grow-1 <?= !empty($s['done_at']) ? 'text-decoration-line-through text-muted' : '' ?>"><?= htmlspecialchars($s['title']) ?></span>
+                                                    </form>
+                                                    <?php endforeach; ?>
+                                                    <form method="POST" action="subtask.php" class="subtask-add-form d-flex gap-2 mt-2">
+                                                        <?= csrf_field() ?>
+                                                        <input type="hidden" name="action" value="create">
+                                                        <input type="hidden" name="quest_id" value="<?= (int)$q['id'] ?>">
+                                                        <input name="title" class="form-control form-control-sm" maxlength="255" placeholder="+ Tambah langkah…" aria-label="Tambah langkah">
+                                                        <button type="submit" class="btn btn-cyber-outline btn-sm flex-shrink-0">Tambah</button>
+                                                    </form>
+                                                </div>
                                             </div>
                                         </details>
                                         <?php if ($myTrack === 'dkv' && $is_done): $rsum = $rubric_sums[$qid] ?? null; ?>
-                                        <details class="subtask-box">
-                                            <summary class="small text-secondary">Nilai karya<?= $rsum !== null ? ' · ' . htmlspecialchars((string)$rsum) . '/5' : '' ?></summary>
-                                            <div class="d-flex flex-column gap-2 mt-2">
-                                            <form method="POST" action="rubric.php" class="d-flex flex-column gap-2 m-0">
-                                                <?= csrf_field() ?>
-                                                <input type="hidden" name="quest_id" value="<?= $qid ?>">
-                                                <?php foreach ($rubric_criteria as $rc): ?>
-                                                <label class="small text-muted mb-0"><?= htmlspecialchars($rc['name']) ?> (<?= (int)$rc['weight'] ?>%)<select name="score[<?= htmlspecialchars($rc['slug']) ?>]" class="form-select form-select-sm" aria-label="<?= htmlspecialchars($rc['name']) ?>"><?php for ($sv = 1; $sv <= 5; $sv++): ?><option value="<?= $sv ?>" <?= $sv === 3 ? 'selected' : '' ?>><?= $sv ?></option><?php endfor; ?></select></label>
-                                                <?php endforeach; ?>
-                                                <input name="note" class="form-control form-control-sm" maxlength="300" placeholder="Catatan (opsional)" aria-label="Catatan rubrik">
-                                                <button class="btn btn-cyber-outline btn-sm" type="submit">Simpan nilai</button>
-                                            </form>
-                                            <?php foreach (($critique_map[$qid] ?? []) as $cm): ?><p class="small mb-1"><strong><?= htmlspecialchars($cm['username']) ?>:</strong> <?= htmlspecialchars($cm['note']) ?></p><?php endforeach; ?>
-                                            <form method="POST" action="critique.php" class="d-flex gap-1 m-0"><?= csrf_field() ?><input type="hidden" name="quest_id" value="<?= $qid ?>"><input type="hidden" name="owner_id" value="<?= (int)$user_id ?>"><input name="note" class="form-control form-control-sm" maxlength="500" placeholder="Minta critique / balas…" aria-label="Critique"><button class="btn btn-cyber-outline btn-sm" type="submit">Kirim</button></form>
+                                        <details class="collapsible-card mt-2">
+                                            <summary class="collapsible-summary bg-body-tertiary">
+                                                <div class="collapsible-text">
+                                                    <strong class="small">Penilaian Karya (Rubrik)</strong>
+                                                    <small>Nilai: <?= $rsum !== null ? htmlspecialchars((string)$rsum) . '/5' : 'Belum dinilai' ?></small>
+                                                </div>
+                                                <i class="fas fa-chevron-down collapsible-chev" aria-hidden="true"></i>
+                                            </summary>
+                                            <div class="collapsible-body">
+                                                <div class="d-flex flex-column gap-2 mt-2">
+                                                <form method="POST" action="rubric.php" class="d-flex flex-column gap-2 m-0">
+                                                    <?= csrf_field() ?>
+                                                    <input type="hidden" name="quest_id" value="<?= $qid ?>">
+                                                    <?php foreach ($rubric_criteria as $rc): ?>
+                                                    <label class="small text-muted mb-0"><?= htmlspecialchars($rc['name']) ?> (<?= (int)$rc['weight'] ?>%)<select name="score[<?= htmlspecialchars($rc['slug']) ?>]" class="form-select form-select-sm" aria-label="<?= htmlspecialchars($rc['name']) ?>"><?php for ($sv = 1; $sv <= 5; $sv++): ?><option value="<?= $sv ?>" <?= $sv === 3 ? 'selected' : '' ?>><?= $sv ?></option><?php endfor; ?></select></label>
+                                                    <?php endforeach; ?>
+                                                    <input name="note" class="form-control form-control-sm" maxlength="300" placeholder="Catatan (opsional)" aria-label="Catatan rubrik">
+                                                    <button class="btn btn-cyber-outline btn-sm" type="submit">Simpan nilai</button>
+                                                </form>
+                                                <?php foreach (($critique_map[$qid] ?? []) as $cm): ?><p class="small mb-1 mt-2"><strong><?= htmlspecialchars($cm['username']) ?>:</strong> <?= htmlspecialchars($cm['note']) ?></p><?php endforeach; ?>
+                                                <form method="POST" action="critique.php" class="d-flex gap-2 m-0 mt-2"><?= csrf_field() ?><input type="hidden" name="quest_id" value="<?= $qid ?>"><input type="hidden" name="owner_id" value="<?= (int)$user_id ?>"><input name="note" class="form-control form-control-sm" maxlength="500" placeholder="Minta critique / balas…" aria-label="Critique"><button class="btn btn-cyber-outline btn-sm" type="submit">Kirim</button></form>
+                                                </div>
                                             </div>
                                         </details>
                                         <?php endif; ?>
@@ -324,7 +361,8 @@ require_once 'includes/navbar.php';
                             </div>
                         <?php endforeach; ?>
                     </div>
-            </section>
+                </div>
+            </details>
         <?php endforeach; ?>
     </div>
 

@@ -24,14 +24,18 @@ $flash = get_flash();
         </div>
     </footer>
 
+    <?php if (!empty($layout_opened)): ?>
+        </div> <!-- end app-content -->
+    </div> <!-- end app-layout -->
+    <?php endif; ?>
+
     <?php if (is_logged_in()):
         $current_page = $current_page ?? basename($_SERVER['PHP_SELF'] ?? '');
         $tabs = [
-            ['index.php', 'fas fa-grid-2', 'Overview'],
+            ['hub.php', 'fas fa-desktop', 'Workspace'],
+            ['index.php', 'fas fa-chart-line', 'Overview'],
             ['quests.php', 'fas fa-map', 'Roadmap'],
             ['timer.php', 'fas fa-clock', 'Fokus'],
-            ['review.php', 'fas fa-rotate-right', 'Review'],
-            ['errors.php', 'fas fa-note-sticky', 'Catatan'],
             ['profile.php', 'fas fa-user', 'Profil'],
         ];
     ?>

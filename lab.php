@@ -43,90 +43,117 @@ require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
-<div class="page-head">
-    <div class="page-kicker eyebrow"><i class="<?= htmlspecialchars($trackInfo['icon'] ?? 'fas fa-flask') ?> me-1"></i> Jurusan <?= htmlspecialchars($trackInfo['name']) ?> · Lab Praktikum 5 Menit</div>
+<div class="page-head mb-4">
+    <div class="page-kicker eyebrow"><i class="<?= htmlspecialchars($trackInfo['icon'] ?? 'fas fa-flask') ?> me-1"></i> Jurusan <?= htmlspecialchars($trackInfo['name']) ?> · Lab Praktikum</div>
     <h1 class="page-title">Lab praktik kilat</h1>
     <p class="page-desc">Latihan interaktif sesuai kurikulum <?= htmlspecialchars($trackInfo['name']) ?>. Batas XP harian: +<?= LAB_DAILY_CAP ?> XP/hari.</p>
 </div>
 
-<?php if ($result): ?>
-<section class="card p-4 mb-3 border-<?= $result['ok'] ? 'success' : 'warning' ?>">
-    <div class="d-flex align-items-center gap-2 mb-1">
-        <i class="fas <?= $result['ok'] ? 'fa-circle-check text-success' : 'fa-circle-exclamation text-warning' ?> fs-5"></i>
-        <strong class="<?= $result['ok'] ? 'text-success' : 'text-warning' ?>"><?= $result['ok'] ? 'Jawaban Benar!' : 'Belum Tepat' ?></strong>
-        <?php if ($result['gain'] > 0): ?>
-            <span class="badge bg-success-subtle text-success ms-auto">+<?= (int)$result['gain'] ?> XP</span>
+<div class="row g-4 align-items-stretch">
+    <!-- Left Column: Terminal UI -->
+    <div class="col-lg-7 d-flex flex-column">
+        <?php if ($active): ?>
+        <section class="card bg-dark text-light border-0 h-100 p-0 overflow-hidden shadow-sm" style="border-radius: 12px;">
+            <div class="bg-black bg-opacity-50 p-2 border-bottom border-secondary border-opacity-25 d-flex align-items-center gap-2">
+                <span class="rounded-circle bg-danger" style="width:12px; height:12px;"></span>
+                <span class="rounded-circle bg-warning" style="width:12px; height:12px;"></span>
+                <span class="rounded-circle bg-success" style="width:12px; height:12px;"></span>
+                <span class="ms-2 small font-monospace text-secondary opacity-75">user@learntracker:~/$ <?= htmlspecialchars($active['slug']) ?></span>
+                <div class="ms-auto d-flex gap-2">
+                    <span class="badge bg-secondary bg-opacity-25 text-light"><i class="fas fa-tag me-1"></i><?= htmlspecialchars($active['skill']) ?></span>
+                    <span class="badge bg-warning bg-opacity-25 text-warning"><i class="fas fa-bolt me-1"></i>+<?= (int)$active['xp'] ?> XP</span>
+                </div>
+            </div>
+            <div class="p-4 flex-grow-1 font-monospace small d-flex flex-column" style="line-height: 1.6;">
+                <h2 class="text-info h5 fw-bold mb-3">> <?= htmlspecialchars($active['title']) ?></h2>
+                <div class="text-light text-opacity-75 mb-3 fs-6" style="white-space: pre-wrap;"><?= htmlspecialchars($active['prompt']) ?></div>
+                
+                <?php if (!empty($active['code'])): ?>
+                    <pre class="p-3 bg-black bg-opacity-50 rounded border border-secondary border-opacity-25 text-light mt-auto mb-0" style="font-size: 0.85rem;"><code><?= htmlspecialchars($active['code']) ?></code></pre>
+                <?php endif; ?>
+                
+                <?php if (!empty($active['sponsor'])): ?>
+                    <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 text-secondary text-opacity-50 small">
+                        <i class="fas fa-handshake me-1"></i> Didukung oleh <?= htmlspecialchars($active['sponsor']) ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
         <?php endif; ?>
     </div>
-    <p class="small text-muted mb-0"><?= htmlspecialchars($result['lab']['explanation']) ?></p>
-</section>
-<?php endif; ?>
 
-<?php if ($active): ?>
-<section class="card p-4 mb-4 shadow-sm">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-        <span class="badge bg-cyber-subtle text-cyber px-2 py-1"><i class="fas fa-tag me-1"></i><?= htmlspecialchars($active['skill']) ?></span>
-        <span class="small text-muted"><i class="fas fa-bolt text-warning me-1"></i>+<?= (int)$active['xp'] ?> XP</span>
-    </div>
-    <h2 class="h5 fw-bold mb-2"><?= htmlspecialchars($active['title']) ?></h2>
-    <p class="text-secondary small mb-3"><?= htmlspecialchars($active['prompt']) ?></p>
-
-    <?php if (!empty($active['code'])): ?>
-        <pre class="p-3 bg-dark text-light rounded font-monospace small mb-3"><code><?= htmlspecialchars($active['code']) ?></code></pre>
-    <?php endif; ?>
-
-    <?php if (!empty($active['sponsor'])): ?>
-        <p class="small text-muted mb-3"><i class="fas fa-handshake me-1"></i>Didukung oleh <?= htmlspecialchars($active['sponsor']) ?></p>
-    <?php endif; ?>
-
-    <form method="POST" class="d-flex flex-column gap-3">
-        <?= csrf_field() ?>
-        <input type="hidden" name="slug" value="<?= htmlspecialchars($active['slug']) ?>">
-        <?php if (($active['type'] ?? 'mcq') === 'calc'): ?>
-            <div class="input-group">
-                <input name="answer" class="form-control" placeholder="Tuliskan angka jawaban..." inputmode="numeric" required autocomplete="off">
-                <button class="btn btn-cyber" type="submit">Kumpulkan</button>
+    <!-- Right Column: Control Panel & Grid -->
+    <div class="col-lg-5 d-flex flex-column gap-3">
+        <?php if ($result): ?>
+        <section class="card p-3 border-<?= $result['ok'] ? 'success' : 'warning' ?>">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <i class="fas <?= $result['ok'] ? 'fa-circle-check text-success' : 'fa-circle-exclamation text-warning' ?> fs-5"></i>
+                <strong class="<?= $result['ok'] ? 'text-success' : 'text-warning' ?>"><?= $result['ok'] ? 'Jawaban Benar!' : 'Belum Tepat' ?></strong>
+                <?php if ($result['gain'] > 0): ?>
+                    <span class="badge bg-success-subtle text-success ms-auto">+<?= (int)$result['gain'] ?> XP</span>
+                <?php endif; ?>
             </div>
-        <?php else: ?>
-            <div class="d-flex flex-column gap-2">
-                <?php foreach ($active['options'] as $i => $o): ?>
-                    <label class="d-flex gap-3 align-items-center p-2 rounded border border-secondary-subtle bg-body-tertiary" style="cursor: pointer;">
-                        <input type="radio" name="answer" value="<?= $i ?>" required class="form-check-input mt-0">
-                        <span class="small"><?= htmlspecialchars($o) ?></span>
-                    </label>
+            <p class="small text-muted mb-0"><?= htmlspecialchars($result['lab']['explanation']) ?></p>
+        </section>
+        <?php endif; ?>
+
+        <?php if ($active): ?>
+        <section class="card p-4 shadow-sm border-0 bg-body-tertiary">
+            <h3 class="h6 fw-bold mb-3"><i class="fas fa-keyboard me-2"></i>Kontrol Misi</h3>
+            <form method="POST" class="d-flex flex-column gap-3 m-0">
+                <?= csrf_field() ?>
+                <input type="hidden" name="slug" value="<?= htmlspecialchars($active['slug']) ?>">
+                <?php if (($active['type'] ?? 'mcq') === 'calc'): ?>
+                    <div class="input-group">
+                        <input name="answer" class="form-control" placeholder="Input output/angka..." inputmode="numeric" required autocomplete="off">
+                        <button class="btn btn-cyber" type="submit">Execute</button>
+                    </div>
+                <?php else: ?>
+                    <div class="d-flex flex-column gap-2">
+                        <?php foreach ($active['options'] as $i => $o): ?>
+                            <label class="d-flex gap-3 align-items-center p-2 px-3 rounded border border-secondary-subtle bg-surface" style="cursor: pointer; transition: all 0.2s;" onmouseover="this.classList.add('border-primary')" onmouseout="this.classList.remove('border-primary')">
+                                <input type="radio" name="answer" value="<?= $i ?>" required class="form-check-input mt-0">
+                                <span class="small font-monospace"><?= htmlspecialchars($o) ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <button class="btn btn-cyber w-100 mt-2" type="submit"><i class="fas fa-play me-2"></i>Execute Kueri</button>
+                <?php endif; ?>
+            </form>
+        </section>
+        <?php endif; ?>
+
+        <section class="card p-4 shadow-sm border-0">
+            <h3 class="h6 fw-bold mb-3"><i class="fas fa-layer-group me-2"></i>Lab Jurusan <?= htmlspecialchars($trackInfo['name']) ?> (<?= count($mine) ?>)</h3>
+            <div class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                <?php foreach ($mine as $l): $isActive = ($active && $active['slug'] === $l['slug']); ?>
+                    <a class="list-row <?= $isActive ? 'active bg-primary bg-opacity-10 border-primary' : '' ?>" href="lab.php?slug=<?= urlencode($l['slug']) ?>" style="padding: 10px 12px; text-decoration: none;">
+                        <div class="list-main">
+                            <p class="list-title <?= $isActive ? 'text-primary' : '' ?>"><?= htmlspecialchars($l['title']) ?></p>
+                            <p class="list-meta"><?= htmlspecialchars($l['skill']) ?></p>
+                        </div>
+                        <?php if ($isActive): ?><i class="fas fa-chevron-right text-primary small"></i><?php endif; ?>
+                    </a>
                 <?php endforeach; ?>
             </div>
-            <button class="btn btn-cyber btn-sm align-self-start mt-2 px-4" type="submit">Kumpulkan Jawaban</button>
-        <?php endif; ?>
-    </form>
-</section>
-<?php endif; ?>
-
-<div class="mb-4">
-    <h2 class="h6 fw-bold text-uppercase text-secondary tracking-wider mb-2">Daftar Lab Jurusan <?= htmlspecialchars($trackInfo['name']) ?> (<?= count($mine) ?>)</h2>
-    <div class="d-flex flex-wrap gap-2">
-        <?php foreach ($mine as $l): ?>
-            <a class="btn btn-cyber-outline btn-sm <?= ($active && $active['slug'] === $l['slug']) ? 'active' : '' ?>" href="lab.php?slug=<?= urlencode($l['slug']) ?>">
-                <?= htmlspecialchars($l['title']) ?> <span class="text-muted small">· <?= htmlspecialchars($l['skill']) ?></span>
-            </a>
-        <?php endforeach; ?>
+            
+            <?php if (!empty($others)): ?>
+            <div class="mt-3 pt-3 border-top">
+                <details>
+                    <summary class="small text-muted fw-bold" style="cursor: pointer;"><i class="fas fa-compass me-1"></i> Eksplorasi Jurusan Lain (<?= count($others) ?>)</summary>
+                    <div class="d-flex flex-wrap gap-1 mt-2">
+                        <?php foreach ($others as $l): ?>
+                            <a class="badge bg-secondary-subtle text-secondary text-decoration-none <?= ($active && $active['slug'] === $l['slug']) ? 'border border-primary' : '' ?>" href="lab.php?slug=<?= urlencode($l['slug']) ?>">
+                                <?= htmlspecialchars(strtoupper($l['track'])) ?>: <?= htmlspecialchars($l['title']) ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </details>
+            </div>
+            <?php endif; ?>
+        </section>
     </div>
 </div>
-
-<?php if (!empty($others)): ?>
-<details class="card p-3 bg-body-tertiary border-0">
-    <summary class="small text-muted fw-bold" style="cursor: pointer;">
-        <i class="fas fa-layer-group me-1"></i> Eksplorasi Lab Jurusan Lain (<?= count($others) ?>)
-    </summary>
-    <div class="d-flex flex-wrap gap-2 mt-3">
-        <?php foreach ($others as $l): ?>
-            <a class="btn btn-outline-secondary btn-sm py-1 px-2 small <?= ($active && $active['slug'] === $l['slug']) ? 'active' : '' ?>" href="lab.php?slug=<?= urlencode($l['slug']) ?>">
-                <?= htmlspecialchars($l['title']) ?> <span class="badge bg-secondary-subtle text-secondary ms-1"><?= htmlspecialchars(strtoupper($l['track'])) ?></span>
-            </a>
-        <?php endforeach; ?>
-    </div>
-</details>
-<?php endif; ?>
 
 </main>
 <?php require_once 'includes/footer.php'; ?>

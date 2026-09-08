@@ -3,7 +3,7 @@ require_once 'config.php';
 
 // Redirect if already logged in
 if (is_logged_in()) {
-    redirect('index.php');
+    redirect('hub.php');
 }
 
 $error = '';
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     set_flash('success', "Selamat datang kembali, {$user['username']}!");
                     $_SESSION['login_attempts'] = ['count' => 0, 'first' => time()];
                     session_regenerate_id(true);
-                    redirect(empty($user['onboarded']) ? 'onboarding.php' : 'index.php');
+                    redirect(empty($user['onboarded']) ? 'onboarding.php' : 'hub.php');
                 } else {
                     $_SESSION['login_attempts']['count']++;
                     $field_errors['password'] = 'Kata sandi salah. Coba lagi.';

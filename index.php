@@ -351,33 +351,6 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
         </script>
     </section>
 
-    <details class="more-today">
-        <summary class="more-today-summary"><strong>Fitur Jurusan &amp; Latihan Tambahan</strong><small>Praktik khas <?= htmlspecialchars(\App\Domain\Track\Tracks::all()[$myTrack]['name'] ?? 'jurusan') ?>, kuis, dan lab</small><i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
-        <div class="more-today-body">
-            <?php $primary_feat = \App\Domain\Track\Tracks::primaryFeature($myTrack); ?>
-            <a class="list-row" href="<?= htmlspecialchars($primary_feat['href']) ?>">
-                <div class="list-main">
-                    <p class="list-title"><i class="<?= htmlspecialchars($primary_feat['icon']) ?> me-1 text-cyber" aria-hidden="true"></i> <?= htmlspecialchars($primary_feat['title']) ?> <span class="badge bg-cyber-subtle text-cyber ms-1 small"><?= htmlspecialchars($primary_feat['badge']) ?></span></p>
-                    <p class="list-meta"><?= htmlspecialchars($primary_feat['desc']) ?></p>
-                </div>
-                <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
-            </a>
-            <a class="list-row" href="quiz.php">
-                <div class="list-main">
-                    <p class="list-title"><i class="fas fa-bolt me-1 text-warning" aria-hidden="true"></i> Kuis kilat 60 detik</p>
-                    <p class="list-meta">Uji pemahaman cepat · tambah XP</p>
-                </div>
-                <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
-            </a>
-            <a class="list-row" href="lab.php">
-                <div class="list-main">
-                    <p class="list-title"><i class="fas fa-flask me-1 text-info" aria-hidden="true"></i> Lab praktik 5 menit</p>
-                    <p class="list-meta">Tantangan hands-on interaktif sesuai materi</p>
-                </div>
-                <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
-            </a>
-        </div>
-    </details>
 
     <!-- Main Content Area -->
     <div class="row g-4">
