@@ -50,11 +50,27 @@ $flash = get_flash();
     <div class="toast-container" aria-live="polite" aria-atomic="true"></div>
     <div id="pageProgress" aria-hidden="true"></div>
 
-    <!-- Bootstrap 5.3 JS Bundle -->
+    <?php
+    $logged = is_logged_in();
+    $pg = $current_page ?? basename($_SERVER['PHP_SELF'] ?? '');
+    if ($logged): ?>
+    <!-- Bootstrap JS hanya untuk user login (dropdown/collapse navbar) -->
     <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <?php endif; ?>
 
-    <?php foreach (['core.js', 'lofi.js', 'quests.js', 'cards.js', 'site.js', 'sync.js', 'share-card.js', 'reactions.js', 'ambience.js', 'mascot.js'] as $js): ?>
-    <script defer src="assets/js/<?= $js ?>?v=<?= filemtime(__DIR__ . '/../assets/js/' . $js) ?>"></script>
+    <?php
+    $page_js = ['core.js', 'site.js', 'sync.js', 'ambience.js'];
+    if ($logged) $page_js[] = 'lofi.js';
+    if (in_array($pg, ['index.php', 'quests.php'], true)) $page_js[] = 'quests.js';
+    if ($pg === 'review.php') $page_js[] = 'cards.js';
+    if (in_array($pg, ['index.php', 'quests.php', 'onboarding.php'], true)) $page_js[] = 'mascot.js';
+    if (in_array($pg, ['index.php', 'profile.php'], true)) $page_js[] = 'share-card.js';
+    if (in_array($pg, ['leaderboard.php', 'u.php'], true)) $page_js[] = 'reactions.js';
+    foreach ($page_js as $js):
+        $jsp = __DIR__ . '/../assets/js/' . $js;
+        $jsv = is_file($jsp) ? (int)@filemtime($jsp) : 0;
+    ?>
+    <script defer src="assets/js/<?= $js ?><?= $jsv ? '?v=' . $jsv : '' ?>"></script>
     <?php endforeach; ?>
 
     <script>

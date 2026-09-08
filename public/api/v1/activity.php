@@ -2,6 +2,7 @@
 require_once dirname(__DIR__, 3) . '/config.php';
 header('Content-Type: application/json');
 if (!is_logged_in()) { http_response_code(401); echo json_encode(['status' => 'error']); exit(); }
+if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
 $conn = db_connect();
 $labels = ['quest' => 'quest', 'chest' => 'peti', 'golden_chest' => 'peti emas', 'quiz' => 'kuis', 'focus' => 'fokus', 'pomo' => 'fokus', 'note' => 'catatan', 'error' => 'catatan', 'duel_win' => 'duel', 'season_claim' => 'season', 'mission' => 'misi', 'review' => 'review'];
 $items = \App\Cache\Store::remember('activity:global', 300, function () use ($conn, $labels) {

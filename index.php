@@ -4,14 +4,14 @@ require_login();
 
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
-$myTrack = user_track($conn, $user_id);
 
-// Get user data (kolom eksplisit: jangan tarik hash password)
-$stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, freeze_tokens, best_streak, show_on_board, public_profile, flair, avatar_frame, role, created_at, onboarded FROM users WHERE id = ?");
+// Get user data sekali jalan (termasuk track + last_login agar navbar tak query ulang)
+$stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, last_login_at, freeze_tokens, best_streak, show_on_board, public_profile, flair, avatar_frame, role, track, created_at, onboarded FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 $stmt->close();
+$myTrack = \App\Domain\Track\Tracks::normalize((string)($user['track'] ?? 'devops'));
 
 if (!$user) {
     session_destroy();
@@ -66,16 +66,23 @@ try {
     $ld->execute();
     foreach ($ld->get_result()->fetch_all(MYSQLI_ASSOC) as $lr) $lock_done[(int)$lr['quest_id']] = true;
     $ld->close();
-    $lg = $conn->prepare("SELECT id FROM quests WHERE user_id IS NULL AND track = ? ORDER BY week ASC, id ASC");
-    if (!$lg) { $lg = $conn->prepare("SELECT id FROM quests WHERE user_id IS NULL ORDER BY week ASC, id ASC"); $lg->execute(); }
-    else { $lg->bind_param("s", $myTrack); $lg->execute(); }
-    $pg = null;
-    foreach ($lg->get_result()->fetch_all(MYSQLI_ASSOC) as $gr) {
-        $gid = (int)$gr['id'];
-        $lock_prev[$gid] = $pg;
-        $pg = $gid;
-    }
-    $lg->close();
+    // Rantai prev global di-cache per track (relatif statis, invalidasi manual tak perlu)
+    $lock_prev = \App\Cache\Store::remember('lockprev:' . $myTrack, 300, function () use ($conn, $myTrack) {
+        $map = [];
+        try {
+            $lg = $conn->prepare("SELECT id FROM quests WHERE user_id IS NULL AND track = ? ORDER BY week ASC, id ASC");
+            if (!$lg) { $lg = $conn->prepare("SELECT id FROM quests WHERE user_id IS NULL ORDER BY week ASC, id ASC"); $lg->execute(); }
+            else { $lg->bind_param("s", $myTrack); $lg->execute(); }
+            $pg = null;
+            foreach ($lg->get_result()->fetch_all(MYSQLI_ASSOC) as $gr) {
+                $gid = (int)$gr['id'];
+                $map[$gid] = $pg;
+                $pg = $gid;
+            }
+            $lg->close();
+        } catch (Throwable $e) {}
+        return $map;
+    });
 } catch (Throwable $e) {}
 
 // Dashboard counts dalam 1 roundtrip, cache 60s (invalidasi di Ledger::award)
@@ -111,7 +118,10 @@ try {
     }
 } catch (Throwable $e) {}
 $overall_quest_percent = $total_quests_cnt > 0 ? round(($total_completed / $total_quests_cnt) * 100) : 0;
-$missions = get_daily_mission_status($conn, $user_id);
+// Status misi harian di-cache 45 detik (invalidasi otomatis saat XP masuk via Ledger::award)
+$missions = \App\Cache\Store::remember(\App\Cache\Keys::missions($user_id, date('Y-m-d')), 45, function () use ($conn, $user_id) {
+    return get_daily_mission_status($conn, $user_id);
+});
 
 // Recent errors
 $stmt = $conn->prepare("SELECT id, user_id, category, error_message, solution, created_at FROM errors WHERE user_id = ? ORDER BY created_at DESC LIMIT 4");
@@ -248,24 +258,36 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
 });
 </script>
 
-    <?php
-    $ticker_items = [];
-    try {
-        $tr = $conn->query("SELECT u.username, e.amount, e.reason FROM xp_events e JOIN users u ON u.id = e.user_id WHERE e.amount > 0 AND u.show_on_board = 1 ORDER BY e.id DESC LIMIT 10");
-        if ($tr) { foreach ($tr->fetch_all(MYSQLI_ASSOC) as $trow) $ticker_items[] = $trow; $tr->free(); }
-    } catch (Throwable $e) {}
-    $ticker_labels = ['quest' => 'quest', 'chest' => 'peti', 'golden_chest' => 'peti emas', 'quiz' => 'kuis', 'duel_win' => 'duel', 'season_claim' => 'season'];
-    ?>
-    <?php if ($ticker_items): ?>
-    <div class="ticker" aria-label="Aktivitas komunitas terbaru">
-        <div class="ticker-track" id="tickerTrack" aria-hidden="false">
-            <?php foreach ($ticker_items as $ti): ?>
-            <span><strong><?= htmlspecialchars($ti['username']) ?></strong> +<?= (int)$ti['amount'] ?> <?= htmlspecialchars($ticker_labels[$ti['reason']] ?? 'XP') ?></span>
-            <?php endforeach; ?>
-        </div>
+    <div class="ticker" id="communityTicker" aria-label="Aktivitas komunitas terbaru" hidden>
+        <div class="ticker-track" id="tickerTrack" aria-hidden="false"></div>
         <button type="button" class="ticker-pause" id="tickerPause" aria-pressed="false" aria-label="Jeda animasi aktivitas komunitas"><i class="fas fa-pause" aria-hidden="true"></i></button>
     </div>
-    <?php endif; ?>
+    <script>
+    (function() {
+        var box = document.getElementById('communityTicker');
+        var track = document.getElementById('tickerTrack');
+        if (!box || !track) return;
+        function show(items) {
+            if (!items || items.length < 2) return;
+            var html = '';
+            items.forEach(function(it) {
+                var tmp = document.createElement('div');
+                tmp.textContent = (it.user || '?') + ' +' + (it.amount || 0) + ' ' + (it.label || 'XP');
+                html += '<span>' + tmp.innerHTML + '</span>';
+            });
+            track.innerHTML = html + html;
+            box.hidden = false;
+        }
+        if ('requestIdleCallback' in window) requestIdleCallback(function() {
+            fetch('public/api/v1/activity.php', { headers: { 'Accept': 'application/json' } })
+                .then(function(r) { return r.json(); }).then(function(d) { show(d.items); }).catch(function() {});
+        });
+        else setTimeout(function() {
+            fetch('public/api/v1/activity.php', { headers: { 'Accept': 'application/json' } })
+                .then(function(r) { return r.json(); }).then(function(d) { show(d.items); }).catch(function() {});
+        }, 2500);
+    })();
+    </script>
 
     <?php
     $mission_claimed = count(array_filter($missions, fn($m) => !empty($m['claimed'])));
@@ -537,10 +559,22 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
         this.setAttribute('aria-label', paused ? 'Jeda animasi aktivitas komunitas' : 'Putar animasi aktivitas komunitas');
         this.innerHTML = paused ? '<i class="fas fa-pause" aria-hidden="true"></i>' : '<i class="fas fa-play" aria-hidden="true"></i>';
     });
+    let tickerVisible = true;
+    if (track && 'IntersectionObserver' in window) {
+        tickerVisible = false;
+        new IntersectionObserver(function(entries) {
+            tickerVisible = entries.some(function(en) { return en.isIntersecting; });
+        }, { rootMargin: '200px' }).observe(track.closest('.ticker'));
+    }
+    let activityFails = 0;
     setInterval(async function() {
-        if (document.hidden || !track) return;
+        if (document.hidden || !track || !tickerVisible) return;
+        if (activityFails >= 3) return;
         try {
-            const res = await fetch('public/api/v1/activity.php', { headers: { 'Accept': 'application/json' } });
+            const ctl = new AbortController();
+            const to = setTimeout(function() { ctl.abort(); }, 8000);
+            const res = await fetch('public/api/v1/activity.php', { headers: { 'Accept': 'application/json' }, signal: ctl.signal });
+            clearTimeout(to);
             const data = await res.json();
             if (data && data.status === 'success' && Array.isArray(data.items) && data.items.length > 1) {
                 let html = '';
@@ -550,15 +584,22 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
                     html += '<span>' + tmp.innerHTML + '</span>';
                 });
                 track.innerHTML = html + html;
+                activityFails = 0;
             }
-        } catch (err) {}
+        } catch (err) { activityFails++; }
     }, 300000);
+    let pulseFails = 0;
     setInterval(async function() {
         if (document.hidden) return;
+        if (pulseFails >= 3) return;
         try {
-            const res = await fetch('public/api/v1/pulse.php', { headers: { 'Accept': 'application/json' } });
+            const ctl = new AbortController();
+            const to = setTimeout(function() { ctl.abort(); }, 8000);
+            const res = await fetch('public/api/v1/pulse.php', { headers: { 'Accept': 'application/json' }, signal: ctl.signal });
+            clearTimeout(to);
             const data = await res.json();
             if (!data || data.status !== 'success') return;
+            pulseFails = 0;
             const xpEl = document.getElementById('statTotalXp');
             if (xpEl) {
                 const old = parseInt(xpEl.textContent, 10) || 0;
@@ -571,8 +612,8 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
             if (wk) wk.textContent = data.xp_week;
             const hs = document.getElementById('hudStreak');
             if (hs) hs.textContent = data.streak;
-        } catch (err) {}
-    }, 60000);
+        } catch (err) { pulseFails++; }
+    }, 120000);
 })();
 </script>
 <script>

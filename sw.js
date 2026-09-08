@@ -1,6 +1,6 @@
-const CACHE = 'lt-static-v5';
-const PRECACHE = ['assets/css/app.css', 'assets/js/core.js', 'assets/js/lofi.js', 'assets/js/quests.js', 'assets/js/cards.js', 'assets/js/site.js', 'assets/js/sync.js', 'offline.php', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/apple-touch-icon.png', 'assets/icons/maskable-512.png'];
-const PAGE_CACHE_LIMIT = 25;
+const CACHE = 'lt-static-v6';
+const PRECACHE = ['assets/css/app.css', 'assets/js/core.js', 'assets/js/site.js', 'assets/js/sync.js', 'offline.php', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png'];
+const PAGE_CACHE_LIMIT = 10;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
