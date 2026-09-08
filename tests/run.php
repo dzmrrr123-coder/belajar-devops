@@ -217,7 +217,7 @@ check('combo 3', combo_tier(3), 2.0);
 check('combo 9', combo_tier(9), 2.0);
 check('combo count', combo_count_done(['a' => ['done' => true], 'b' => ['done' => false], 'c' => ['done' => true]]), 2);
 check('combo label', \App\Domain\Gamification\Combo::label(1.5), 'x1.5');
-check('combo hint max', \App\Domain\Gamification\Combo::nextHint(3), 'Combo maks!');
+check('combo hint max', \App\Domain\Gamification\Combo::nextHint(3), 'Kombo maks!');
 check('loot 3 item', count(\App\Domain\Shop::lootFrames()), 3);
 check('loot aurora sept', \App\Domain\Shop::lootAvailable(\App\Domain\Shop::lootByFrame('aurora'), 9), true);
 check('loot aurora okt', \App\Domain\Shop::lootAvailable(\App\Domain\Shop::lootByFrame('aurora'), 10), false);

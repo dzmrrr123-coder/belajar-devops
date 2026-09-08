@@ -19,9 +19,9 @@ class Combo {
         return 'x' . rtrim(rtrim(number_format($mult, 1, '.', ''), '0'), '.');
     }
     public static function nextHint(int $done, int $total = 3): string {
-        if ($done >= $total) return 'Combo maks!';
+        if ($done >= $total) return 'Kombo maks!';
         if ($done === $total - 1) return '1 aksi lagi → x2';
-        if ($done === $total - 2) return '1 aksi lagi → x1.5';
-        return ($total - $done - 1) . ' aksi lagi → x1.5';
+        if ($done === $total - 2) return '1 aksi lagi → x1,5';
+        return ($total - $done - 1) . ' aksi lagi → x1,5';
     }
 }

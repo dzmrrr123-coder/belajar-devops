@@ -598,7 +598,7 @@ document.querySelector('.chest-form')?.addEventListener('submit', async function
         return;
     }
     const tier = data.tier || 'common';
-    const tierLabel = { common: 'Biasa', rare: 'Langka', epic: 'Epik', legendary: 'Legendaris', golden: 'EMAS' }[tier] || 'Biasa';
+    const tierLabel = { common: 'Biasa', rare: 'Langka', epic: 'Epik', legendary: 'Legendaris', golden: 'Emas' }[tier] || 'Biasa';
     const tierStyle = tier === 'golden' ? 'legendary' : tier;
     const reduceMotion = window.LTMotion ? window.LTMotion.reduced() : matchMedia('(prefers-reduced-motion: reduce)').matches;
     const reveal = function() {
