@@ -26,7 +26,7 @@ require_once 'includes/navbar.php';
 <main class="container py-4" role="main">
 <div class="page-head"><div class="page-kicker eyebrow">Mentor otomatis · tanpa antre</div>
 <h1 class="page-title">Langkah berikutnya untukmu</h1>
-<p class="page-desc">Disusun dari gap skill, review, incident avg <?= (int)$avg ?>, dan track <?= htmlspecialchars(strtoupper($track)) ?>.</p></div>
+<p class="page-desc">Rekomendasi adaptif berdasarkan track <strong><?= htmlspecialchars(strtoupper($track)) ?></strong>, aktivitas harian, dan penguasaan kompetensi.</p></div>
 <div class="row g-3">
 <?php foreach ($recs as $r): ?>
 <div class="col-md-4"><div class="card p-4 h-100"><i class="<?= htmlspecialchars($r['icon']) ?>"></i><h2 class="h5 mt-2"><?= htmlspecialchars($r['title']) ?></h2><p class="small text-muted"><?= htmlspecialchars($r['desc']) ?></p><a class="btn btn-cyber btn-sm w-100" href="<?= htmlspecialchars($r['href']) ?>"><?= htmlspecialchars($r['cta']) ?></a></div></div>

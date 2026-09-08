@@ -8,8 +8,12 @@ try { @$conn->query("ALTER TABLE `quests` ADD COLUMN `track` VARCHAR(16) NOT NUL
 $myTrack = user_track($conn, $user_id);
 $trackName = \App\Domain\Track\Tracks::all()[$myTrack]['name'] ?? 'DevOps';
 try { \App\Domain\Track\Roadmap::ensureSeed($conn); } catch (Throwable $e) {}
-$canSwitchTrack = false;
-try { $canSwitchTrack = is_admin($conn, $user_id) || \App\Domain\Auth\Roles::isGuru($conn, $user_id); } catch (Throwable $e) {}
+$inClass = false;
+try {
+    $sc = $conn->prepare("SELECT COUNT(*) c FROM squad_members WHERE user_id = ?");
+    if ($sc) { $sc->bind_param("i", $user_id); $sc->execute(); $inClass = ((int)($sc->get_result()->fetch_assoc()['c'] ?? 0)) > 0; $sc->close(); }
+} catch (Throwable $e) {}
+$canSwitchTrack = !$inClass || is_admin($conn, $user_id) || \App\Domain\Auth\Roles::isGuru($conn, $user_id);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -135,21 +139,27 @@ require_once 'includes/navbar.php';
         <div class="page-kicker">Roadmap <?= htmlspecialchars($trackName) ?> · <span id="roadmapDone"><?= $completed_quests ?></span> dari <span id="roadmapTotal"><?= $total_quests ?></span> quest</div>
         <h1 class="page-title">Roadmap <?= htmlspecialchars($trackName) ?> 12 minggu</h1>
         <?php if ($canSwitchTrack): ?>
-        <form method="POST" action="switch_track.php" class="d-flex align-items-center gap-2 mt-2 mb-1" aria-label="Ganti track">
+        <form method="POST" action="switch_track.php" class="d-flex align-items-center gap-2 mt-2 mb-1" aria-label="Ganti jurusan">
             <?= csrf_field() ?>
-            <label class="small text-muted mb-0" for="trackSel">Track:</label>
-            <select id="trackSel" name="track" class="form-select form-select-sm" style="max-width:180px" onchange="this.form.submit()">
+            <input type="hidden" name="back" value="quests.php">
+            <label class="small text-muted mb-0" for="trackSel"><i class="fas fa-graduation-cap me-1"></i>Jurusan:</label>
+            <select id="trackSel" name="track" class="form-select form-select-sm" style="max-width:210px" onchange="this.form.submit()">
                 <?php foreach (\App\Domain\Track\Tracks::all() as $slug => $tr): ?>
-                <option value="<?= htmlspecialchars($slug) ?>" <?= $slug === $myTrack ? 'selected' : '' ?>><?= htmlspecialchars($tr['name']) ?></option>
+                <option value="<?= htmlspecialchars($slug) ?>" <?= $slug === $myTrack ? 'selected' : '' ?>><?= htmlspecialchars($tr['name']) ?> (<?= htmlspecialchars($tr['desc']) ?>)</option>
                 <?php endforeach; ?>
             </select>
             <noscript><button class="btn btn-cyber-outline btn-sm" type="submit">Ganti</button></noscript>
         </form>
         <?php else: ?>
-        <p class="mt-2 mb-1"><span class="quest-done"><i class="fas fa-lock"></i>Track: <?= htmlspecialchars($trackName) ?> · terkunci</span> <span class="small text-muted">minta reset ke guru untuk ganti</span></p>
+        <p class="mt-2 mb-1"><span class="quest-done"><i class="fas fa-lock me-1"></i>Jurusan: <?= htmlspecialchars($trackName) ?> · Terkunci oleh kelas</span></p>
         <?php endif; ?>
         <p class="page-desc">Roadmap 12 minggu. Centang quest yang selesai = XP masuk. (<?= $xp_earned ?>/<?= $total_xp_possible ?> XP · <span id="roadmapPct"><?= $completion_rate ?></span>%)</p>
-        <div class="d-flex flex-wrap gap-2 mt-2"><a class="btn btn-cyber-outline btn-sm" href="mentor.php">Tanya Mentor</a><a class="btn btn-cyber-outline btn-sm" href="lab.php">Lab praktik</a><?php if ($myTrack === 'dkv'): ?><a class="btn btn-cyber-outline btn-sm" href="brief.php">Brief DKV</a><?php endif; ?></div>
+        <?php $primaryFeature = \App\Domain\Track\Tracks::primaryFeature($myTrack); ?>
+        <div class="d-flex flex-wrap gap-2 mt-2">
+            <a class="btn btn-cyber btn-sm" href="<?= htmlspecialchars($primaryFeature['href']) ?>"><i class="<?= htmlspecialchars($primaryFeature['icon']) ?> me-1"></i><?= htmlspecialchars($primaryFeature['title']) ?></a>
+            <a class="btn btn-cyber-outline btn-sm" href="mentor.php"><i class="fas fa-robot me-1"></i>Tanya Mentor</a>
+            <a class="btn btn-cyber-outline btn-sm" href="lab.php"><i class="fas fa-flask me-1"></i>Lab Praktik</a>
+        </div>
         <div class="xp-progress-bar" id="roadmapBarWrap" role="progressbar" aria-valuenow="<?= $completion_rate ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres roadmap"><div class="xp-progress-fill" id="roadmapBar" style="width: <?= $completion_rate ?>%;"></div></div>
     </div>
 

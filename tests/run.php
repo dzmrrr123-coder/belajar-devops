@@ -354,5 +354,40 @@ foreach (['rpl', 'tkj', 'dkv'] as $tr) {
 check('roadmap devops kosong', \App\Domain\Track\Roadmap::quests('devops'), []);
 check('roadmap normalize asal', \App\Domain\Track\Roadmap::quests('asal'), []);
 
+// Test Tracks route permissions and feature isolation
+check('guard topologi tkj', \App\Domain\Track\Tracks::isPageAllowed('topologi.php', 'tkj'), true);
+check('guard topologi dkv block', \App\Domain\Track\Tracks::isPageAllowed('topologi.php', 'dkv'), false);
+check('guard topologi rpl block', \App\Domain\Track\Tracks::isPageAllowed('topologi.php', 'rpl'), false);
+
+check('guard brief dkv', \App\Domain\Track\Tracks::isPageAllowed('brief.php', 'dkv'), true);
+check('guard brief rpl block', \App\Domain\Track\Tracks::isPageAllowed('brief.php', 'rpl'), false);
+check('guard brief devops block', \App\Domain\Track\Tracks::isPageAllowed('brief.php', 'devops'), false);
+
+check('guard incident devops', \App\Domain\Track\Tracks::isPageAllowed('incident.php', 'devops'), true);
+check('guard incident tkj', \App\Domain\Track\Tracks::isPageAllowed('incident.php', 'tkj'), true);
+check('guard incident dkv block', \App\Domain\Track\Tracks::isPageAllowed('incident.php', 'dkv'), false);
+check('guard incident rpl block', \App\Domain\Track\Tracks::isPageAllowed('incident.php', 'rpl'), false);
+
+check('guard playground rpl', \App\Domain\Track\Tracks::isPageAllowed('playground.php', 'rpl'), true);
+check('guard playground devops', \App\Domain\Track\Tracks::isPageAllowed('playground.php', 'devops'), true);
+check('guard playground dkv block', \App\Domain\Track\Tracks::isPageAllowed('playground.php', 'dkv'), false);
+
+check('guard general quests open', \App\Domain\Track\Tracks::isPageAllowed('quests.php', 'dkv'), true);
+
+// Test Primary Features per track
+check('feat rpl', \App\Domain\Track\Tracks::primaryFeature('rpl')['href'], 'playground.php');
+check('feat tkj', \App\Domain\Track\Tracks::primaryFeature('tkj')['href'], 'topologi.php');
+check('feat dkv', \App\Domain\Track\Tracks::primaryFeature('dkv')['href'], 'brief.php');
+check('feat devops', \App\Domain\Track\Tracks::primaryFeature('devops')['href'], 'incident.php');
+
+// Test Track Curated Resources
+foreach (['rpl', 'tkj', 'dkv'] as $tr) {
+    $res = \App\Domain\Track\Roadmap::resources($tr);
+    check("resources $tr count", count($res), 36);
+    $types = array_unique(array_column($res, 2));
+    sort($types);
+    check("resources $tr types", $types, ['dokumentasi', 'praktek', 'video']);
+}
+
 echo "pass: {$pass}, fail: {$fail}" . PHP_EOL;
 exit($fail > 0 ? 1 : 0);

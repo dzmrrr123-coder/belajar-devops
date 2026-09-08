@@ -68,4 +68,103 @@ class Tracks {
         }
         return ['Linux', 'Git', 'MySQL', 'PHP', 'Laravel', 'Docker', 'AWS', 'Networking', 'General'];
     }
+
+    public static function pageAllowedTracks(string $page): ?array {
+        $map = [
+            'playground.php' => ['rpl', 'devops'],
+            'topologi.php'   => ['tkj'],
+            'terminal.php'   => ['tkj', 'devops'],
+            'brief.php'      => ['dkv'],
+            'karya.php'      => ['dkv'],
+            'karya_upload.php' => ['dkv'],
+            'rubric.php'     => ['dkv'],
+            'critique.php'   => ['dkv'],
+            'incident.php'   => ['devops', 'tkj'],
+        ];
+        return $map[$page] ?? null;
+    }
+
+    public static function isPageAllowed(string $page, string $track): bool {
+        $allowed = self::pageAllowedTracks($page);
+        if ($allowed === null) return true;
+        return in_array(self::normalize($track), $allowed, true);
+    }
+
+    public static function primaryFeature(string $track): array {
+        $t = self::normalize($track);
+        return match($t) {
+            'rpl' => [
+                'title' => 'Coding Playground',
+                'desc'  => 'Tulis dan uji coba kode PHP, JS, dan SQL langsung',
+                'icon'  => 'fas fa-code',
+                'href'  => 'playground.php',
+                'badge' => 'RPL',
+                'cta'   => 'Buka Playground'
+            ],
+            'tkj' => [
+                'title' => 'Topologi & Subnet',
+                'desc'  => 'Kalkulator CIDR dan kanvas rancang jaringan interaktif',
+                'icon'  => 'fas fa-network-wired',
+                'href'  => 'topologi.php',
+                'badge' => 'TKJ',
+                'cta'   => 'Buka Topologi'
+            ],
+            'dkv' => [
+                'title' => 'Brief Kreatif & Karya',
+                'desc'  => 'Kerjakan brief desain, kumpulkan karya & minta critique',
+                'icon'  => 'fas fa-palette',
+                'href'  => 'brief.php',
+                'badge' => 'DKV',
+                'cta'   => 'Lihat Brief'
+            ],
+            'devops' => [
+                'title' => 'Incident Simulator',
+                'desc'  => 'Simulasi tangani deploy crash, drift migrasi & server 500',
+                'icon'  => 'fas fa-fire-extinguisher',
+                'href'  => 'incident.php',
+                'badge' => 'DevOps',
+                'cta'   => 'Coba Simulator'
+            ],
+            default => [
+                'title' => 'Lab Praktik 5 Menit',
+                'desc'  => 'Latihan cepat sesuai materi minggumu',
+                'icon'  => 'fas fa-flask',
+                'href'  => 'lab.php',
+                'badge' => 'Lab',
+                'cta'   => 'Buka Lab'
+            ]
+        };
+    }
+
+    public static function trackFeatures(string $track): array {
+        $t = self::normalize($track);
+        if ($t === 'rpl') {
+            return [
+                ['href' => 'playground.php', 'icon' => 'fas fa-code', 'title' => 'Playground', 'desc' => 'eksekusi PHP/JS'],
+                ['href' => 'lab.php', 'icon' => 'fas fa-flask', 'title' => 'Lab RPL', 'desc' => 'tantangan kuis kode'],
+            ];
+        }
+        if ($t === 'tkj') {
+            return [
+                ['href' => 'topologi.php', 'icon' => 'fas fa-network-wired', 'title' => 'Topologi', 'desc' => 'subnet & kanvas'],
+                ['href' => 'terminal.php', 'icon' => 'fas fa-terminal', 'title' => 'Terminal Linux', 'desc' => 'lab virtual'],
+                ['href' => 'incident.php', 'icon' => 'fas fa-fire-extinguisher', 'title' => 'Incident', 'desc' => 'simulator server'],
+                ['href' => 'lab.php', 'icon' => 'fas fa-flask', 'title' => 'Lab TKJ', 'desc' => 'tantangan jaringan'],
+            ];
+        }
+        if ($t === 'dkv') {
+            return [
+                ['href' => 'brief.php', 'icon' => 'fas fa-pen-nib', 'title' => 'Brief Kreatif', 'desc' => 'proyek desain'],
+                ['href' => 'quests.php', 'icon' => 'fas fa-cloud-arrow-up', 'title' => 'Upload Karya', 'desc' => 'di roadmap'],
+                ['href' => 'lab.php', 'icon' => 'fas fa-flask', 'title' => 'Lab DKV', 'desc' => 'tantangan desain'],
+            ];
+        }
+        return [
+            ['href' => 'incident.php', 'icon' => 'fas fa-fire-extinguisher', 'title' => 'Incident', 'desc' => 'simulator deploy'],
+            ['href' => 'terminal.php', 'icon' => 'fas fa-terminal', 'title' => 'Terminal Linux', 'desc' => 'lab CLI'],
+            ['href' => 'playground.php', 'icon' => 'fas fa-code', 'title' => 'Playground', 'desc' => 'scripting'],
+            ['href' => 'lab.php', 'icon' => 'fas fa-flask', 'title' => 'Lab DevOps', 'desc' => 'tantangan praktik'],
+        ];
+    }
 }
+

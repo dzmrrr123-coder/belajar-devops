@@ -3,6 +3,7 @@ require_once 'config.php';
 require_login();
 $conn = db_connect();
 $uid = (int)$_SESSION['user_id'];
+enforce_track_access($conn, $uid, ['devops', 'tkj'], 'Incident Simulator');
 \App\Domain\Incident\IncidentBank::ensureSeed($conn);
 $s = $conn->prepare("SELECT id, is_pro, pro_until FROM users WHERE id = ?");
 $s->bind_param("i", $uid); $s->execute();

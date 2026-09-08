@@ -111,11 +111,27 @@ $level = calculate_level($user['xp']);
 $rank = get_user_rank($level);
 $pct = level_progress_percent($user['xp']);
 
+$myTrack = user_track($conn, $user_id);
+$myTrackInfo = \App\Domain\Track\Tracks::all()[$myTrack] ?? ['name' => strtoupper($myTrack), 'desc' => ''];
 $stats = ['quest_done' => 0, 'quest_total' => 0, 'pomodoro' => 0, 'notes' => 0, 'q_open' => 0];
-$stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS quest_total, (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id=uq.quest_id WHERE uq.user_id=? AND (q.user_id IS NULL OR q.user_id=?)) AS quest_done, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id=?) AS pomo, (SELECT COUNT(*) FROM errors WHERE user_id=?) AS notes, (SELECT COUNT(*) FROM questions WHERE user_id=? AND status='open') AS q_open");
-$stmt->bind_param("iiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id); $stmt->execute();
-$row = $stmt->get_result()->fetch_assoc() ?: [];
-$stmt->close();
+$stmt = $conn->prepare("SELECT 
+    (SELECT COUNT(*) FROM quests WHERE (user_id IS NULL AND (track = ? OR track = 'all' OR track IS NULL OR track = '')) OR (user_id = ? AND (track = ? OR track IS NULL OR track = ''))) AS quest_total, 
+    (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id=uq.quest_id WHERE uq.user_id=? AND ((q.user_id IS NULL AND (q.track = ? OR q.track = 'all' OR q.track IS NULL OR q.track = '')) OR (q.user_id = ? AND (q.track = ? OR q.track IS NULL OR q.track = '')))) AS quest_done, 
+    (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id=?) AS pomo, 
+    (SELECT COUNT(*) FROM errors WHERE user_id=?) AS notes, 
+    (SELECT COUNT(*) FROM questions WHERE user_id=? AND status='open') AS q_open");
+if ($stmt) {
+    $stmt->bind_param("sisissisiii", $myTrack, $user_id, $myTrack, $user_id, $myTrack, $user_id, $myTrack, $user_id, $user_id, $user_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc() ?: [];
+    $stmt->close();
+} else {
+    $stmt = $conn->prepare("SELECT (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS quest_total, (SELECT COUNT(*) FROM user_quests uq JOIN quests q ON q.id=uq.quest_id WHERE uq.user_id=? AND (q.user_id IS NULL OR q.user_id=?)) AS quest_done, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id=?) AS pomo, (SELECT COUNT(*) FROM errors WHERE user_id=?) AS notes, (SELECT COUNT(*) FROM questions WHERE user_id=? AND status='open') AS q_open");
+    $stmt->bind_param("iiiiii", $user_id, $user_id, $user_id, $user_id, $user_id, $user_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc() ?: [];
+    $stmt->close();
+}
 $stats['quest_total'] = (int)($row['quest_total'] ?? 0);
 $stats['quest_done'] = (int)($row['quest_done'] ?? 0);
 $stats['pomodoro'] = (int)($row['pomo'] ?? 0);
@@ -251,6 +267,30 @@ require_once 'includes/navbar.php';
                     <button class="btn btn-cyber w-100" type="submit">Simpan</button>
                 </form>
             </section>
+            <section class="card p-4" aria-label="Jurusan dan Track Belajar">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h2 class="h5 fw-bold mb-0">Jurusan Belajar</h2>
+                    <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1"><i class="<?= htmlspecialchars($myTrackInfo['icon'] ?? 'fas fa-graduation-cap') ?> me-1"></i><?= htmlspecialchars($myTrackInfo['name']) ?></span>
+                </div>
+                <p class="text-secondary small mb-3">Jurusan menentukan kurikulum roadmap, materi, lab interaktif, dan skill passport-mu.</p>
+                <form method="POST" action="switch_track.php">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="back" value="profile.php">
+                    <div class="mb-3">
+                        <label class="form-label" for="pf-track">Pilihan Jurusan</label>
+                        <select id="pf-track" name="track" class="form-select">
+                            <?php foreach (\App\Domain\Track\Tracks::all() as $slug => $tr): ?>
+                                <option value="<?= htmlspecialchars($slug) ?>" <?= $slug === $myTrack ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($tr['name']) ?> — <?= htmlspecialchars($tr['desc']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <button class="btn btn-cyber-outline w-100" type="submit">
+                        <i class="fas fa-arrows-rotate me-1" aria-hidden="true"></i> Ganti Jurusan
+                    </button>
+                </form>
+            </section>
             <section class="card p-4" aria-label="Ganti password">
                 <h2 class="h5 fw-bold mb-3">Ganti password</h2>
                 <form method="POST" action="profile.php">
@@ -295,7 +335,7 @@ require_once 'includes/navbar.php';
 </div>
 
 <script>
-const FLEX_DATA = <?= json_encode(['username' => $user['username'], 'level' => $level, 'rank' => $rank, 'xp' => (int)$user['xp'], 'streak' => (int)$user['streak'], 'quests_done' => $stats['quest_done'], 'quests_total' => $stats['quest_total'], 'badges' => count($badges_owned)], JSON_UNESCAPED_UNICODE) ?>;
+const FLEX_DATA = <?= json_encode(['username' => $user['username'], 'level' => $level, 'rank' => $rank, 'xp' => (int)$user['xp'], 'streak' => (int)$user['streak'], 'quests_done' => $stats['quest_done'], 'quests_total' => $stats['quest_total'], 'badges' => count($badges_owned), 'track_name' => $myTrackInfo['name']], JSON_UNESCAPED_UNICODE) ?>;
 let flexCanvas = null;
 function drawFlexCard() {
     const W = 1080, H = 1920;
@@ -315,7 +355,7 @@ function drawFlexCard() {
     x.fillStyle = '#63b39b';
     x.font = "700 40px " + F;
     try { x.letterSpacing = '8px'; } catch (e) {}
-    x.fillText('LEARN TRACKER · DEVOPS', W / 2, 220);
+    x.fillText('LEARN TRACKER · ' + (FLEX_DATA.track_name || 'VOKASI').toUpperCase(), W / 2, 220);
     try { x.letterSpacing = '0px'; } catch (e) {}
     let nameSize = 110;
     x.font = "700 " + nameSize + "px " + F;

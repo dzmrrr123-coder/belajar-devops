@@ -3,6 +3,7 @@ require_once 'config.php';
 require_login();
 $conn = db_connect();
 $uid = (int)$_SESSION['user_id'];
+enforce_track_access($conn, $uid, ['tkj'], 'Topologi & Subnet Network');
 \App\Domain\Tkj\Topo::ensureTables($conn);
 $calc = null;
 $cidr = trim($_GET['cidr'] ?? ($_POST['cidr'] ?? '192.168.1.0/24'));

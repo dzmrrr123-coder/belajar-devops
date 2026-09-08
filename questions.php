@@ -138,8 +138,15 @@ $stmt->execute();
 $questions = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-$quests_stmt = $conn->prepare('SELECT id, title, week FROM quests WHERE user_id IS NULL OR user_id = ? ORDER BY week, id');
-$quests_stmt->bind_param('i', $user_id);
+$myTrack = user_track($conn, $user_id);
+$track_topics = quiz_topics($myTrack);
+$quests_stmt = $conn->prepare("SELECT id, title, week FROM quests WHERE ((user_id IS NULL AND (track = ? OR track = 'all' OR track IS NULL OR track = '')) OR (user_id = ? AND (track = ? OR track IS NULL OR track = ''))) ORDER BY week, id");
+if ($quests_stmt) {
+    $quests_stmt->bind_param('sis', $myTrack, $user_id, $myTrack);
+} else {
+    $quests_stmt = $conn->prepare('SELECT id, title, week FROM quests WHERE user_id IS NULL OR user_id = ? ORDER BY week, id');
+    $quests_stmt->bind_param('i', $user_id);
+}
 $quests_stmt->execute();
 $quests = $quests_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $quests_stmt->close();
@@ -151,7 +158,7 @@ require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
     <div class="page-head">
-        <div class="page-kicker"><?= count($questions) ?> pertanyaan ditampilkan</div>
+        <div class="page-kicker"><?= count($questions) ?> pertanyaan ditampilkan · Track <?= htmlspecialchars(strtoupper($myTrack)) ?></div>
         <h1 class="page-title">Questions</h1>
         <p class="page-desc">Hal yang belum paham, tampung di sini. Terjawab = pindah ke catatan +5 XP.</p>
     </div>
@@ -168,9 +175,20 @@ require_once 'includes/navbar.php';
                 <form method="post" action="questions.php" data-outbox="question_add">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="create">
-                    <div class="mb-3"><label class="form-label" for="question-title">Pertanyaan</label><input id="question-title" name="title" class="form-control" required maxlength="255" placeholder="Contoh: Kapan memakai LEFT JOIN?"></div>
+                    <div class="mb-3"><label class="form-label" for="question-title">Pertanyaan</label><input id="question-title" name="title" class="form-control" required maxlength="255" placeholder="Contoh: Apa kegunaan fungsi ini?"></div>
                     <div class="mb-3"><label class="form-label" for="question-description">Konteks <span class="text-muted">(opsional)</span></label><textarea id="question-description" name="description" class="form-control" rows="4" placeholder="Apa yang sudah kamu coba atau bagian yang membingungkan?"></textarea></div>
-                    <div class="row g-3 mb-3"><div class="col-6"><label class="form-label" for="question-topic">Topik</label><input id="question-topic" name="topic" class="form-control" maxlength="100" placeholder="MySQL"></div><div class="col-6"><label class="form-label" for="question-priority">Prioritas</label><select id="question-priority" name="priority" class="form-select"><option value="low">Rendah</option><option value="medium" selected>Sedang</option><option value="high">Tinggi</option></select></div></div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label" for="question-topic">Topik</label>
+                            <input id="question-topic" name="topic" list="topicList" class="form-control" maxlength="100" placeholder="<?= htmlspecialchars($track_topics[0] ?? 'General') ?>">
+                            <datalist id="topicList">
+                                <?php foreach ($track_topics as $tp): ?>
+                                    <option value="<?= htmlspecialchars($tp) ?>"></option>
+                                <?php endforeach; ?>
+                            </datalist>
+                        </div>
+                        <div class="col-6"><label class="form-label" for="question-priority">Prioritas</label><select id="question-priority" name="priority" class="form-select"><option value="low">Rendah</option><option value="medium" selected>Sedang</option><option value="high">Tinggi</option></select></div>
+                    </div>
                     <div class="mb-3"><label class="form-label" for="question-quest">Quest terkait</label><select id="question-quest" name="quest_id" class="form-select"><option value="0">Tanpa quest</option><?php foreach ($quests as $quest): ?><option value="<?= (int)$quest['id'] ?>">M<?= (int)$quest['week'] ?> · <?= htmlspecialchars($quest['title']) ?></option><?php endforeach; ?></select></div>
                     <div class="mb-4"><label class="form-label" for="question-reference">Referensi <span class="text-muted">(opsional)</span></label><input id="question-reference" type="url" name="reference_link" class="form-control" placeholder="https://..."></div>
                     <button class="btn btn-cyber w-100" type="submit"><i class="fas fa-plus me-2"></i>Simpan pertanyaan</button>

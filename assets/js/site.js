@@ -6,9 +6,9 @@ if (main && !main.id) main.id = 'main';
 document.querySelectorAll('.lt-nav-link.active').forEach(a => a.setAttribute('aria-current', 'page'));
 
 document.querySelectorAll('form:not(.quest-toggle-form)').forEach(form => {
-    form.addEventListener('submit', function() {
-        const btn = this.querySelector('button[type="submit"]');
-        if (btn && !btn.disabled) {
+    form.addEventListener('submit', function(e) {
+        const btn = (e.submitter && e.submitter.matches('button[type="submit"]')) ? e.submitter : this.querySelector('button[type="submit"]');
+        if (btn && !btn.disabled && !btn.hasAttribute('formnovalidate') && btn.name !== 'skip') {
             btn.disabled = true;
             btn.setAttribute('aria-busy', 'true');
         }

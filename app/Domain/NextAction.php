@@ -38,7 +38,13 @@ class NextAction {
                 $r = $q->get_result()->fetch_assoc() ?: []; $q->close();
                 $out['due_reviews'] = (int)($r['dr'] ?? 0); $out['pomo_today'] = (int)($r['pt'] ?? 0);
             }
-            $g = $conn->prepare("SELECT id, week, user_id, title, xp_reward, depends_on FROM quests WHERE user_id IS NULL ORDER BY week ASC, id ASC");
+            $userTrack = user_track($conn, $uid);
+            $g = $conn->prepare("SELECT id, week, user_id, title, xp_reward, depends_on FROM quests WHERE user_id IS NULL AND (track = ? OR track = 'all' OR track IS NULL OR track = '') ORDER BY week ASC, id ASC");
+            if (!$g) {
+                $g = $conn->prepare("SELECT id, week, user_id, title, xp_reward, depends_on FROM quests WHERE user_id IS NULL ORDER BY week ASC, id ASC");
+            } else {
+                $g->bind_param("s", $userTrack);
+            }
             if ($g) {
                 $g->execute();
                 $globals = $g->get_result()->fetch_all(MYSQLI_ASSOC); $g->close();

@@ -17,6 +17,7 @@ if (!$user) {
     session_destroy();
     redirect('login.php');
 }
+if (empty($user['onboarded'])) redirect('onboarding.php');
 
 // Calculate level & gamification stats
 $level = calculate_level($user['xp']);
@@ -119,12 +120,28 @@ $stmt->execute();
 $recent_errors = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-// Resources for selected week
-$stmt = $conn->prepare("SELECT id, week, title, type, url FROM resources WHERE week = ? ORDER BY type ASC, id ASC");
-$stmt->bind_param("i", $selected_week);
-$stmt->execute();
-$resources = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+// Resources for selected week (track-aware with fallback)
+$resources = [];
+try {
+    $stmt = $conn->prepare("SELECT id, week, title, type, url FROM resources WHERE week = ? AND (track = ? OR track = 'all' OR track IS NULL) ORDER BY type ASC, id ASC");
+    if ($stmt) {
+        $stmt->bind_param("is", $selected_week, $myTrack);
+        $stmt->execute();
+        $resources = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+    }
+} catch (Throwable $e) {}
+if (empty($resources)) {
+    try {
+        $stmt = $conn->prepare("SELECT id, week, title, type, url FROM resources WHERE week = ? ORDER BY type ASC, id ASC LIMIT 3");
+        if ($stmt) {
+            $stmt->bind_param("i", $selected_week);
+            $stmt->execute();
+            $resources = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+        }
+    } catch (Throwable $e) {}
+}
 
 
 
@@ -135,11 +152,11 @@ require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 
-<main class="container py-4" role="main">
+<main class="container py-4" id="main">
     <div class="page-head arena-banner">
         <div class="page-kicker eyebrow"><span data-greet>Semangat</span> · Track <?= htmlspecialchars(\App\Domain\Track\Tracks::all()[$myTrack]['name'] ?? 'DevOps') ?> · Minggu <?= $selected_week ?> dari 12 · <?= count($quests) ?> quest</div>
-        <h1 class="page-title"><?= !empty($quests) ? 'Fokus: ' . htmlspecialchars($quests[0]['title']) : 'Belum ada quest minggu ini' ?></h1>
-        <p class="page-desc">Pilih satu target hari ini. Selesai = XP masuk otomatis.</p>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-desc">Fokus hari ini: <strong><?= !empty($quests) ? htmlspecialchars($quests[0]['title']) : 'belum ada quest' ?></strong>. Selesaikan satu, XP masuk otomatis.</p>
         <div class="page-actions overview-actions">
             <a href="timer.php" class="btn btn-cyber"><i class="fas fa-play me-1" aria-hidden="true"></i> Mulai sesi fokus</a>
             <a href="quests.php" class="page-actions-link">Lihat roadmap <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
@@ -149,10 +166,10 @@ require_once 'includes/navbar.php';
     <div class="chest-card<?= $chest ? ' opened' : '' ?>" id="dailyChest" data-urgent="<?= $chest ? '0' : '1' ?>">
         <?php if ($chest): ?>
             <span class="chest-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
-            <span class="chest-text"><strong><?= !empty($chest['is_golden']) ? 'PETI EMAS! ' : '' ?>+<?= (int)$chest['xp'] ?> XP<?= !empty($chest['freeze']) ? ' + 1 freeze' : '' ?></strong><small>peti hari ini sudah dibuka · kembali besok</small></span>
+            <span class="chest-text"><strong><?= !empty($chest['is_golden']) ? 'Peti emas! ' : '' ?>+<?= (int)$chest['xp'] ?> XP<?= !empty($chest['freeze']) ? ' + 1 pelindung streak' : '' ?></strong><small>peti hari ini sudah dibuka · kembali besok</small></span>
         <?php else: ?>
             <span class="chest-icon closed" aria-hidden="true"><i class="fas fa-gift"></i></span>
-            <span class="chest-text"><strong>Peti harian menunggumu</strong><small>3–15 XP + freeze · waspada Peti Emas mingguan</small></span>
+            <span class="chest-text"><strong>Peti harian menunggumu</strong><small>Hadiah 3–15 XP + pelindung streak sesekali</small></span>
             <form method="POST" action="claim_chest.php" class="chest-form m-0 flex-shrink-0">
                 <?= csrf_field() ?>
                 <button type="submit" class="btn btn-cyber btn-sm">Buka</button>
@@ -188,13 +205,13 @@ require_once 'includes/navbar.php';
     $bolt_combo_total = count($missions) ?: 3;
     $bolt_combo_mult = \App\Domain\Gamification\Combo::tier($bolt_combo_done, $bolt_combo_total);
     if ($claimable_n > 0) { $bolt_ctx = 'claim'; $bolt_mood = 'happy'; $bolt_msg = 'Ada <strong>+' . $claimable_xp . ' XP</strong> nganggur. Klaim gih!'; }
-    elseif ($streak_broken) { $bolt_ctx = 'recovery'; $bolt_mood = 'sleep'; $bolt_msg = 'Streak putus? Gas 1 quest kecil buat comeback.'; }
-    elseif ($bolt_combo_mult >= 2.0) { $bolt_ctx = 'combo'; $bolt_mood = 'hype'; $bolt_msg = 'Pipeline kamu kembali hijau. Combo x2 aktif!'; }
+    elseif ($streak_broken) { $bolt_ctx = 'recovery'; $bolt_mood = 'sleep'; $bolt_msg = 'Streak putus? Kerjakan 1 quest kecil untuk mulai lagi.'; }
+    elseif ($bolt_combo_mult >= 2.0) { $bolt_ctx = 'combo'; $bolt_mood = 'hype'; $bolt_msg = 'Semua misi beres. Bonus kombo x2 aktif!'; }
     elseif ($next_action['type'] === 'review') { $bolt_ctx = 'review'; $bolt_mood = 'idle'; $bolt_msg = 'Ada ' . (int)$due_reviews . ' review nunggu. 2 menit saja.'; }
     else { $bolt_ctx = 'focus'; $bolt_mood = 'idle'; $bolt_msg = 'Fokus satu quest, sisanya ngikut.'; }
     ?>
     <?php if ($next_action['type'] === 'claim'): ?>
-    <div class="next-action" data-urgent="<?= $next_urgent ?>">
+    <div class="next-action next-action-primary" data-urgent="<?= $next_urgent ?>">
         <span class="next-action-icon" aria-hidden="true"><i class="fas fa-gift"></i></span>
         <span class="next-action-text"><strong><?= htmlspecialchars($next_action['title']) ?></strong><small><?= htmlspecialchars($next_action['desc']) ?></small></span>
         <form method="POST" action="claim_mission.php" class="m-0 flex-shrink-0">
@@ -204,18 +221,12 @@ require_once 'includes/navbar.php';
         </form>
     </div>
     <?php else: ?>
-    <a class="next-action" href="<?= htmlspecialchars($next_action['href']) ?>" data-urgent="<?= $next_urgent ?>">
+    <a class="next-action next-action-primary" href="<?= htmlspecialchars($next_action['href']) ?>" data-urgent="<?= $next_urgent ?>">
         <span class="next-action-icon" aria-hidden="true"><i class="fas <?= $next_icons[$next_action['type']] ?? 'fa-arrow-right' ?>"></i></span>
         <span class="next-action-text"><strong><?= htmlspecialchars($next_action['title']) ?></strong><small><?= htmlspecialchars($next_action['desc']) ?></small></span>
         <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
     </a>
     <?php endif; ?>
-
-    <a class="next-action" href="incident.php" data-urgent="0">
-        <span class="next-action-icon" aria-hidden="true"><i class="fas fa-fire-extinguisher"></i></span>
-        <span class="next-action-text"><strong>Coba Incident Simulator</strong><small>Deploy crashloop · dinilai + masuk passport · gratis 1x</small></span>
-        <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
-    </a>
     <section class="progress-strip" aria-label="Ringkasan progres belajar">
         <div class="strip-main">
             <div class="strip-level"><strong>Level <?= $level ?></strong><span><?= htmlspecialchars($rank_title) ?></span></div>
@@ -246,12 +257,13 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
     $ticker_labels = ['quest' => 'quest', 'chest' => 'peti', 'golden_chest' => 'peti emas', 'quiz' => 'kuis', 'duel_win' => 'duel', 'season_claim' => 'season'];
     ?>
     <?php if ($ticker_items): ?>
-    <div class="ticker" aria-label="Aktivitas komunitas">
-        <div class="ticker-track" id="tickerTrack">
+    <div class="ticker" aria-label="Aktivitas komunitas terbaru">
+        <div class="ticker-track" id="tickerTrack" aria-hidden="false">
             <?php foreach ($ticker_items as $ti): ?>
             <span><strong><?= htmlspecialchars($ti['username']) ?></strong> +<?= (int)$ti['amount'] ?> <?= htmlspecialchars($ticker_labels[$ti['reason']] ?? 'XP') ?></span>
             <?php endforeach; ?>
         </div>
+        <button type="button" class="ticker-pause" id="tickerPause" aria-pressed="false" aria-label="Jeda animasi aktivitas komunitas"><i class="fas fa-pause" aria-hidden="true"></i></button>
     </div>
     <?php endif; ?>
 
@@ -266,7 +278,7 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
                 <span class="mission-summary-text">
                     <strong>Misi hari ini</strong>
                     <?php $combo_done = \App\Domain\Gamification\Combo::countDone($missions); $combo_total = count($missions) ?: 3; $combo_mult = \App\Domain\Gamification\Combo::tier($combo_done, $combo_total); ?>
-                    <small><?= $mission_claimed ?>/<?= count($missions) ?> diklaim · misi bonus rotasi tiap hari · <span class="text-success fw-bold">Combo <?= \App\Domain\Gamification\Combo::label($combo_mult) ?></span> · <?= \App\Domain\Gamification\Combo::nextHint($combo_done, $combo_total) ?> · reset <span id="resetClock">--:--:--</span></small>
+                    <small><?= $mission_claimed ?>/<?= count($missions) ?> diklaim · bonus harian · <span class="text-success fw-bold">Kombo <?= \App\Domain\Gamification\Combo::label($combo_mult) ?></span> · <?= \App\Domain\Gamification\Combo::nextHint($combo_done, $combo_total) ?> · reset <span id="resetClock">--:--:--</span></small>
                 </span>
 <script>
 (function() {
@@ -317,6 +329,34 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
         </script>
     </section>
 
+    <details class="more-today">
+        <summary class="more-today-summary"><strong>Fitur Jurusan &amp; Latihan Tambahan</strong><small>Praktik khas <?= htmlspecialchars(\App\Domain\Track\Tracks::all()[$myTrack]['name'] ?? 'jurusan') ?>, kuis, dan lab</small><i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
+        <div class="more-today-body">
+            <?php $primary_feat = \App\Domain\Track\Tracks::primaryFeature($myTrack); ?>
+            <a class="list-row" href="<?= htmlspecialchars($primary_feat['href']) ?>">
+                <div class="list-main">
+                    <p class="list-title"><i class="<?= htmlspecialchars($primary_feat['icon']) ?> me-1 text-cyber" aria-hidden="true"></i> <?= htmlspecialchars($primary_feat['title']) ?> <span class="badge bg-cyber-subtle text-cyber ms-1 small"><?= htmlspecialchars($primary_feat['badge']) ?></span></p>
+                    <p class="list-meta"><?= htmlspecialchars($primary_feat['desc']) ?></p>
+                </div>
+                <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
+            </a>
+            <a class="list-row" href="quiz.php">
+                <div class="list-main">
+                    <p class="list-title"><i class="fas fa-bolt me-1 text-warning" aria-hidden="true"></i> Kuis kilat 60 detik</p>
+                    <p class="list-meta">Uji pemahaman cepat · tambah XP</p>
+                </div>
+                <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
+            </a>
+            <a class="list-row" href="lab.php">
+                <div class="list-main">
+                    <p class="list-title"><i class="fas fa-flask me-1 text-info" aria-hidden="true"></i> Lab praktik 5 menit</p>
+                    <p class="list-meta">Tantangan hands-on interaktif sesuai materi</p>
+                </div>
+                <i class="fas fa-chevron-right list-chev" aria-hidden="true"></i>
+            </a>
+        </div>
+    </details>
+
     <!-- Main Content Area -->
     <div class="row g-4">
         <!-- Left Column: Quest Board for Selected Week -->
@@ -330,7 +370,7 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
 
                     <!-- Week selector quick dropdown -->
                     <div class="dropdown">
-                        <button class="btn btn-cyber-outline btn-sm dropdown-toggle py-1 px-3" type="button" data-bs-toggle="dropdown">
+                        <button class="btn btn-cyber-outline btn-sm dropdown-toggle py-1 px-3" type="button" data-bs-toggle="dropdown" aria-label="Pilih minggu roadmap, saat ini minggu <?= $selected_week ?>">
                             Minggu <?= $selected_week ?>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end p-2" style="max-height: 280px; overflow-y: auto;">
@@ -400,9 +440,13 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
                         <?php endforeach; ?>
                     <?php else: ?>
                         <div class="empty-state py-4">
-                            <div class="empty-state-icon"><i class="fas fa-clipboard-check"></i></div>
-                            <h3 class="h6 text-secondary">Tidak ada quest untuk minggu ini.</h3>
-                            <p class="small text-muted">Silakan pilih minggu lainnya melalui tombol di atas.</p>
+                            <div class="empty-state-icon" aria-hidden="true"><i class="fas fa-clipboard-check"></i></div>
+                            <h3 class="h6 text-secondary">Belum ada quest di minggu <?= $selected_week ?>.</h3>
+                            <p class="small text-muted">Kembali ke minggu berjalan atau buka roadmap penuh.</p>
+                            <div class="d-flex gap-2 justify-content-center flex-wrap mt-2">
+                                <a href="index.php?week=<?= $auto_week ?>" class="btn btn-cyber btn-sm">Ke minggu <?= $auto_week ?></a>
+                                <a href="quests.php" class="btn btn-cyber-outline btn-sm">Buka roadmap</a>
+                            </div>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -427,7 +471,7 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
                 <?php if (!empty($resources)): ?>
                     <div>
                         <?php foreach (array_slice($resources, 0, 3) as $res): ?>
-                            <a class="list-row" href="<?= htmlspecialchars($res['url']) ?>" target="_blank" rel="noopener noreferrer">
+                            <a class="list-row" href="<?= htmlspecialchars($res['url']) ?>" target="_blank" rel="noopener noreferrer" title="<?= htmlspecialchars($res['title']) ?>">
                                 <div class="list-main">
                                     <p class="list-title"><?= htmlspecialchars($res['title']) ?></p>
                                     <p class="list-meta"><?= htmlspecialchars(ucfirst($res['type'])) ?> · Minggu <?= (int)$res['week'] ?></p>
@@ -437,7 +481,11 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
                         <?php endforeach; ?>
                     </div>
                 <?php else: ?>
-                    <p class="text-secondary small mb-0">Belum ada materi untuk minggu ini.</p>
+                    <div class="empty-state py-3">
+                        <div class="empty-state-icon" aria-hidden="true"><i class="fas fa-book-open"></i></div>
+                        <p class="text-secondary small mb-2">Belum ada materi untuk minggu <?= $selected_week ?>.</p>
+                        <a href="resources.php?week=<?= $selected_week ?>" class="btn btn-cyber-outline btn-sm">Cari materi lain</a>
+                    </div>
                 <?php endif; ?>
             </section>
 
@@ -453,7 +501,7 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
                 <?php if (!empty($recent_errors)): ?>
                     <div>
                         <?php foreach ($recent_errors as $err): ?>
-                            <a class="list-row" href="errors.php">
+                            <a class="list-row" href="errors.php" title="<?= htmlspecialchars($err['error_message']) ?>">
                                 <div class="list-main">
                                     <p class="list-title"><?= htmlspecialchars(mb_strimwidth($err['error_message'], 0, 75, '...')) ?></p>
                                     <p class="list-meta"><?= htmlspecialchars($err['category'] ?? 'General') ?> · <?= !empty($err['solution']) ? 'Ada solusi' : 'Belum ada solusi' ?> · <?= date('d M', strtotime($err['created_at'])) ?></p>
@@ -480,7 +528,15 @@ document.getElementById('dashShareBtn')?.addEventListener('click', function() {
 <script>
 (function() {
     const track = document.getElementById('tickerTrack');
+    const pauseBtn = document.getElementById('tickerPause');
     if (track && track.children.length > 1) track.innerHTML += track.innerHTML;
+    if (pauseBtn && track) pauseBtn.addEventListener('click', function() {
+        const paused = track.style.animationPlayState === 'paused';
+        track.style.animationPlayState = paused ? '' : 'paused';
+        this.setAttribute('aria-pressed', paused ? 'false' : 'true');
+        this.setAttribute('aria-label', paused ? 'Jeda animasi aktivitas komunitas' : 'Putar animasi aktivitas komunitas');
+        this.innerHTML = paused ? '<i class="fas fa-pause" aria-hidden="true"></i>' : '<i class="fas fa-play" aria-hidden="true"></i>';
+    });
     setInterval(async function() {
         if (document.hidden || !track) return;
         try {

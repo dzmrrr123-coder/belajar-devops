@@ -136,7 +136,7 @@ const LTMotion = (function() {
     function stored() { try { return localStorage.getItem('lt_motion') || 'full'; } catch (e) { return 'full'; } }
     function current() { return prefersReduced() || stored() === 'reduced' ? 'reduced' : 'full'; }
     function apply() { try { document.documentElement.dataset.motion = current(); } catch (e) {} syncBtn(); }
-    function syncBtn() { try { document.querySelectorAll('[data-motion-toggle]').forEach(function(b) { b.setAttribute('aria-pressed', current() === 'reduced' ? 'true' : 'false'); b.querySelector('span').textContent = current() === 'reduced' ? 'Gerak: hemat' : 'Gerak: penuh'; }); } catch (e) {} }
+    function syncBtn() { try { document.querySelectorAll('[data-motion-toggle]').forEach(function(b) { b.setAttribute('aria-pressed', current() === 'reduced' ? 'true' : 'false'); b.querySelector('span').textContent = current() === 'reduced' ? 'Animasi: hemat' : 'Animasi: aktif'; b.setAttribute('aria-label', current() === 'reduced' ? 'Aktifkan animasi' : 'Kurangi animasi'); }); } catch (e) {} }
     try { apply(); } catch (e) {}
     try { if (window.matchMedia) window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', apply); } catch (e) {}
     document.addEventListener('DOMContentLoaded', function() {
@@ -277,17 +277,42 @@ function copyToClipboard(text, btnElement) {
 function togglePasswordVisibility(id, btn) {
     const input = document.getElementById(id);
     if (!input) return;
-    const b = btn || document.getElementById('togglePasswordBtn');
+    const b = btn || document.querySelector('[data-toggle-password="' + id + '"]');
     const show = input.type === 'password';
     input.type = show ? 'text' : 'password';
     if (b) {
-        const iconOnly = !b.classList.contains('btn-link');
+        const hasText = /Lihat|Sembunyikan/.test(b.textContent || '');
+        const iconOnly = !hasText && !b.classList.contains('btn-link');
         b.innerHTML = show
             ? '<i class="far fa-eye-slash' + (iconOnly ? '' : ' me-1') + '" aria-hidden="true"></i>' + (iconOnly ? '' : 'Sembunyikan')
             : '<i class="far fa-eye' + (iconOnly ? '' : ' me-1') + '" aria-hidden="true"></i>' + (iconOnly ? '' : 'Lihat');
         b.setAttribute('aria-label', show ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
+        b.setAttribute('aria-pressed', show ? 'true' : 'false');
     }
+    try { input.focus({ preventScroll: true }); } catch (e) {}
 }
+document.addEventListener('click', function(e) {
+    const b = e.target.closest('[data-toggle-password]');
+    if (!b) return;
+    togglePasswordVisibility(b.getAttribute('data-toggle-password'), b);
+});
+document.addEventListener('DOMContentLoaded', function() {
+    const err = document.querySelector('#registerError, #loginError');
+    if (err && err.focus) { try { err.focus({ preventScroll: true }); } catch (e) {} }
+    const retry = document.querySelector('[data-retry-after]');
+    if (retry) {
+        let s = parseInt(retry.getAttribute('data-retry-after'), 10) || 0;
+        const el = document.getElementById('retryClock');
+        const tick = function() {
+            if (!el || s <= 0) return;
+            const m = Math.floor(s / 60), r = s % 60;
+            el.textContent = '(' + m + ':' + String(r).padStart(2, '0') + ')';
+            s--;
+            setTimeout(tick, 1000);
+        };
+        tick();
+    }
+});
 document.addEventListener('lt:quest-synced', function(e) {
     const qid = String((e.detail && e.detail.questId) || '');
     if (!qid || !e.detail || !e.detail.data) return;

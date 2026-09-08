@@ -6,6 +6,11 @@ verify_csrf();
 if (rate_limit_hit('rubric_save', 20, 3600)) { set_flash('warning', 'Terlalu sering menilai. Coba lagi nanti.'); redirect('quests.php'); }
 $conn = db_connect();
 $uid = (int)$_SESSION['user_id'];
+if (user_track($conn, $uid) !== 'dkv' && !is_admin($conn, $uid) && !\App\Domain\Auth\Roles::isGuru($conn, $uid)) {
+    $conn->close();
+    set_flash('warning', 'Penilaian rubrik karya khusus untuk jurusan DKV.');
+    redirect('quests.php');
+}
 $qid = (int)($_POST['quest_id'] ?? 0);
 $owner = (int)($_POST['owner_id'] ?? $uid);
 if ($owner <= 0) $owner = $uid;

@@ -3,6 +3,7 @@ require_once 'config.php';
 require_login();
 $conn = db_connect();
 $uid = (int)$_SESSION['user_id'];
+enforce_track_access($conn, $uid, ['rpl', 'devops'], 'Coding Playground (PHP / JS / SQL)');
 define('PG_CAP', 30);
 $result = null;
 $slug = trim($_GET['slug'] ?? ($_POST['slug'] ?? 'php-diskon'));

@@ -3,6 +3,7 @@ require_once 'config.php';
 require_login();
 $conn = db_connect();
 $uid = (int)$_SESSION['user_id'];
+enforce_track_access($conn, $uid, ['tkj', 'devops'], 'Terminal Linux Lab');
 define('TERM_CAP', 30);
 $slug = trim($_GET['m'] ?? ($_POST['m'] ?? 'fix-www'));
 $mission = \App\Domain\Tkj\Terminal::find($slug) ?: \App\Domain\Tkj\Terminal::find('fix-www');

@@ -1,11 +1,10 @@
 <?php
 $quotes = [
-    "“The only way to go fast, is to go well.” – Robert C. Martin",
-    "“Automate everything you can, measure everything that moves.” – DevOps Mantra",
-    "“Talk is cheap. Show me the code.” – Linus Torvalds",
-    "“First, solve the problem. Then, write the code.” – John Johnson",
-    "“Continuous improvement is better than delayed perfection.” – Mark Twain",
-    "“It's not a bug – it's an undocumented feature.” – Anonymous"
+    "Kecil tapi rutin lebih menang daripada besar tapi sesekali.",
+    "Selesaikan satu quest hari ini, besok lanjut lagi.",
+    "Error itu catatan. Tulis, pahami, dapat XP.",
+    "Fokus 25 menit lebih baik daripada scrolling 2 jam.",
+    "Portofolio dibangun dari quest kecil yang selesai.",
 ];
 $random_quote = $quotes[array_rand($quotes)];
 $flash = get_flash();
@@ -20,7 +19,7 @@ $flash = get_flash();
                 <span aria-hidden="true">•</span>
                 <span>Level up setiap hari</span>
                 <span aria-hidden="true">•</span>
-                <button type="button" class="btn btn-link btn-sm text-muted p-0" data-motion-toggle aria-pressed="false"><i class="fas fa-person-running" aria-hidden="true"></i> <span>Gerak: penuh</span></button>
+                <button type="button" class="btn btn-link btn-sm text-muted p-0" data-motion-toggle aria-pressed="false" aria-label="Kurangi animasi"><i class="fas fa-person-running" aria-hidden="true"></i> <span>Animasi: aktif</span></button>
             </div>
         </div>
     </footer>
@@ -31,7 +30,8 @@ $flash = get_flash();
             ['index.php', 'fas fa-grid-2', 'Overview'],
             ['quests.php', 'fas fa-map', 'Roadmap'],
             ['timer.php', 'fas fa-clock', 'Fokus'],
-            ['errors.php', 'fas fa-note-sticky', 'Notes'],
+            ['review.php', 'fas fa-rotate-right', 'Review'],
+            ['errors.php', 'fas fa-note-sticky', 'Catatan'],
             ['profile.php', 'fas fa-user', 'Profil'],
         ];
     ?>

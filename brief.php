@@ -3,6 +3,7 @@ require_once 'config.php';
 require_login();
 $conn = db_connect();
 $uid = (int)$_SESSION['user_id'];
+enforce_track_access($conn, $uid, ['dkv'], 'Brief Kreatif & Portofolio DKV');
 $track = user_track($conn, $uid);
 $conn->close();
 $briefs = \App\Domain\Dkv\Brief::all();

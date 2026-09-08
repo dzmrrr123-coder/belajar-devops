@@ -679,6 +679,7 @@ function onboarding_targets($track = 'devops') { return \App\Domain\Onboarding::
 function onboarding_minutes() { return \App\Domain\Onboarding::minutes(); }
 function onboarding_plan($t, $m, $s, $track = 'devops') { return \App\Domain\Onboarding::plan((string)$t, (int)$m, (array)$s, (string)$track); }
 function review_skill_for($s, $t, $d) { return \App\Domain\Skill\Skill::reviewSkillFor((string)$s, (string)$t, (string)$d); }
+require_once __DIR__ . '/includes/track_guard.php';
 function set_flash($t, $m) { \App\Http\Flash::set((string)$t, (string)$m); }
 function get_flash() { return \App\Http\Flash::get(); }
 

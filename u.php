@@ -73,11 +73,23 @@ $defs = badge_defs();
 // Ringkasan angka (1 roundtrip)
 $qd = 0; $qt = 0; $pomo = 0; $notes = 0;
 try {
-    $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS qt, (SELECT COUNT(*) FROM user_quests uq JOIN quests q2 ON q2.id = uq.quest_id WHERE uq.user_id = ? AND (q2.user_id IS NULL OR q2.user_id = ?)) AS qd, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ?) AS pomo, (SELECT COUNT(*) FROM errors WHERE user_id = ?) AS notes");
-    $q->bind_param("iiiii", $uid, $uid, $uid, $uid, $uid);
-    $q->execute();
-    $r = $q->get_result()->fetch_assoc() ?: [];
-    $q->close();
+    $q = $conn->prepare("SELECT 
+        (SELECT COUNT(*) FROM quests WHERE (user_id IS NULL AND (track = ? OR track = 'all' OR track IS NULL OR track = '')) OR (user_id = ? AND (track = ? OR track IS NULL OR track = ''))) AS qt, 
+        (SELECT COUNT(*) FROM user_quests uq JOIN quests q2 ON q2.id = uq.quest_id WHERE uq.user_id = ? AND ((q2.user_id IS NULL AND (q2.track = ? OR q2.track = 'all' OR q2.track IS NULL OR q2.track = '')) OR (q2.user_id = ? AND (q2.track = ? OR q2.track IS NULL OR q2.track = '')))) AS qd, 
+        (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ?) AS pomo, 
+        (SELECT COUNT(*) FROM errors WHERE user_id = ?) AS notes");
+    if ($q) {
+        $q->bind_param("sisissisii", $userTrack, $uid, $userTrack, $uid, $userTrack, $uid, $userTrack, $uid, $uid, $uid);
+        $q->execute();
+        $r = $q->get_result()->fetch_assoc() ?: [];
+        $q->close();
+    } else {
+        $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS qt, (SELECT COUNT(*) FROM user_quests uq JOIN quests q2 ON q2.id = uq.quest_id WHERE uq.user_id = ? AND (q2.user_id IS NULL OR q2.user_id = ?)) AS qd, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ?) AS pomo, (SELECT COUNT(*) FROM errors WHERE user_id = ?) AS notes");
+        $q->bind_param("iiiii", $uid, $uid, $uid, $uid, $uid);
+        $q->execute();
+        $r = $q->get_result()->fetch_assoc() ?: [];
+        $q->close();
+    }
     $qt = (int)($r['qt'] ?? 0); $qd = (int)($r['qd'] ?? 0);
     $pomo = (int)($r['pomo'] ?? 0); $notes = (int)($r['notes'] ?? 0);
 } catch (Throwable $e) {}
