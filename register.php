@@ -101,7 +101,6 @@ require_once 'includes/navbar.php';
         </div>
         <?php if ($ref_user !== '' || $ref_track !== ''): ?><p class="alert alert-info small mb-3">Diajak <strong><?= htmlspecialchars($ref_user !== '' ? $ref_user : 'temanmu') ?></strong><?= $ref_track !== '' ? ' · track ' . htmlspecialchars(strtoupper($ref_track)) . ' dipilih otomatis di langkah awal' : '' ?>.</p><?php endif; ?>
 
-        <?php $first_err = array_filter($field_errors) ? array_search(current(array_filter($field_errors)), $field_errors) : ''; ?>
         <?php if ($error): ?>
             <div class="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 small mb-4" role="alert" tabindex="-1" id="registerError">
                 <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
@@ -135,9 +134,12 @@ require_once 'includes/navbar.php';
                 <div class="col-sm-6">
                     <label for="reg-password" class="form-label">Kata sandi</label>
                     <div class="input-group">
-                        <input type="password" name="password" id="reg-password" class="form-control <?= $field_errors['password'] ? 'is-invalid' : '' ?>" placeholder="Min 6 karakter" required minlength="6" autocomplete="new-password" aria-describedby="reg-password-err" aria-invalid="<?= $field_errors['password'] ? 'true' : 'false' ?>">
+                        <input type="password" name="password" id="reg-password" class="form-control <?= $field_errors['password'] ? 'is-invalid' : '' ?>" placeholder="Min 6 karakter" required minlength="6" autocomplete="new-password" aria-describedby="reg-password-err reg-strength reg-caps" aria-invalid="<?= $field_errors['password'] ? 'true' : 'false' ?>">
                         <button type="button" class="btn btn-cyber-outline" data-toggle-password="reg-password" aria-label="Tampilkan kata sandi" aria-pressed="false"><i class="far fa-eye" aria-hidden="true"></i></button>
                     </div>
+                    <div class="pw-meter mt-2" aria-hidden="true"><span id="reg-strength-bar"></span></div>
+                    <div class="form-text" id="reg-strength" role="status"></div>
+                    <div class="form-text d-none" id="reg-caps" role="status"><i class="fas fa-circle-exclamation me-1"></i>Caps Lock aktif.</div>
                     <?php if ($field_errors['password']): ?><div class="invalid-feedback d-block" id="reg-password-err"><?= htmlspecialchars($field_errors['password']) ?></div><?php endif; ?>
                 </div>
                 <div class="col-sm-6">
@@ -155,15 +157,44 @@ require_once 'includes/navbar.php';
                 var p = document.getElementById('reg-password');
                 var c = document.getElementById('reg-confirm');
                 var m = document.getElementById('reg-match');
+                var bar = document.getElementById('reg-strength-bar');
+                var st = document.getElementById('reg-strength');
+                var caps = document.getElementById('reg-caps');
                 if (!p || !c || !m) return;
-                function check() {
+                function match() {
                     if (!c.value) { m.textContent = ''; return; }
                     var ok = p.value !== '' && p.value === c.value;
                     m.textContent = ok ? 'Kata sandi cocok.' : 'Belum cocok — cek lagi.';
                     m.style.color = ok ? 'var(--primary)' : 'var(--danger)';
                 }
-                p.addEventListener('input', check);
-                c.addEventListener('input', check);
+                function strength() {
+                    var v = p.value || '';
+                    var score = 0;
+                    if (v.length >= 6) score++;
+                    if (v.length >= 10) score++;
+                    if (/[a-z]/.test(v) && /[A-Z]/.test(v)) score++;
+                    if (/\d/.test(v)) score++;
+                    if (/[^a-zA-Z0-9]/.test(v)) score++;
+                    var pct = [0, 20, 40, 60, 80, 100][Math.min(score, 5)];
+                    var label = ['', 'Lemah — tambah karakter.', 'Lumayan.', 'Bagus.', 'Bagus.', 'Kuat.'][Math.min(score, 5)];
+                    var color = score <= 1 ? 'var(--danger)' : (score <= 3 ? 'var(--warning)' : 'var(--primary)');
+                    if (bar) { bar.style.width = pct + '%'; bar.style.background = color; }
+                    if (st) {
+                        st.textContent = v ? label : '';
+                        st.style.color = color;
+                    }
+                }
+                function capsCheck(e) {
+                    if (!caps) return;
+                    var on = false;
+                    try { on = e.getModifierState && e.getModifierState('CapsLock'); } catch (err) {}
+                    caps.classList.toggle('d-none', !on);
+                }
+                p.addEventListener('input', function() { match(); strength(); });
+                c.addEventListener('input', match);
+                p.addEventListener('keyup', capsCheck);
+                p.addEventListener('click', capsCheck);
+                c.addEventListener('keyup', capsCheck);
             })();
             </script>
 

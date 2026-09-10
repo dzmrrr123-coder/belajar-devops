@@ -258,6 +258,8 @@ body.has-tabbar .toast-container{bottom:calc(84px + env(safe-area-inset-bottom))
 .auth-benefits li{display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:.84rem;font-weight:550;color:var(--ink)}
 .auth-benefits i{color:var(--primary);font-size:.82rem;width:16px;text-align:center}
 .invalid-feedback{font-size:.82rem;font-weight:550}
+.pw-meter{height:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.pw-meter>span{display:block;height:100%;width:0;border-radius:99px;transition:width .2s ease}
 .is-invalid{border-color:var(--danger)!important}
 .is-invalid:focus{box-shadow:0 0 0 3px rgba(164,74,63,.15)!important}
 .wiz-progress{height:8px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;margin-bottom:10px}

@@ -82,6 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$login_ref_qs = '';
+$login_rt = \App\Domain\Track\Tracks::normalize($_GET['track'] ?? '');
+if (in_array($login_rt, ['rpl', 'tkj', 'dkv', 'devops'], true) || preg_match('/^[a-zA-Z0-9_]{3,100}$/', (string)($_GET['ref'] ?? ''))) {
+    $login_ref_qs = '?' . http_build_query(array_filter(['track' => in_array($login_rt, ['rpl', 'tkj', 'dkv', 'devops'], true) ? $login_rt : null, 'ref' => preg_match('/^[a-zA-Z0-9_]{3,100}$/', (string)($_GET['ref'] ?? '')) ? (string)$_GET['ref'] : null]));
+}
 $page_title = 'Login - Masuk ke Akun Belajar';
 require_once 'includes/header.php';
 require_once 'includes/navbar.php';
@@ -124,16 +129,36 @@ require_once 'includes/navbar.php';
                 </div>
                 <div class="input-group">
                     <span class="input-group-text" aria-hidden="true"><i class="fas fa-lock"></i></span>
-                    <input type="password" name="password" id="login-password" class="form-control <?= $field_errors['password'] ? 'is-invalid' : '' ?>" placeholder="Kata sandi" required autocomplete="current-password" aria-invalid="<?= $field_errors['password'] ? 'true' : 'false' ?>" aria-describedby="login-password-err">
+                    <input type="password" name="password" id="login-password" class="form-control <?= $field_errors['password'] ? 'is-invalid' : '' ?>" placeholder="Kata sandi" required autocomplete="current-password" aria-invalid="<?= $field_errors['password'] ? 'true' : 'false' ?>" aria-describedby="login-password-err login-caps">
                 </div>
+                <div class="form-text d-none" id="login-caps" role="status"><i class="fas fa-circle-exclamation me-1"></i>Caps Lock aktif — periksa huruf besar.</div>
                 <?php if ($field_errors['password']): ?><div class="invalid-feedback d-block" id="login-password-err"><?= htmlspecialchars($field_errors['password']) ?></div><?php endif; ?>
             </div>
 
-            <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" name="remember" id="remember-me">
-                <label class="form-check-label small text-secondary" for="remember-me">Ingat saya 30 hari <span class="text-muted">(perangkat pribadi saja)</span></label>
+            <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" name="remember" id="remember-me">
+                    <label class="form-check-label small text-secondary" for="remember-me">Ingat 30 hari</label>
+                </div>
+                <button type="button" class="btn btn-link btn-sm p-0 text-secondary text-decoration-none small" data-bs-toggle="collapse" data-bs-target="#forgotHelp" aria-expanded="false" aria-controls="forgotHelp">Lupa kata sandi?</button>
             </div>
-            <p class="small text-secondary mb-3">Lupa kata sandi? Hubungi guru/admin sekolahmu untuk reset.</p>
+            <div class="collapse mb-3" id="forgotHelp">
+                <p class="small text-secondary border rounded p-2 mb-0">Akun sekolah? Minta reset ke guru/admin. Akun pribadi? Coba ingat-ingat dulu — tidak ada reset otomatis agar datamu aman.</p>
+            </div>
+            <script>
+            (function() {
+                var p = document.getElementById('login-password');
+                var w = document.getElementById('login-caps');
+                if (!p || !w) return;
+                function check(e) {
+                    var on = false;
+                    try { on = e.getModifierState && e.getModifierState('CapsLock'); } catch (err) {}
+                    w.classList.toggle('d-none', !on);
+                }
+                p.addEventListener('keyup', check);
+                p.addEventListener('click', check);
+            })();
+            </script>
 
             <button type="submit" class="btn btn-cyber w-100 py-2 mt-1">
                 <i class="fas fa-sign-in-alt me-2" aria-hidden="true"></i> Masuk
@@ -142,7 +167,7 @@ require_once 'includes/navbar.php';
 
         <div class="mt-4 pt-3 border-top text-center">
             <p class="text-secondary small mb-2">Belum memiliki akun?</p>
-            <a href="register.php" class="btn btn-cyber-outline btn-sm w-100">
+            <a href="register.php<?= htmlspecialchars($login_ref_qs) ?>" class="btn btn-cyber-outline btn-sm w-100">
                 <i class="fas fa-user-plus me-1"></i> Buat Akun Baru (Gratis)
             </a>
         </div>
