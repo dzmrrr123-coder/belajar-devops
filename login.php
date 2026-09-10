@@ -88,6 +88,7 @@ require_once 'includes/navbar.php';
 ?>
 
 <main class="auth-wrapper" id="main">
+    <div class="auth-split">
     <div class="auth-box">
         <div class="text-center mb-4">
             <div class="brand-mark mx-auto mb-3" style="width: 40px; height: 40px; font-size: 0.9rem;" aria-hidden="true">LT</div>
@@ -109,7 +110,7 @@ require_once 'includes/navbar.php';
                 <label for="login-username" class="form-label">Username atau email</label>
                 <div class="input-group">
                     <span class="input-group-text" aria-hidden="true"><i class="fas fa-user"></i></span>
-                    <input type="text" name="username" id="login-username" class="form-control <?= $field_errors['username'] ? 'is-invalid' : '' ?>" placeholder="Username atau email" required autocomplete="username" maxlength="255" aria-invalid="<?= $field_errors['username'] ? 'true' : 'false' ?>" aria-describedby="login-username-err" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
+                    <input type="text" name="username" id="login-username" class="form-control <?= $field_errors['username'] ? 'is-invalid' : '' ?>" placeholder="Username atau email" required autocomplete="username" maxlength="255" aria-invalid="<?= $field_errors['username'] ? 'true' : 'false' ?>" aria-describedby="login-username-err" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>"<?= $error ? '' : ' autofocus' ?>>
                 </div>
                 <?php if ($field_errors['username']): ?><div class="invalid-feedback d-block" id="login-username-err"><?= htmlspecialchars($field_errors['username']) ?></div><?php endif; ?>
             </div>
@@ -130,7 +131,7 @@ require_once 'includes/navbar.php';
 
             <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="remember" id="remember-me">
-                <label class="form-check-label small text-secondary" for="remember-me">Ingat saya di perangkat pribadi ini (30 hari). Jangan centang di komputer sekolah/warnet.</label>
+                <label class="form-check-label small text-secondary" for="remember-me">Ingat saya 30 hari <span class="text-muted">(perangkat pribadi saja)</span></label>
             </div>
             <p class="small text-secondary mb-3">Lupa kata sandi? Hubungi guru/admin sekolahmu untuk reset.</p>
 
@@ -145,6 +146,8 @@ require_once 'includes/navbar.php';
                 <i class="fas fa-user-plus me-1"></i> Buat Akun Baru (Gratis)
             </a>
         </div>
+    </div>
+    <?php $auth_mode = 'login'; require __DIR__ . '/includes/auth_side.php'; ?>
     </div>
 </main>
 
