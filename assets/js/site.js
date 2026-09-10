@@ -14,30 +14,11 @@ document.querySelectorAll('form:not(.quest-toggle-form)').forEach(form => {
         }
     });
 });
-// Theme Toggle (dark / light, persisted; may appear in navbar and/or user menu)
-const themeToggles = document.querySelectorAll('.ltThemeToggle');
-function paintThemeIcon() {
-    const dark = document.documentElement.dataset.theme === 'dark';
-    themeToggles.forEach(function(btn) {
-        const icon = btn.querySelector('i');
-        if (icon) icon.className = dark ? 'fas fa-sun' : 'fas fa-moon';
-        const label = btn.querySelector('.theme-toggle-label');
-        if (label) label.textContent = dark ? 'Mode terang' : 'Mode gelap';
-        btn.setAttribute('aria-label', dark ? 'Ganti ke tema terang' : 'Ganti ke tema gelap');
-    });
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', dark ? '#121614' : '#2f6b5e');
-}
-paintThemeIcon();
-themeToggles.forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        const dark = document.documentElement.dataset.theme !== 'dark';
-        if (dark) document.documentElement.dataset.theme = 'dark';
-        else document.documentElement.removeAttribute('data-theme');
-        try { localStorage.setItem('lt_theme', dark ? 'dark' : 'light'); } catch (e) {}
-        paintThemeIcon();
-    });
-});
+// Tema tunggal terang: kunci light, bersihkan sisa preferensi dark lama.
+try {
+    localStorage.removeItem('lt_theme');
+    document.documentElement.removeAttribute('data-theme');
+} catch (e) {}
 document.querySelectorAll('.mission-claim-form').forEach(form => {
     form.addEventListener('submit', function(e) {
         e.preventDefault();

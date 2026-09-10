@@ -136,7 +136,7 @@ require_once 'includes/header.php';
             <a class="btn btn-cyber-outline btn-sm" target="_blank" rel="noopener" href="https://wa.me/?text=<?= urlencode($share_text . ' ' . $share_url) ?>" aria-label="Bagikan ke WhatsApp"><i class="fab fa-whatsapp" aria-hidden="true"></i></a>
             <a class="btn btn-cyber-outline btn-sm" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=<?= urlencode($share_text) ?>&url=<?= urlencode($share_url) ?>" aria-label="Bagikan ke X"><i class="fab fa-x-twitter" aria-hidden="true"></i></a>
             <a class="btn btn-cyber-outline btn-sm" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=<?= urlencode($share_url) ?>" aria-label="Bagikan ke LinkedIn"><i class="fab fa-linkedin" aria-hidden="true"></i></a>
-            <a href="register.php" class="btn btn-cyber btn-sm">Buat trackermu</a>
+            <a href="register.php?track=<?= urlencode($userTrack) ?>&ref=<?= urlencode($user['username']) ?>" class="btn btn-cyber btn-sm">Buat tracker <?= htmlspecialchars($trackLabel) ?>-mu</a>
         </div>
         <?php if ($me > 0 && $me !== $uid): ?>
         <div id="reactCsrf" hidden><?= csrf_field() ?></div>

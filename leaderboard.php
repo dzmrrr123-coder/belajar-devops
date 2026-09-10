@@ -5,6 +5,18 @@ $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
+    if (($_POST['board_action'] ?? '') === 'visibility') {
+        $on = !empty($_POST['show_on_board']) ? 1 : 0;
+        $up = $conn->prepare("UPDATE users SET show_on_board = ? WHERE id = ?");
+        $up->bind_param("ii", $on, $user_id);
+        $up->execute(); $up->close();
+        \App\Cache\Store::forget(\App\Cache\Keys::boardRank('total', $user_id));
+        \App\Cache\Store::forget(\App\Cache\Keys::boardRank('week', $user_id));
+        \App\Cache\Store::forget(\App\Cache\Keys::boardRank('improve', $user_id));
+        lt_page_cache_bump($user_id);
+        set_flash('success', $on ? 'Kamu tampil di leaderboard.' : 'Kamu disembunyikan dari leaderboard.');
+        redirect('leaderboard.php?scope=' . urlencode($_POST['scope'] ?? 'total'));
+    }
     $ch_action = $_POST['challenge_action'] ?? '';
     if ($ch_action === 'join' || $ch_action === 'leave') {
         if (rate_limit_hit('challenge_flip', 10, 60)) {
@@ -133,8 +145,13 @@ require_once 'includes/navbar.php';
                 <a href="leaderboard.php?scope=improve" class="filter-pill <?= $scope === 'improve' ? 'active' : '' ?>">Improvement</a>
             </div>
             <a href="squad.php" class="page-actions-link">Squad <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
-            <a href="profile.php" class="page-actions-link">Visibilitas <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
         </div>
+        <form method="POST" action="leaderboard.php" class="d-flex align-items-center gap-2 mt-2 m-0">
+            <?= csrf_field() ?>
+            <input type="hidden" name="board_action" value="visibility">
+            <input type="hidden" name="scope" value="<?= htmlspecialchars($scope) ?>">
+            <label class="d-flex align-items-center gap-2 small mb-0" style="cursor:pointer"><input type="checkbox" name="show_on_board" value="1" <?= $on_board ? 'checked' : '' ?> onchange="this.form.submit()"> Tampilkan aku di leaderboard</label>
+        </form>
     </div>
     <?php if ($challenge): $chtarget = (int)$challenge['target_xp']; ?>
     <section class="card p-4 mb-3" aria-label="Tantangan mingguan">
@@ -172,7 +189,7 @@ require_once 'includes/navbar.php';
     </section>
     <?php endif; ?>
     <div class="card p-2">
-        <?php if (!$rows): ?><p class="text-secondary small p-3 mb-0">Belum ada peserta. Jadilah yang pertama dari Profil.</p><?php endif; ?>
+        <?php if (!$rows): ?><p class="text-secondary small p-3 mb-0">Belum ada peserta. Aktifkan “Tampilkan aku” di atas untuk jadi yang pertama.</p><?php endif; ?>
         <?php $rank = $off; foreach ($rows as $r): $rank++; $lv = calculate_level($r['xp']); ?>
         <div class="list-row">
             <span class="avatar-circle avatar-sm frame-<?= htmlspecialchars($r['avatar_frame'] ?? 'default') ?>" aria-hidden="true"><?= strtoupper(substr($r['username'], 0, 1)) ?></span>

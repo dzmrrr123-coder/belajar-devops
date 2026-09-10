@@ -150,8 +150,12 @@ require_once 'includes/navbar.php';
 
     <div class="filter-pills mb-3" role="tablist" aria-label="Filter deck skill">
         <a class="filter-pill <?= $deck === 'Semua' ? 'active' : '' ?>" href="review.php" role="tab" <?= $deck === 'Semua' ? 'aria-selected="true"' : '' ?>>Semua (<?= $due_count ?>)</a>
-        <?php foreach ($deck_names as $dn): $dc = (int)($deck_counts[$dn] ?? 0); if ($dc <= 0 && $dn !== $deck) continue; ?>
+        <?php foreach ($deck_names as $dn): $dc = (int)($deck_counts[$dn] ?? 0); ?>
+        <?php if ($dc <= 0 && $dn !== $deck): ?>
+        <span class="filter-pill" title="Belum ada kartu — buat dari Catatan" aria-disabled="true"><?= htmlspecialchars($dn) ?> (0)</span>
+        <?php else: ?>
         <a class="filter-pill <?= $deck === $dn ? 'active' : '' ?>" href="review.php?deck=<?= urlencode($dn) ?>" role="tab" <?= $deck === $dn ? 'aria-selected="true"' : '' ?>><?= htmlspecialchars($dn) ?> (<?= $dc ?>)</a>
+        <?php endif; ?>
         <?php endforeach; ?>
     </div>
 
@@ -160,7 +164,11 @@ require_once 'includes/navbar.php';
         <div class="empty-state-icon"><i class="fas fa-check-double"></i></div>
         <h2 class="h5 fw-bold">Bersih! <?= $deck !== 'Semua' ? 'Deck ' . htmlspecialchars($deck) . ' ' : '' ?>tidak ada yang jatuh tempo.</h2>
         <p class="text-secondary small mb-3">Selesaikan quest atau tulis catatan — otomatis masuk antrean review besok.<?= $upcoming > 0 ? " {$upcoming} kartu menunggu minggu depan." : '' ?></p>
-        <?php if ($deck !== 'Semua'): ?><a href="review.php" class="btn btn-cyber-outline btn-sm">Lihat semua deck</a><?php endif; ?>
+        <div class="d-flex gap-2 justify-content-center flex-wrap">
+            <a href="quests.php#next" class="btn btn-cyber btn-sm">Kerjakan quest berikutnya</a>
+            <a href="errors.php" class="btn btn-cyber-outline btn-sm">Catat error (+5 XP)</a>
+            <?php if ($deck !== 'Semua'): ?><a href="review.php" class="btn btn-cyber-outline btn-sm">Lihat semua deck</a><?php endif; ?>
+        </div>
     </div>
     <?php else: ?>
     <div class="row g-4 justify-content-center">

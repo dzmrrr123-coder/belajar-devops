@@ -134,7 +134,7 @@ if ($done) { $_SESSION['quiz_run'] = ['tahu' => 0, 'lupa' => 0, 'xp' => 0]; }
         </div>
     </div>
     <?php elseif ($card): ?>
-    <div class="card p-3 mb-3" role="timer" aria-label="Sisa waktu kilat">
+    <div class="card p-3 mb-3" role="group" aria-label="Sisa waktu kilat">
         <div class="d-flex justify-content-between align-items-center mb-1"><strong><i class="fas fa-bolt me-1" aria-hidden="true"></i>Mode kilat</strong><span id="blitzClock"><?= $blitz_left ?> dtk</span></div>
         <div class="review-progress-bar" role="progressbar" aria-valuenow="<?= $blitz_left ?>" aria-valuemin="0" aria-valuemax="60" aria-label="Sisa waktu"><div id="blitzBar" style="width: <?= (int)round($blitz_left / 60 * 100) ?>%;"></div></div>
     </div>

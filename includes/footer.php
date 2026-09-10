@@ -21,7 +21,7 @@ elseif (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
                 <span aria-hidden="true">•</span>
                 <span>Roadmap 12 minggu</span>
                 <span aria-hidden="true">•</span>
-                <span>Level up setiap hari</span>
+                <span>Sedikit tiap hari</span>
                 <span aria-hidden="true">•</span>
                 <a href="feedback.php" class="text-muted text-decoration-none">Beri feedback</a>
                 <span aria-hidden="true">•</span>
@@ -57,7 +57,7 @@ elseif (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
     <?php endif; ?>
 
     <!-- Toast container for live notifications -->
-    <div class="toast-container" aria-live="polite" aria-atomic="true"></div>
+    <div class="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
     <div id="pageProgress" aria-hidden="true"></div>
 
     <?php

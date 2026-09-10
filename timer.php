@@ -56,12 +56,17 @@ $target_pct = min(100, round(($target_done / $daily_target) * 100));
 
 
 
-$page_title = 'Pomodoro Focus Timer';
+$page_title = 'Fokus';
 require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 
 <main class="container py-4" role="main">
+    <div class="page-head mb-4">
+        <div class="page-kicker eyebrow">Fokus · Pomodoro</div>
+        <h1 class="page-title">Fokus Pomodoro</h1>
+        <p class="page-desc">Satu sesi 25 menit tercatat +10 XP. Selesaikan, lalu lanjut quest.</p>
+    </div>
     <div class="row g-4 justify-content-center">
         <!-- Main Timer Card -->
         <div class="col-lg-8">
@@ -101,7 +106,7 @@ require_once 'includes/navbar.php';
                     </svg>
 
                     <div class="timer-center-text">
-                        <div class="timer-digits" id="timerDisplay" role="timer" aria-label="Sisa waktu">25:00</div>
+                        <div class="timer-digits" id="timerDisplay" role="group" aria-label="Sisa waktu">25:00</div>
                         <div class="timer-state-label" id="timerStateLabel">Fokus Belajar</div>
                     </div>
                 </div>
@@ -341,6 +346,18 @@ function skipTimer() {
 function applyPomodoroResult(data, minutes) {
     showToast(data.message, 'success');
     if (Array.isArray(data.new_badges) && data.new_badges.length) setTimeout(() => showToast('Badge baru: ' + data.new_badges.join(', ') + '!', 'success'), 700);
+    const list0 = document.getElementById('recentSessionsList');
+    if (list0 && !document.getElementById('focusNext')) {
+        const nx = document.createElement('div');
+        nx.id = 'focusNext';
+        nx.className = 'next-action next-action-primary mb-2';
+        nx.innerHTML = '<span class="next-action-icon" aria-hidden="true"><i class="fas fa-forward"></i></span><span class="next-action-text"><strong>Fokus tercatat. Lanjut ke mana?</strong><small>Quest, review 1 kartu, atau istirahat 5 menit.</small></span>';
+        const acts = document.createElement('div');
+        acts.className = 'd-flex gap-2 flex-wrap mt-2';
+        acts.innerHTML = '<a href="quests.php#next" class="btn btn-cyber btn-sm">Lanjut quest</a><a href="review.php" class="btn btn-cyber-outline btn-sm">Review 1 kartu</a>';
+        nx.appendChild(acts);
+        list0.insertBefore(nx, list0.firstChild);
+    }
     const hudXp = document.getElementById('hudXp');
     if (hudXp) hudXp.textContent = data.xp + ' XP';
     const hudLevel = document.getElementById('hudLevel');

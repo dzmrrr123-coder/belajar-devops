@@ -42,7 +42,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <link href="assets/css/sidebar.css?v=<?= is_file(__DIR__ . '/../assets/css/sidebar.css') ? filemtime(__DIR__ . '/../assets/css/sidebar.css') : 0 ?>" rel="stylesheet">
     <link href="assets/css/mascot.css?v=<?= filemtime(__DIR__ . '/../assets/css/mascot.css') ?>" rel="stylesheet">
     <link href="assets/css/rarity.css?v=<?= filemtime(__DIR__ . '/../assets/css/rarity.css') ?>" rel="stylesheet">
-    <script>try{localStorage.removeItem('lt_theme');document.documentElement.dataset.theme='light';}catch(e){}</script>
 </head>
 <body class="<?= is_logged_in() ? 'has-tabbar' : '' ?>">
 <a class="skip-link" href="#main">Lewati ke konten utama</a>

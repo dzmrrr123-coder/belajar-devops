@@ -48,7 +48,7 @@ function drawProgressCard(d) {
     });
     x.fillStyle = '#8b958d';
     x.font = '500 32px ' + F;
-    x.fillText('Level up setiap hari.', W / 2, H - 100);
+    x.fillText('Sedikit tiap hari.', W / 2, H - 100);
     return c;
 }
 function shareCanvasImage(canvas, filename, title, textFallback) {

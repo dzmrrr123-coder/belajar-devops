@@ -55,7 +55,7 @@ unset($_SESSION['lab_bank_result']);
                 <?php if (($lb_active['type'] ?? 'mcq') === 'calc'): ?>
                     <div class="input-group">
                         <input name="answer" class="form-control" placeholder="Input output/angka..." inputmode="numeric" required autocomplete="off">
-                        <button class="btn btn-cyber" type="submit">Execute</button>
+                        <button class="btn btn-cyber" type="submit">Jalankan</button>
                     </div>
                 <?php else: ?>
                     <div class="d-flex flex-column gap-2">
@@ -66,7 +66,7 @@ unset($_SESSION['lab_bank_result']);
                             </label>
                         <?php endforeach; ?>
                     </div>
-                    <button class="btn btn-cyber w-100 mt-2" type="submit"><i class="fas fa-play me-2"></i>Execute Kueri</button>
+                    <button class="btn btn-cyber w-100 mt-2" type="submit"><i class="fas fa-play me-2"></i>Jalankan Kueri</button>
                 <?php endif; ?>
             </form>
         </section>

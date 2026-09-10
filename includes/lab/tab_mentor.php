@@ -17,7 +17,9 @@ $mt_recs = \App\Domain\Mentor::recommend(['track' => $track, 'due_reviews' => $m
 ?>
 <p class="page-desc">Rekomendasi adaptif berdasarkan track <strong><?= htmlspecialchars(strtoupper($track)) ?></strong>, aktivitas harian, dan penguasaan kompetensi.</p>
 <div class="row g-3">
-<?php foreach ($mt_recs as $r): ?>
-<div class="col-md-4"><div class="card p-4 h-100"><i class="<?= htmlspecialchars($r['icon']) ?>"></i><h2 class="h5 mt-2"><?= htmlspecialchars($r['title']) ?></h2><p class="small text-muted"><?= htmlspecialchars($r['desc']) ?></p><a class="btn btn-cyber btn-sm w-100" href="<?= htmlspecialchars($r['href']) ?>"><?= htmlspecialchars($r['cta']) ?></a></div></div>
+<?php
+$mt_why = ['recovery' => 'Streak-mu putus', 'retention' => 'Ada review menumpuk', 'proof' => 'Butuh bukti skill', 'assessment' => 'Skor incident rendah', 'gap' => 'Skill ini tertinggal', 'roadmap' => 'Roadmap belum tuntas', 'practice' => 'Latihan harian'];
+foreach ($mt_recs as $r): ?>
+<div class="col-md-4"><div class="card p-4 h-100"><i class="<?= htmlspecialchars($r['icon']) ?>" aria-hidden="true"></i><h2 class="h5 mt-2"><?= htmlspecialchars($r['title']) ?></h2><?php if (!empty($mt_why[$r['reason'] ?? ''])): ?><p class="small text-primary mb-1">Karena: <?= htmlspecialchars($mt_why[$r['reason']]) ?></p><?php endif; ?><p class="small text-muted"><?= htmlspecialchars($r['desc']) ?></p><a class="btn btn-cyber btn-sm w-100" href="<?= htmlspecialchars($r['href']) ?>"><?= htmlspecialchars($r['cta']) ?></a></div></div>
 <?php endforeach; ?>
 </div>

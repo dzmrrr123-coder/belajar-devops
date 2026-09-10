@@ -29,7 +29,7 @@ set_exception_handler(function(Throwable $e) {
                 <div class="d-flex align-items-center mb-4">
                     <span class="me-3 d-inline-flex align-items-center justify-content-center fw-bold text-white bg-danger rounded-circle flex-shrink-0" style="width:44px;height:44px;font-size:1.3rem;" aria-hidden="true">!</span>
                     <div>
-                        <h2 class="h4 text-danger mb-1 fw-bold">Terjadi Kesalahan Aplikasi</h2>
+                        <h1 class="h4 text-danger mb-1 fw-bold">Terjadi Kesalahan Aplikasi</h1>
                         <p class="text-secondary small mb-0">Learn Tracker &bull; Error Diagnostic</p>
                     </div>
                 </div>
@@ -39,7 +39,7 @@ set_exception_handler(function(Throwable $e) {
                 </div>
                 <p class="small text-secondary mb-3">File: <code><?= htmlspecialchars(basename($e->getFile())) ?>:<?= $e->getLine() ?></code></p>
                 <div class="text-center">
-                    <a href="login.php" class="btn btn-outline-light btn-sm">Refresh Halaman</a>
+                    <a href="login.php" class="btn btn-sm" style="background:#2f6b5e;border-color:#2f6b5e;color:#fff;">Refresh Halaman</a>
                 </div>
             </div>
         </div>
@@ -568,7 +568,7 @@ function render_db_error_page($error_msg, $host, $port, $user, $db) {
                 <?php else: ?>
                 <div class="p-3 rounded-3 border border-info bg-info bg-opacity-10 mb-3">
                     <h6 class="text-info fw-bold mb-2">Cara Mengatasi:</h6>
-                    <p class="small mb-2 text-white">Aplikasi mencoba terhubung ke <code><?= htmlspecialchars($host) ?>:<?= htmlspecialchars((string)$port) ?></code> namun tidak merespons.</p>
+                    <p class="small mb-2">Aplikasi mencoba terhubung ke <code><?= htmlspecialchars($host) ?>:<?= htmlspecialchars((string)$port) ?></code> namun tidak merespons.</p>
                     <ul class="small mb-0 ps-3 text-secondary">
                         <li>Pastikan service Web dan MySQL berada di <strong>Project & Environment yang sama</strong> di Railway.</li>
                         <li>Jika menggunakan host internal, pastikan nama host sesuai (misal: <code>mysql.railway.internal</code>).</li>
@@ -577,7 +577,7 @@ function render_db_error_page($error_msg, $host, $port, $user, $db) {
                 <?php endif; ?>
 
                 <div class="mt-4 text-center">
-                    <a href="login.php" class="btn btn-outline-light btn-sm">Refresh Halaman</a>
+                    <a href="login.php" class="btn btn-sm" style="background:#2f6b5e;border-color:#2f6b5e;color:#fff;">Refresh Halaman</a>
                 </div>
             </div>
         </div>

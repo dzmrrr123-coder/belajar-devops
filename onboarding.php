@@ -97,61 +97,58 @@ require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" id="main">
     <div class="page-head">
-        <div class="page-kicker">4 langkah · 1 menit · hasil: 1–4 quest minggu pertama</div>
+        <div class="page-kicker">2 langkah · 1 menit · hasil: 1–4 quest minggu pertama</div>
         <h1 class="page-title">Atur start-mu</h1>
-        <p class="page-desc">Pilih track, target PKL, durasi harian, dan maksimal 3 skill. Selesai = quest minggu pertama langsung jadi + XP masuk.</p>
+        <p class="page-desc">Pilih jurusan + target, lalu atur ritme harian. Selesai = quest minggu pertama langsung jadi + XP masuk. <button type="submit" form="wizForm" name="skip" value="1" class="btn btn-link btn-sm text-secondary text-decoration-none p-0 align-baseline" formnovalidate>Lewati, isi nanti</button></p>
     </div>
     <form method="POST" action="onboarding.php" id="wizForm" class="wiz">
         <?= csrf_field() ?>
-        <p class="visually-hidden" role="status" id="wizStatus">Langkah 1 dari 4: pilih track</p>
-        <div class="wiz-progress" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" aria-label="Progres pengaturan awal" id="wizBar"><span></span></div>
+        <p class="visually-hidden" role="status" id="wizStatus">Langkah 1 dari 2: pilih jurusan dan target</p>
+        <div class="wiz-progress" role="progressbar" aria-valuemin="1" aria-valuemax="2" aria-valuenow="1" aria-label="Progres pengaturan awal" id="wizBar"><span></span></div>
         <ol class="wiz-dots" aria-hidden="true">
             <li class="on" data-dot="1"><span>Langkah 1</span></li>
             <li data-dot="2"><span>Langkah 2</span></li>
-            <li data-dot="3"><span>Langkah 3</span></li>
-            <li data-dot="4"><span>Langkah 4</span></li>
         </ol>
         <fieldset class="card p-4 wiz-step on" data-step="1">
-            <legend class="h5 fw-bold mb-1">Track mana yang paling dekat denganmu?</legend>
-            <p class="text-secondary small mb-3">Track menentukan skill, target PKL, dan quest mingguanmu. Bisa diganti nanti.</p>
+            <legend class="h5 fw-bold mb-1">Jurusan + target PKL</legend>
+            <p class="text-secondary small mb-3">Track menentukan quest mingguanmu. Pilihan tiap track tersimpan otomatis saat ganti.</p>
+            <h2 class="h6 fw-bold mt-3 mb-2">Track mana yang paling dekat denganmu?</h2>
             <div class="wiz-opts" role="radiogroup" aria-label="Track">
                 <?php foreach ($tracks as $slug => $tr): ?>
                 <label class="wiz-opt"><input type="radio" name="track" value="<?= htmlspecialchars($slug) ?>" <?= $draft_track === $slug ? 'checked' : '' ?> required><span><i class="<?= htmlspecialchars($tr['icon']) ?>" aria-hidden="true"></i> <?= htmlspecialchars($tr['name']) ?> · <?= htmlspecialchars($tr['desc']) ?></span></label>
                 <?php endforeach; ?>
             </div>
-            <p class="form-text mb-3">Ganti track akan mengulang pilihan target &amp; skill di bawah.</p>
-            <div class="wiz-nav"><span></span><button type="button" class="btn btn-cyber" data-next>Lanjut: pilih target</button></div>
-        </fieldset>
-        <fieldset class="card p-4 wiz-step" data-step="2">
-            <legend class="h5 fw-bold mb-1">Mau PKL jadi apa?</legend>
-            <p class="text-secondary small mb-3">Wajib pilih satu. Target ini dipakai menamai quest pertamamu.</p>
+            <h2 class="h6 fw-bold mt-4 mb-2">Mau PKL jadi apa?</h2>
+            <p class="text-secondary small mb-2">Wajib pilih satu. Target ini dipakai menamai quest pertamamu.</p>
             <div class="wiz-opts" role="radiogroup" aria-label="Target PKL">
                 <?php foreach ($targetsByTrack as $tslug => $tlist): foreach ($tlist as $i => $t): ?>
                 <label class="wiz-opt" data-track-opt="<?= htmlspecialchars($tslug) ?>" <?= $tslug !== $draft_track ? 'hidden' : '' ?>><input type="radio" name="target" value="<?= htmlspecialchars($t) ?>" <?= ($draft['target'] ?? '') === $t ? 'checked' : '' ?>><span><?= htmlspecialchars($t) ?></span></label>
                 <?php endforeach; endforeach; ?>
             </div>
-            <div class="wiz-nav"><button type="button" class="btn btn-cyber-outline" data-back>Kembali</button><button type="button" class="btn btn-cyber" data-next>Lanjut: durasi</button></div>
+            <div class="wiz-nav"><span></span><button type="button" class="btn btn-cyber" data-next>Lanjut: ritme harian</button></div>
         </fieldset>
-        <fieldset class="card p-4 wiz-step" data-step="3">
-            <legend class="h5 fw-bold mb-1">Berapa menit per hari?</legend>
-            <p class="text-secondary small mb-3">Jujur saja. Kecil tapi rutin lebih menang.</p>
+        <fieldset class="card p-4 wiz-step" data-step="2">
+            <legend class="h5 fw-bold mb-1">Ritme harian + skill fokus</legend>
+            <h2 class="h6 fw-bold mt-2 mb-2">Berapa menit per hari?</h2>
+            <p class="text-secondary small mb-2">Jujur saja. Kecil tapi rutin lebih menang.</p>
             <div class="wiz-opts" role="radiogroup" aria-label="Menit per hari">
                 <?php foreach ($minutes_list as $m): ?>
                 <label class="wiz-opt"><input type="radio" name="minutes" value="<?= $m ?>" <?= (int)($draft['minutes'] ?? 25) === (int)$m ? 'checked' : '' ?> required><span><?= $m ?> menit</span></label>
                 <?php endforeach; ?>
             </div>
-            <div class="wiz-nav"><button type="button" class="btn btn-cyber-outline" data-back>Kembali</button><button type="button" class="btn btn-cyber" data-next>Lanjut: skill</button></div>
-        </fieldset>
-        <fieldset class="card p-4 wiz-step" data-step="4">
-            <legend class="h5 fw-bold mb-1">Fokus ke skill apa? (maks 3)</legend>
-            <p class="text-secondary small mb-3">Tiap skill jadi 1 quest fondasi. Boleh kosongkan = tetap dapat 1 quest pembuka.</p>
+            <h2 class="h6 fw-bold mt-4 mb-2">Fokus ke skill apa? (maks 3, boleh kosong)</h2>
+            <p class="text-secondary small mb-2">Tiap skill jadi 1 quest fondasi.</p>
             <div class="wiz-opts" role="group" aria-label="Skill fokus">
                 <?php $draft_skills = (array)($draft['skills'] ?? []); foreach ($skillsByTrack as $tslug => $sdefs): foreach ($sdefs as $name => $d): ?>
                 <label class="wiz-opt" data-track-opt="<?= htmlspecialchars($tslug) ?>" <?= $tslug !== $draft_track ? 'hidden' : '' ?>><input type="checkbox" name="skills[]" value="<?= htmlspecialchars($name) ?>" <?= in_array($name, $draft_skills, true) ? 'checked' : '' ?>><span><i class="<?= htmlspecialchars($d['icon']) ?>" aria-hidden="true"></i> <?= htmlspecialchars($name) ?></span></label>
                 <?php endforeach; endforeach; ?>
             </div>
-            <p class="small text-secondary mb-3" id="wizPreview" role="status">Akan dibuat: 1 quest pembuka.</p>
-            <div class="wiz-nav"><button type="button" class="btn btn-cyber-outline" data-back>Kembali</button><button type="submit" class="btn btn-cyber">Buatkan quest-ku</button></div>
+            <div class="card bg-body-tertiary border-0 p-3 mt-3" aria-live="polite">
+                <strong class="small d-block mb-1">Ringkasan start-mu</strong>
+                <p class="small text-secondary mb-1" id="wizSummary">Pilih track dan target dulu.</p>
+                <p class="small text-secondary mb-0" id="wizPreview" role="status">Akan dibuat: 1 quest pembuka.</p>
+            </div>
+            <div class="wiz-nav mt-3"><button type="button" class="btn btn-cyber-outline" data-back>Kembali</button><button type="submit" class="btn btn-cyber">Buatkan quest-ku</button></div>
             <div class="text-center mt-3"><button type="submit" name="skip" value="1" class="btn btn-link btn-sm text-secondary text-decoration-none" formnovalidate>Lewati, isi nanti</button></div>
         </fieldset>
     </form>
@@ -166,26 +163,53 @@ require_once 'includes/navbar.php';
     var bar = document.getElementById('wizBar');
     var status = document.getElementById('wizStatus');
     var preview = document.getElementById('wizPreview');
-    var titles = ['pilih track', 'pilih target PKL', 'pilih durasi harian', 'pilih skill fokus'];
+    var titles = ['pilih jurusan dan target', 'atur ritme harian'];
     var cur = 0;
+    function mem() {
+        try { return JSON.parse(localStorage.getItem('lt_onboarding_v2') || '{}'); }
+        catch (e) { return {}; }
+    }
+    function saveMem(o) {
+        try { localStorage.setItem('lt_onboarding_v2', JSON.stringify(o)); } catch (e) {}
+    }
     try {
-        var saved = JSON.parse(localStorage.getItem('lt_onboarding') || '{}');
-        if (saved.track) { var r = form.querySelector('input[name="track"][value="' + saved.track + '"]'); if (r) r.checked = true; }
-        if (saved.target) { var t = form.querySelector('input[name="target"][value="' + saved.target + '"]'); if (t) t.checked = true; }
-        if (saved.minutes) { var m = form.querySelector('input[name="minutes"][value="' + saved.minutes + '"]'); if (m) m.checked = true; }
+        var saved = mem();
+        var keys = Object.keys(saved);
+        if (keys.length) {
+            var first = keys[0];
+            var r = form.querySelector('input[name="track"][value="' + first + '"]');
+            if (r && !form.querySelector('input[name="track"]:checked')) r.checked = true;
+        }
     } catch (e) {}
     function persist() {
         try {
             var t = form.querySelector('input[name="track"]:checked');
+            if (!t) return;
+            var all = mem();
             var tg = form.querySelector('input[name="target"]:checked');
             var mn = form.querySelector('input[name="minutes"]:checked');
-            localStorage.setItem('lt_onboarding', JSON.stringify({ track: t && t.value, target: tg && tg.value, minutes: mn && mn.value }));
+            var sk = [];
+            form.querySelectorAll('input[name="skills[]"]:checked').forEach(function(c) { sk.push(c.value); });
+            all[t.value] = { target: tg && tg.value, minutes: mn && mn.value, skills: sk };
+            saveMem(all);
         } catch (e) {}
     }
-    function updatePreview() {
-        if (!preview) return;
+    function summary() {
+        var box = document.getElementById('wizSummary');
+        if (!box) return;
+        var t = form.querySelector('input[name="track"]:checked');
+        var tg = form.querySelector('input[name="target"]:checked');
+        var mn = form.querySelector('input[name="minutes"]:checked');
         var n = form.querySelectorAll('input[name="skills[]"]:checked').length;
-        preview.textContent = 'Akan dibuat: ' + (1 + n) + ' quest minggu pertama (' + (n ? n + ' fondasi + ' : '') + '1 pembuka).';
+        var tn = t ? t.value.toUpperCase() : '–';
+        box.textContent = 'Track ' + tn + ' · Target: ' + (tg ? tg.value : '–') + ' · ' + (mn ? mn.value + ' menit/hari' : '–') + ' · ' + n + ' skill.';
+    }
+    function updatePreview() {
+        if (preview) {
+            var n = form.querySelectorAll('input[name="skills[]"]:checked').length;
+            preview.textContent = 'Akan dibuat: ' + (1 + n) + ' quest minggu pertama (' + (n ? n + ' fondasi + ' : '') + '1 pembuka).';
+        }
+        summary();
     }
     function show(i) {
         cur = Math.max(0, Math.min(steps.length - 1, i));
@@ -199,24 +223,37 @@ require_once 'includes/navbar.php';
         var t = form.querySelector('input[name="track"]:checked');
         return t ? t.value : 'devops';
     }
-    function applyTrack(resetMsg) {
+    function applyTrack(announce) {
         var t = curTrack();
-        var cleared = 0;
         form.querySelectorAll('[data-track-opt]').forEach(function(el) {
-            var showEl = el.getAttribute('data-track-opt') === t;
-            el.hidden = !showEl;
-            if (!showEl) { var inp = el.querySelector('input'); if (inp && inp.checked) { inp.checked = false; cleared++; } }
+            el.hidden = el.getAttribute('data-track-opt') !== t;
         });
-        if (resetMsg && cleared > 0) { try { showToast('Track diganti: pilihan target & skill diulang.', 'warning'); } catch (e) {} }
+        var all = mem();
+        var sv = all[t] || {};
+        var tg = form.querySelector('input[name="target"]:checked');
+        var curTg = tg && tg.value;
+        form.querySelectorAll('input[name="target"]').forEach(function(inp) { inp.checked = false; });
+        form.querySelectorAll('input[name="skills[]"]').forEach(function(inp) { inp.checked = false; });
+        if (sv.target) { var nt = form.querySelector('input[name="target"][value="' + sv.target + '"]'); if (nt && !nt.hidden && nt.closest('[data-track-opt]').hidden === false) nt.checked = true; }
+        if (sv.minutes) { var nm = form.querySelector('input[name="minutes"][value="' + sv.minutes + '"]'); if (nm) nm.checked = true; }
+        if (sv.skills) {
+            sv.skills.forEach(function(v) {
+                var c = form.querySelector('input[name="skills[]"][value="' + v + '"]');
+                if (c && c.closest('[data-track-opt]').hidden === false) c.checked = true;
+            });
+        }
+        if (announce && curTg && curTg !== (sv.target || null)) { try { showToast('Pilihan track sebelumnya tersimpan. Menampilkan pilihan tersimpan.', 'info'); } catch (e) {} }
         updatePreview();
     }
     function valid(i) {
-        var checked = steps[i].querySelectorAll('input:checked').length;
-        if (i === 3) return true;
-        if (!checked) {
-            var msg = i === 1 ? 'Pilih satu target PKL dulu (atau “Masih ragu”).' : 'Pilih satu dulu untuk lanjut.';
-            try { showToast(msg, 'warning'); } catch (e) {}
-            return false;
+        if (i === 0) {
+            var hasTrack = !!form.querySelector('input[name="track"]:checked');
+            var hasTarget = !!form.querySelector('input[name="target"]:checked');
+            if (!hasTrack || !hasTarget) {
+                try { showToast('Pilih track dan satu target PKL dulu.', 'warning'); } catch (e) {}
+                return false;
+            }
+            return true;
         }
         return true;
     }

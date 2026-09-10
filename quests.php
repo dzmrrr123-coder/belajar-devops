@@ -125,6 +125,7 @@ foreach ($all_quests as $q) {
 }
 
 $completion_rate = $total_quests > 0 ? round(($completed_quests / $total_quests) * 100) : 0;
+$preselect_week = isset($_GET['week']) ? max(1, min(12, (int)$_GET['week'])) : 0;
 
 // Tab Materi (gabungan resources.php): filter server-side via ?tab=materi&track=&mweek=
 $mat_tab = ($_GET['tab'] ?? 'quest') === 'materi' ? 'materi' : 'quest';
@@ -202,6 +203,7 @@ require_once 'includes/navbar.php';
         <button type="button" class="filter-pill <?= $mat_tab === 'quest' ? 'active' : '' ?>" onclick="showRoadTab('quest', this)">Quest</button>
         <button type="button" class="filter-pill <?= $mat_tab === 'materi' ? 'active' : '' ?>" onclick="showRoadTab('materi', this)">Materi (<?= count($mat_resources) ?>)</button>
     </div>
+    <p class="visually-hidden" role="status" id="questFilterCount"></p>
     <div id="questTab" <?= $mat_tab === 'materi' ? 'hidden' : '' ?>>
     <div class="mb-4">
         <div class="row g-3 align-items-center">
@@ -242,7 +244,6 @@ foreach ($quests_by_week as $w_num => $w_quests) {
         break;
     }
 }
-$preselect_week = isset($_GET['week']) ? max(1, min(12, (int)$_GET['week'])) : 0;
 if ($preselect_week > 0) $current_active_week = $preselect_week;
 ?>
     <div id="questsContainer">
@@ -624,6 +625,7 @@ function applyFilters() {
 
         if (matchWeek && visibleItemsInSection > 0) {
             section.style.display = '';
+            if (section.tagName === 'DETAILS') section.open = true;
             visibleSectionCount++;
         } else {
             section.style.display = 'none';
@@ -636,6 +638,8 @@ function applyFilters() {
     } else {
         noQuestsMsg.classList.add('d-none');
     }
+    const live = document.getElementById('questFilterCount');
+    if (live) live.textContent = visibleSectionCount === 0 ? 'Tidak ada quest yang cocok.' : visibleSectionCount + ' minggu ditampilkan.';
 }
 
 function resetFilters() {

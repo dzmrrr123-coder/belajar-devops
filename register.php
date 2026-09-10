@@ -60,6 +60,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $new_id = (int)$stmt->insert_id;
                     $_SESSION['user_id'] = $new_id;
                     $_SESSION['username'] = $username;
+                    $rt = \App\Domain\Track\Tracks::normalize($_GET['track'] ?? '');
+                    if (in_array($rt, ['rpl', 'tkj', 'dkv', 'devops'], true)) {
+                        $_SESSION['onboarding_draft'] = ['track' => $rt, 'target' => '', 'minutes' => 25, 'skills' => []];
+                    }
                     $stmt->close();
                     seed_quiz_bank($conn, $new_id);
                     $conn->close();
@@ -79,6 +83,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$ref_track = \App\Domain\Track\Tracks::normalize($_GET['track'] ?? '');
+$ref_track = in_array($ref_track, ['rpl', 'tkj', 'dkv', 'devops'], true) ? $ref_track : '';
+$ref_user = preg_match('/^[a-zA-Z0-9_]{3,100}$/', (string)($_GET['ref'] ?? '')) ? (string)$_GET['ref'] : '';
 $page_title = 'Daftar Akun Baru - Learn Tracker';
 require_once 'includes/header.php';
 require_once 'includes/navbar.php';
@@ -105,8 +112,9 @@ require_once 'includes/navbar.php';
             </div>
         <?php endif; ?>
 
-        <form method="POST" action="register.php" id="registerForm">
+        <form method="POST" action="register.php<?= ($ref_track !== '' || $ref_user !== '') ? '?' . http_build_query(array_filter(['track' => $ref_track, 'ref' => $ref_user])) : '' ?>" id="registerForm">
             <?= csrf_field() ?>
+            <?php if ($ref_user !== '' || $ref_track !== ''): ?><p class="alert alert-info small mb-3">Diajak <strong><?= htmlspecialchars($ref_user !== '' ? $ref_user : 'temanmu') ?></strong><?= $ref_track !== '' ? ' · track ' . htmlspecialchars(strtoupper($ref_track)) . ' dipilih otomatis di langkah awal' : '' ?>.</p><?php endif; ?>
 
             <div class="mb-3">
                 <label for="reg-username" class="form-label">Username</label>

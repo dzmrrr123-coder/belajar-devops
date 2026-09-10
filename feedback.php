@@ -30,8 +30,8 @@ require_once 'includes/navbar.php';
 <h1 class="page-title">Feedback produk</h1>
 <p class="page-desc">Saran, bug, atau kepuasan. Satu form simpel — riwayatmu di bawah. Kamu juga bisa buka dari <a href="profile.php#feedback">Profil</a>.</p></div>
 <section class="card p-4 mb-3"><form method="POST" class="row g-2"><?= csrf_field() ?>
-<div class="col-md-3"><select name="kind" class="form-select"><option value="saran">Saran</option><option value="bug">Bug</option><option value="kepuasan">Kepuasan</option></select></div>
-<div class="col-md-7"><input name="message" class="form-control" maxlength="1000" placeholder="Contoh: hint lvl2 membantu, tambah soal K8s…" required></div>
+<div class="col-md-3"><label class="visually-hidden" for="fb-kind">Jenis feedback</label><select name="kind" id="fb-kind" class="form-select"><option value="saran">Saran</option><option value="bug">Bug</option><option value="kepuasan">Kepuasan</option></select></div>
+<div class="col-md-7"><label class="visually-hidden" for="fb-msg">Isi feedback</label><input name="message" id="fb-msg" class="form-control" maxlength="1000" placeholder="Contoh: hint lvl2 membantu, tambah soal K8s…" required></div>
 <div class="col-md-2"><button class="btn btn-cyber btn-sm w-100" type="submit">Kirim</button></div>
 </form></section>
 <section class="card p-4"><h2 class="h6 fw-bold mb-2">Riwayatmu (<?= count($mine) ?>)</h2>

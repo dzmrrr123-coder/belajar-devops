@@ -101,7 +101,7 @@ foreach ($errors as $e) {
 
 
 
-$page_title = 'Error Log & Solusi Belajar';
+$page_title = 'Catatan Error';
 require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
@@ -109,7 +109,7 @@ require_once 'includes/navbar.php';
 <main class="container py-4" role="main">
     <div class="page-head">
         <div class="page-kicker"><?= $total_errors ?> catatan · <?= $solved_errors ?> ada solusi</div>
-        <h1 class="page-title">Notes & solusi</h1>
+        <h1 class="page-title">Catatan Error</h1>
         <p class="page-desc">Ketemu error? Catat + tulis solusinya. 1 catatan = +5 XP.</p>
     </div>
 
@@ -169,7 +169,7 @@ require_once 'includes/navbar.php';
                     <div class="col-md-6">
                         <div class="input-group">
                             <span class="input-group-text"><i class="fas fa-search"></i></span>
-                            <input type="text" id="errorSearch" class="form-control" placeholder="Cari pesan error, solusi, atau tag..." oninput="filterErrors()">
+                            <input type="text" id="errorSearch" class="form-control" placeholder="Cari pesan error, solusi, atau tag..." aria-label="Cari catatan error" oninput="filterErrors()">
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -185,13 +185,12 @@ require_once 'includes/navbar.php';
 
                 <!-- Categories Quick Pills -->
                 <div class="mt-3 pt-3 border-top filter-pills">
-                    <?php 
-                    $cats = ['MySQL', 'PHP', 'Laravel', 'Docker', 'Linux', 'Git', 'AWS', 'General'];
-                    foreach ($cats as $c): 
+                    <?php
+                    foreach ($err_cats as $c):
                         if (isset($categories_count[$c])):
                     ?>
-                        <button type="button" class="filter-pill" onclick="filterByCat('<?= $c ?>', this)">
-                            <?= $c ?> <span class="badge bg-secondary ms-1"><?= $categories_count[$c] ?></span>
+                        <button type="button" class="filter-pill" onclick="filterByCat('<?= htmlspecialchars($c) ?>', this)">
+                            <?= htmlspecialchars($c) ?> <span class="badge bg-secondary ms-1"><?= $categories_count[$c] ?></span>
                         </button>
                     <?php endif; endforeach; ?>
                 </div>
@@ -260,7 +259,8 @@ require_once 'includes/navbar.php';
                     <div class="card p-4 p-md-5 text-center empty-state">
                         <div class="empty-state-icon"><i class="fas fa-shield-alt text-emerald"></i></div>
                         <h2 class="h5 fw-bold mb-2">Belum Ada Catatan Error</h2>
-                        <p class="text-secondary small mb-3">Belum pernah stuck atau error? Hebat! Jika kamu menemui bug, catat di formulir sebelah kiri untuk mendapatkan reward +5 XP.</p>
+                        <p class="text-secondary small mb-3">Ketemu bug pertama? Catat sekarang, dapat +5 XP dan otomatis jadi kartu review besok.</p>
+                        <div><button type="button" class="btn btn-cyber btn-sm" onclick="openErrorForm()">Tambah catatan pertama</button></div>
                     </div>
                 <?php endif; ?>
             </div>
@@ -273,7 +273,16 @@ require_once 'includes/navbar.php';
             </div>
         </div>
     </div>
+    <button type="button" class="fab-add d-lg-none" onclick="openErrorForm()" aria-label="Tambah catatan error"><i class="fas fa-plus" aria-hidden="true"></i></button>
 </main>
+<script>
+function openErrorForm() {
+    var d = document.getElementById('errorFormWrap');
+    if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    var f = document.getElementById('errMessage');
+    if (f) setTimeout(function() { f.focus({ preventScroll: true }); }, 400);
+}
+</script>
 
 <!-- Quiz Modal -->
 <div class="modal fade" id="quizModal" tabindex="-1" aria-labelledby="quizModalLabel" aria-hidden="true">

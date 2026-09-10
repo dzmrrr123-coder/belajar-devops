@@ -16,7 +16,7 @@ try {
             <form method="GET" action="lab.php" class="d-flex flex-column gap-2 m-0">
                 <input type="hidden" name="tab" value="praktik">
                 <input type="hidden" name="alat" value="topologi">
-                <input name="cidr" class="form-control form-control-sm font-monospace" value="<?= htmlspecialchars($tp_cidr) ?>" placeholder="192.168.1.0/24">
+                <input name="cidr" class="form-control form-control-sm font-monospace" value="<?= htmlspecialchars($tp_cidr) ?>" placeholder="192.168.1.0/24" aria-label="CIDR, contoh 192.168.1.0/24">
                 <button class="btn btn-cyber-outline btn-sm" type="submit">Hitung Subnet</button>
             </form>
             <?php if ($tp_calc && ($tp_calc['ok'] ?? false)): ?>
@@ -60,7 +60,7 @@ try {
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-outline-danger btn-sm" id="tpClear" type="button" title="Bersihkan Kanvas"><i class="fas fa-trash-can"></i> Reset</button>
+                    <button class="btn btn-cyber-danger btn-sm" id="tpClear" type="button" title="Bersihkan Kanvas"><i class="fas fa-trash-can"></i> Reset</button>
                 </div>
             </div>
             <div class="position-relative topo-canvas-wrapper w-100" style="height: 400px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line);">

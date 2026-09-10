@@ -211,7 +211,7 @@ $shop_tab = ($_GET['shoptab'] ?? 'hadiah') === 'voucher' ? 'voucher' : 'hadiah';
 $shop_flair_price = !empty($user['flair']) ? 50 : 150;
 $shop_loot = \App\Domain\Shop::lootFrames();
 $conn->close();
-$page_title = 'Profil & Statistik';
+$page_title = 'Profil';
 require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
@@ -279,6 +279,7 @@ require_once 'includes/navbar.php';
                             <?= csrf_field() ?>
                             <input type="hidden" name="back" value="profile.php">
                             <div class="mb-3">
+                                <label class="form-label" for="pf-track">Jurusan aktif</label>
                                 <select id="pf-track" name="track" class="form-select form-select-sm">
                                     <?php foreach (\App\Domain\Track\Tracks::all() as $slug => $tr): ?>
                                         <option value="<?= htmlspecialchars($slug) ?>" <?= $slug === $myTrack ? 'selected' : '' ?>>
@@ -529,7 +530,7 @@ function drawFlexCard() {
     });
     x.fillStyle = '#8b958d';
     x.font = "500 34px " + F;
-    x.fillText('Level up setiap hari.', W / 2, H - 140);
+    x.fillText('Sedikit tiap hari.', W / 2, H - 140);
     flexCanvas = c;
     document.getElementById('flexPreview').src = c.toDataURL('image/png');
 }

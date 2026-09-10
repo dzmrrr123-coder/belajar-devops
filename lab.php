@@ -143,33 +143,40 @@ require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
 <div class="page-head mb-4">
-    <div class="page-kicker eyebrow"><i class="<?= htmlspecialchars($trackInfo['icon'] ?? 'fas fa-flask') ?> me-1"></i> Jurusan <?= htmlspecialchars($trackInfo['name']) ?> · Lab Praktikum</div>
-    <h1 class="page-title">Lab praktik</h1>
+    <div class="page-kicker eyebrow"><i class="<?= htmlspecialchars($trackInfo['icon'] ?? 'fas fa-flask') ?> me-1"></i> <?= htmlspecialchars($trackInfo['name']) ?> · Lab</div>
+    <h1 class="page-title">Lab Praktik</h1>
     <p class="page-desc">Kuis kilat, praktik jurusan, dan mentor dalam satu tempat. Kuota latihan: <strong>+<?= (int)$lab_quota_left ?> XP</strong> tersisa hari ini (maks 50, kuis ≤20).</p>
     <div class="segmented mt-2" role="group" aria-label="Tab lab">
         <a href="<?= lab_url('kuis') ?>" class="filter-pill <?= $tab === 'kuis' ? 'active' : '' ?>"><i class="fas fa-bolt me-1"></i>Kuis Kilat</a>
         <a href="<?= lab_url('praktik', $alat) ?>" class="filter-pill <?= $tab === 'praktik' ? 'active' : '' ?>"><i class="fas fa-flask me-1"></i>Praktik</a>
         <a href="<?= lab_url('mentor') ?>" class="filter-pill <?= $tab === 'mentor' ? 'active' : '' ?>"><i class="fas fa-robot me-1"></i>Mentor</a>
     </div>
-    <?php if ($tab === 'praktik'): ?>
-    <div class="segmented mt-2" role="group" aria-label="Alat praktik">
-        <?php foreach ($LAB_ALATS as $ak => $ai): if (!empty($ai['tracks']) && !in_array($track, $ai['tracks'], true)) continue; ?>
-        <a href="<?= lab_url('praktik', $ak) ?>" class="filter-pill <?= $alat === $ak ? 'active' : '' ?>"><i class="<?= htmlspecialchars($ai['icon']) ?> me-1"></i><?= htmlspecialchars($ai['title']) ?></a>
-        <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
 </div>
 <?php
 if ($tab === 'kuis') require __DIR__ . '/includes/lab/tab_kuis.php';
 elseif ($tab === 'mentor') require __DIR__ . '/includes/lab/tab_mentor.php';
 else {
-    $alat_file = __DIR__ . '/includes/lab/tab_' . preg_replace('/[^a-z]/', '', $alat) . '.php';
-    if ($alat === 'lab') $alat_file = __DIR__ . '/includes/lab/tab_bank.php';
+    $alat_file = __DIR__ . '/includes/lab/tab_bank.php';
     if ($alat === 'playground') $alat_file = __DIR__ . '/includes/lab/tab_pg.php';
     if ($alat === 'terminal') $alat_file = __DIR__ . '/includes/lab/tab_term.php';
     if ($alat === 'incident') $alat_file = __DIR__ . '/includes/lab/tab_inc.php';
     if ($alat === 'topologi') $alat_file = __DIR__ . '/includes/lab/tab_topo.php';
-    require $alat_file;
+    $alat_title = $LAB_ALATS[$alat]['title'] ?? 'Praktik';
+    ?>
+    <nav class="small text-muted mb-3" aria-label="Posisi"><a href="lab.php">Lab</a> / Praktik / <strong><?= htmlspecialchars($alat_title) ?></strong></nav>
+    <div class="row g-4 align-items-start">
+        <div class="col-lg-3">
+            <div class="list-group" role="group" aria-label="Alat praktik">
+                <?php foreach ($LAB_ALATS as $ak => $ai): if (!empty($ai['tracks']) && !in_array($track, $ai['tracks'], true)) continue; ?>
+                <a href="<?= lab_url('praktik', $ak) ?>" class="list-group-item list-group-item-action d-flex align-items-center gap-2 <?= $alat === $ak ? 'active' : '' ?>" <?= $alat === $ak ? 'aria-current="page"' : '' ?>><i class="<?= htmlspecialchars($ai['icon']) ?>" aria-hidden="true"></i><?= htmlspecialchars($ai['title']) ?></a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <div class="col-lg-9">
+            <?php require $alat_file; ?>
+        </div>
+    </div>
+    <?php
 }
 ?>
 </main>

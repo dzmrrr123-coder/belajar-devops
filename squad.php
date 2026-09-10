@@ -96,13 +96,18 @@ require_once 'includes/navbar.php';
     </section>
     <section class="card p-4 mb-3" aria-label="Gabung squad">
         <h2 class="h5 fw-bold mb-1">Gabung pakai kode</h2>
-        <p class="text-secondary small mb-3">Minta kode ke teman satu squad.</p>
+        <p class="text-secondary small mb-3">Minta kode ke teman satu squad. Maks 5 orang, XP mingguan digabung untuk tantangan.</p>
         <form method="POST" action="squad.php" class="d-flex gap-2 m-0">
             <?= csrf_field() ?>
             <input type="hidden" name="squad_action" value="join">
             <input name="code" class="form-control" placeholder="Kode 6 karakter…" maxlength="8" required aria-label="Kode squad" style="text-transform:uppercase" value="<?= htmlspecialchars($code_prefill) ?>"<?= $code_prefill !== '' ? ' autofocus' : '' ?>>
             <button class="btn btn-cyber-outline btn-sm flex-shrink-0" type="submit">Gabung</button>
         </form>
+    </section>
+    <section class="card p-4" aria-label="Belum punya teman">
+        <h2 class="h5 fw-bold mb-1">Belum punya teman squad?</h2>
+        <p class="text-secondary small mb-3">Ikut tantangan mingguan dulu — squad bisa dibentuk nanti dari leaderboard.</p>
+        <a href="leaderboard.php" class="btn btn-cyber-outline btn-sm">Lihat tantangan mingguan</a>
     </section>
     <?php endif; ?>
 </main>
