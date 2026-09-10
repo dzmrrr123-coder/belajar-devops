@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["php82", "php82Extensions.mysqli", "php82Extensions.pdo_mysql", "php82Extensions.mbstring", "php82Extensions.curl"]
+nixPkgs = ["php82", "php82Extensions.mysqli", "php82Extensions.pdo_mysql", "php82Extensions.mbstring", "php82Extensions.curl", "php82Extensions.opcache"]
 
 [start]
 cmd = "php db/migrate.php --up && php -S 0.0.0.0:$PORT router.php"

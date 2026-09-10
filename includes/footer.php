@@ -8,6 +8,10 @@ $quotes = [
 ];
 $random_quote = $quotes[array_rand($quotes)];
 $flash = get_flash();
+// Lepas kunci session agar request paralel (tab lain, prefetch, sync) tidak antre.
+// Aman di sini: flash sudah dibaca, halaman GET tidak tulis session lagi.
+if (function_exists('lt_session_release')) lt_session_release();
+elseif (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
 ?>
     <footer>
         <div class="container text-center">

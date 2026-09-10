@@ -101,23 +101,4 @@
         });
     }
 
-    /* Transisi antar halaman: fade kilat, fallback = navigasi biasa */
-    if (document.startViewTransition && !(window.LTMotion && window.LTMotion.reduced())) {
-        document.addEventListener('click', function(e) {
-            if (e.defaultPrevented) return;
-            const a = e.target.closest('a[href]');
-            if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-            if (a.target === '_blank' || a.hasAttribute('download') || a.hasAttribute('data-no-transition')) return;
-            const href = a.getAttribute('href') || '';
-            if (!href || href.startsWith('#')) return;
-            let url = null;
-            try { url = new URL(href, location.href); } catch (err) { return; }
-            if (url.origin !== location.origin) return;
-            if (url.href === location.href) return;
-            if (/.(sql|png|jpe?g|webp|pdf|zip)(\?|$)/i.test(url.pathname)) return;
-            e.preventDefault();
-            try { document.startViewTransition(function() { location.href = a.href; }); }
-            catch (err) { location.href = a.href; }
-        });
-    }
 })();

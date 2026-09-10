@@ -319,6 +319,7 @@ document.querySelectorAll('.subtask-toggle-form, .subtask-add-form').forEach(for
         } catch (e) {}
     }
     document.addEventListener('mouseover', function(e) {
+        try { if (navigator.connection && navigator.connection.saveData) return; } catch (err) {}
         const a = e.target.closest ? e.target.closest('a[href]') : null;
         if (!a) return;
         const href = a.getAttribute('href') || '';
