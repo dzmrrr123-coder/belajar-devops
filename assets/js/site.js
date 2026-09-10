@@ -63,7 +63,7 @@ document.querySelectorAll('.mission-claim-form').forEach(form => {
 });
 
 try {
-    if ('Notification' in window && location.pathname.endsWith('hub.php')) {
+    if ('Notification' in window && location.pathname.endsWith('quests.php')) {
         const done = document.querySelectorAll('.mission-card.claimed').length;
         const key = 'lt_remind_' + new Date().toISOString().slice(0, 10);
         if (done < 3 && new Date().getHours() >= 20 && !localStorage.getItem(key)) {

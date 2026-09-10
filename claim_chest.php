@@ -9,7 +9,7 @@ verify_csrf();
 
 $fail = function ($msg, $type = 'info') use ($is_ajax) {
     if ($is_ajax) { header('Content-Type: application/json'); echo json_encode(['status' => 'error', 'message' => $msg]); exit(); }
-    set_flash($type, $msg); redirect('hub.php');
+    set_flash($type, $msg); redirect('quests.php');
 };
 
 try {
@@ -46,4 +46,4 @@ try {
     set_flash('danger', 'Gagal membuka peti.');
 }
 $conn->close();
-redirect('hub.php');
+redirect('quests.php');

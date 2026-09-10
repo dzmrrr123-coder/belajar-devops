@@ -154,6 +154,20 @@ try {
 } catch (Throwable $e) {}
 $mat_track_label = $mat_track === 'all' ? 'Semua Jurusan' : (\App\Domain\Track\Tracks::all()[$mat_track]['name'] ?? strtoupper($mat_track));
 
+// Strip Hari ini (pindahan Hub): streak, peti, review jatuh tempo, progres track
+$today_streak = 0; $today_freeze = 0; $today_chest_opened = false; $today_due = 0;
+$track_progress = ['done' => 0, 'total' => 1, 'percent' => 0];
+try {
+    $hq = $conn->prepare("SELECT streak, freeze_tokens FROM users WHERE id = ?");
+    if ($hq) { $hq->bind_param("i", $user_id); $hq->execute(); $urow = $hq->get_result()->fetch_assoc() ?: []; $hq->close(); $today_streak = (int)($urow['streak'] ?? 0); $today_freeze = (int)($urow['freeze_tokens'] ?? 0); }
+    $hq = $conn->prepare("SELECT 1 FROM daily_chests WHERE user_id = ? AND chest_date = CURDATE()");
+    if ($hq) { $hq->bind_param("i", $user_id); $hq->execute(); $today_chest_opened = (bool)$hq->get_result()->fetch_assoc(); $hq->close(); }
+    $hq = $conn->prepare("SELECT COUNT(*) c FROM reviews WHERE user_id = ? AND next_due <= CURDATE()");
+    if ($hq) { $hq->bind_param("i", $user_id); $hq->execute(); $today_due = (int)($hq->get_result()->fetch_assoc()['c'] ?? 0); $hq->close(); }
+    $wd = \App\Domain\Track\Hub::getWidgetData($conn, $user_id, $myTrack);
+    if (!empty($wd['track_progress'])) $track_progress = $wd['track_progress'];
+} catch (Throwable $e) {}
+
 
 
 $page_title = 'Quest Board - Roadmap ' . $trackName . ' 12 Minggu';
@@ -198,6 +212,35 @@ require_once 'includes/navbar.php';
             </div>
         </div>
     </section>
+
+    <div class="d-flex gap-2 flex-wrap align-items-center mb-3 small" aria-label="Hari ini">
+        <span class="stat-chip"><i class="fas fa-fire me-1"></i><?= (int)$today_streak ?> hari<?= $today_freeze > 0 ? ' · ' . (int)$today_freeze . ' freeze' : '' ?></span>
+        <span class="stat-chip">Track <?= (int)$track_progress['percent'] ?>% (<?= (int)$track_progress['done'] ?>/<?= (int)$track_progress['total'] ?>)</span>
+        <?php if ($today_due > 0): ?><a href="review.php" class="text-decoration-none">Review (<?= (int)$today_due ?> antre)</a><?php endif; ?>
+        <span aria-live="polite" class="d-inline-flex">
+            <?php if (!$today_chest_opened): ?>
+            <form method="POST" action="claim_chest.php" class="m-0" id="chestForm"><?= csrf_field() ?>
+                <button class="chest-btn" type="submit" id="chestBtn"><i class="fas fa-gift me-1"></i><span>Peti +8 XP</span></button>
+            </form>
+            <?php else: ?><span class="stat-chip">Peti dibuka</span><?php endif; ?>
+        </span>
+    </div>
+    <script>
+    document.getElementById('chestForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('chestBtn');
+        const fd = new FormData(this);
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>Membuka…</span>';
+        try {
+            const r = await fetch('claim_chest.php', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+            const d = await r.json();
+            showToast(d.message || 'Peti dibuka!', d.status === 'success' ? 'success' : 'info');
+            if (d.status === 'success') btn.parentElement.innerHTML = '<span class="stat-chip">Peti dibuka</span>';
+            else { btn.disabled = false; btn.innerHTML = '<i class="fas fa-gift me-1"></i><span>Peti +8 XP</span>'; }
+        } catch (err) { this.submit(); }
+    });
+    </script>
 
     <div class="segmented mb-3" role="group" aria-label="Tab roadmap">
         <button type="button" class="filter-pill <?= $mat_tab === 'quest' ? 'active' : '' ?>" onclick="showRoadTab('quest', this)">Quest</button>

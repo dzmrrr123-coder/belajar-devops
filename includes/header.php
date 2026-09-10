@@ -22,7 +22,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Learn Tracker">
     <script type="speculationrules">
-    {"prerender": [{"source": "document", "where": {"href_matches": ["*/hub.php", "*/quests.php"]}, "eagerness": "moderate"}],
+    {"prerender": [{"source": "document", "where": {"href_matches": ["*/quests.php"]}, "eagerness": "moderate"}],
      "prefetch": [{"source": "document", "where": {"and": [{"href_matches": ["*.php"]}, {"not": {"href_matches": ["*tab=kuis*", "*quiz.php*", "*logout.php*", "*switch_track.php*"]}}]}, "eagerness": "moderate"}]}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">

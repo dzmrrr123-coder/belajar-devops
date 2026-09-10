@@ -116,7 +116,7 @@ function lt_page_cache_key(): ?string {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') return null;
     $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
     $page = basename($path);
-    static $allow = ['hub.php','quests.php','lab.php','review.php','errors.php','timer.php','leaderboard.php','profile.php','squad.php','u.php'];
+    static $allow = ['quests.php','lab.php','review.php','errors.php','timer.php','leaderboard.php','profile.php','squad.php','u.php'];
     if (!in_array($page, $allow, true)) return null;
     if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') return null;
     if (strpos((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json') !== false) return null;

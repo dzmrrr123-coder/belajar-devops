@@ -21,10 +21,10 @@
         <p>Yang aman offline: timer fokus + catat error. Quest, review, dan kuis butuh koneksi.</p>
         <div class="queue" id="queueInfo">0 antrean</div>
         <div class="links">
-            <a href="timer.php">Fokus (offline OK)</a>
-            <a href="errors.php">Catatan (offline OK)</a>
-            <a href="hub.php">Hub</a>
             <a href="quests.php">Roadmap</a>
+            <a href="timer.php">Fokus</a>
+            <a href="errors.php">Catatan</a>
+            <a href="lab.php">Lab</a>
         </div>
         <button type="button" onclick="location.reload()">Coba lagi saat online</button>
     </div>

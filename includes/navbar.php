@@ -52,13 +52,12 @@ if (is_logged_in() && $hud_user):
 <div class="app-layout">
     <!-- Desktop Sidebar -->
     <aside class="app-sidebar">
-        <a class="sidebar-brand" href="hub.php">
+        <a class="sidebar-brand" href="quests.php">
             <span class="brand-mark" aria-hidden="true">LT</span>
             <span class="brand-text">Learn Tracker</span>
         </a>
         <div class="sidebar-nav">
             <div class="sidebar-section">Belajar</div>
-            <a class="sidebar-link <?= $current_script === 'hub.php' ? 'active' : '' ?>" href="hub.php"><i class="fas fa-desktop"></i>Hub Jurusan</a>
             <a class="sidebar-link <?= $current_script === 'quests.php' ? 'active' : '' ?>" href="quests.php"><i class="fas fa-map"></i>Roadmap</a>
             <a class="sidebar-link <?= $current_script === 'timer.php' ? 'active' : '' ?>" href="timer.php"><i class="fas fa-clock"></i>Fokus</a>
             <a class="sidebar-link <?= $current_script === 'review.php' ? 'active' : '' ?>" href="review.php"><i class="fas fa-rotate-right"></i>Review</a>
@@ -87,7 +86,7 @@ if (is_logged_in() && $hud_user):
     <div class="app-content">
         <!-- Mobile Topbar -->
         <header class="app-topbar">
-            <a class="app-topbar-brand" href="hub.php">
+            <a class="app-topbar-brand" href="quests.php">
                 <span class="brand-mark" aria-hidden="true">LT</span>
                 Learn Tracker
             </a>
@@ -106,7 +105,7 @@ if (is_logged_in() && $hud_user):
 <!-- Fallback for non-logged-in users -->
 <nav class="lt-navbar navbar navbar-expand-lg" aria-label="Navigasi Utama">
     <div class="container lt-navbar-inner">
-        <a class="navbar-brand" href="hub.php">
+        <a class="navbar-brand" href="quests.php">
             <span class="brand-mark" aria-hidden="true">LT</span>
             <span class="brand-text">Learn Tracker</span>
         </a>

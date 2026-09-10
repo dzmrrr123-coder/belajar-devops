@@ -38,11 +38,11 @@ elseif (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
     <?php if (is_logged_in()):
         $current_page = $current_page ?? basename($_SERVER['PHP_SELF'] ?? '');
         $tabs = [
-            ['hub.php', 'fas fa-desktop', 'Hub'],
             ['quests.php', 'fas fa-map', 'Roadmap'],
             ['timer.php', 'fas fa-clock', 'Fokus'],
             ['review.php', 'fas fa-rotate-right', 'Review'],
             ['errors.php', 'fas fa-note-sticky', 'Catatan'],
+            ['lab.php', 'fas fa-flask', 'Lab'],
         ];
     ?>
     <nav class="mobile-tabbar" aria-label="Navigasi cepat">
@@ -71,10 +71,10 @@ elseif (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
     <?php
     $page_js = ['core.js', 'site.js', 'sync.js', 'ambience.js'];
     if ($logged) $page_js[] = 'lofi.js';
-    if (in_array($pg, ['hub.php', 'quests.php'], true)) $page_js[] = 'quests.js';
+    if ($pg === 'quests.php') $page_js[] = 'quests.js';
     if ($pg === 'review.php') $page_js[] = 'cards.js';
-    if (in_array($pg, ['hub.php', 'quests.php', 'onboarding.php'], true)) $page_js[] = 'mascot.js';
-    if (in_array($pg, ['hub.php', 'profile.php'], true)) $page_js[] = 'share-card.js';
+    if (in_array($pg, ['quests.php', 'onboarding.php'], true)) $page_js[] = 'mascot.js';
+    if ($pg === 'profile.php') $page_js[] = 'share-card.js';
     if (in_array($pg, ['leaderboard.php', 'u.php'], true)) $page_js[] = 'reactions.js';
     foreach ($page_js as $js):
         $jsp = __DIR__ . '/../assets/js/' . $js;

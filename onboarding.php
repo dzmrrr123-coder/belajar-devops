@@ -9,7 +9,7 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $me = $stmt->get_result()->fetch_assoc();
 $stmt->close();
-if (!empty($me['onboarded'])) redirect('hub.php');
+if (!empty($me['onboarded'])) redirect('quests.php');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     \App\Analytics\Tracker::track($conn, $user_id, \App\Analytics\Events::ONBOARDING_COMPLETED, ['target' => $final_target, 'minutes' => $final_minutes, 'quests' => $n, 'track' => $track]);
     $conn->close();
     set_flash('success', "Siap! {$n} quest minggu pertama dibuat." . (!empty($nb) ? ' Badge: ' . implode(', ', $nb) . '!' : ''));
-    redirect('hub.php');
+    redirect('quests.php');
 }
 $conn->close();
 

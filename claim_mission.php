@@ -12,7 +12,7 @@ $claim_all = ($key === 'all');
 if (!$claim_all && !isset($defs[$key])) {
     $msg = 'Misi tidak valid.';
     if ($is_ajax) { header('Content-Type: application/json'); echo json_encode(['status' => 'error', 'message' => $msg]); exit(); }
-    set_flash('danger', $msg); redirect('hub.php');
+    set_flash('danger', $msg); redirect('quests.php');
 }
 $keys = $claim_all ? array_keys($defs) : [$key];
 $status = get_daily_mission_status($conn, $user_id);
@@ -48,7 +48,7 @@ try {
     error_log("claim_mission: " . $e->getMessage());
     $msg = 'Gagal klaim misi.';
     if ($is_ajax) { header('Content-Type: application/json'); echo json_encode(['status' => 'error', 'message' => $msg]); exit(); }
-    set_flash('danger', $msg); redirect('hub.php');
+    set_flash('danger', $msg); redirect('quests.php');
 }
 $conn->close();
 if ($is_ajax) {
@@ -56,4 +56,4 @@ if ($is_ajax) {
     echo json_encode(['status' => $got > 0 ? 'success' : 'error', 'mission_key' => $key, 'xp_reward' => $got_xp, 'message' => $msg]);
     exit();
 }
-redirect('hub.php');
+redirect('quests.php');
