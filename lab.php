@@ -46,30 +46,30 @@ require_once 'includes/navbar.php';
 <div class="page-head mb-4">
     <div class="page-kicker eyebrow"><i class="<?= htmlspecialchars($trackInfo['icon'] ?? 'fas fa-flask') ?> me-1"></i> Jurusan <?= htmlspecialchars($trackInfo['name']) ?> · Lab Praktikum</div>
     <h1 class="page-title">Lab praktik kilat</h1>
-    <p class="page-desc">Latihan interaktif sesuai kurikulum <?= htmlspecialchars($trackInfo['name']) ?>. Batas XP harian: +<?= LAB_DAILY_CAP ?> XP/hari.</p>
+    <p class="page-desc">Latihan singkat sesuai kurikulummu. Butuh praktik bebas? Buka <?= $track === 'tkj' ? '<a href="terminal.php">Terminal</a>' : ($track === 'devops' ? '<a href="terminal.php">Terminal</a> / <a href="playground.php">Playground</a>' : '<a href="playground.php">Playground</a>') ?>. Batas XP harian: +<?= LAB_DAILY_CAP ?> XP/hari.</p>
 </div>
 
 <div class="row g-4 align-items-stretch">
     <!-- Left Column: Terminal UI -->
     <div class="col-lg-7 d-flex flex-column">
         <?php if ($active): ?>
-        <section class="card bg-dark text-light border-0 h-100 p-0 overflow-hidden shadow-sm" style="border-radius: 12px;">
-            <div class="bg-black bg-opacity-50 p-2 border-bottom border-secondary border-opacity-25 d-flex align-items-center gap-2">
+        <section class="card h-100 p-0 overflow-hidden shadow-sm" style="border-radius: 12px;">
+            <div class="p-2 border-bottom d-flex align-items-center gap-2" style="background:var(--surface-2)">
                 <span class="rounded-circle bg-danger" style="width:12px; height:12px;"></span>
                 <span class="rounded-circle bg-warning" style="width:12px; height:12px;"></span>
                 <span class="rounded-circle bg-success" style="width:12px; height:12px;"></span>
-                <span class="ms-2 small font-monospace text-secondary opacity-75">user@learntracker:~/$ <?= htmlspecialchars($active['slug']) ?></span>
+                <span class="ms-2 small font-monospace text-secondary">user@learntracker:~/$ <?= htmlspecialchars($active['slug']) ?></span>
                 <div class="ms-auto d-flex gap-2">
-                    <span class="badge bg-secondary bg-opacity-25 text-light"><i class="fas fa-tag me-1"></i><?= htmlspecialchars($active['skill']) ?></span>
-                    <span class="badge bg-warning bg-opacity-25 text-warning"><i class="fas fa-bolt me-1"></i>+<?= (int)$active['xp'] ?> XP</span>
+                    <span class="badge bg-secondary-subtle text-secondary"><i class="fas fa-tag me-1"></i><?= htmlspecialchars($active['skill']) ?></span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis"><i class="fas fa-bolt me-1"></i>+<?= (int)$active['xp'] ?> XP</span>
                 </div>
             </div>
             <div class="p-4 flex-grow-1 font-monospace small d-flex flex-column" style="line-height: 1.6;">
-                <h2 class="text-info h5 fw-bold mb-3">> <?= htmlspecialchars($active['title']) ?></h2>
-                <div class="text-light text-opacity-75 mb-3 fs-6" style="white-space: pre-wrap;"><?= htmlspecialchars($active['prompt']) ?></div>
-                
+                <h2 class="text-primary h5 fw-bold mb-3">> <?= htmlspecialchars($active['title']) ?></h2>
+                <div class="text-secondary mb-3 fs-6" style="white-space: pre-wrap;"><?= htmlspecialchars($active['prompt']) ?></div>
+
                 <?php if (!empty($active['code'])): ?>
-                    <pre class="p-3 bg-black bg-opacity-50 rounded border border-secondary border-opacity-25 text-light mt-auto mb-0" style="font-size: 0.85rem;"><code><?= htmlspecialchars($active['code']) ?></code></pre>
+                    <pre class="p-3 rounded border mt-auto mb-0" style="font-size: 0.85rem; background:var(--surface-2)"><code><?= htmlspecialchars($active['code']) ?></code></pre>
                 <?php endif; ?>
                 
                 <?php if (!empty($active['sponsor'])): ?>

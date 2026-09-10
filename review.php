@@ -144,7 +144,7 @@ require_once 'includes/navbar.php';
         <h1 class="page-title">Review Inbox</h1>
         <p class="page-desc">Nilai jujur tiap kartu. Lagi = besok, Sulit = segera, Bisa = sesuai jadwal, Mudah = lama.</p>
         <div class="page-actions review-back">
-            <a href="index.php" class="page-actions-link"><i class="fas fa-arrow-left" aria-hidden="true"></i>Dashboard</a>
+            <a href="hub.php" class="page-actions-link"><i class="fas fa-arrow-left" aria-hidden="true"></i>Hub</a>
         </div>
     </div>
 

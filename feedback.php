@@ -26,9 +26,9 @@ require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
-<div class="page-head"><div class="page-kicker eyebrow">MVP wajib · tutup gap</div>
+<div class="page-head"><div class="page-kicker eyebrow">Bantu kami lebih simpel</div>
 <h1 class="page-title">Feedback produk</h1>
-<p class="page-desc">Saran, bug, atau kepuasan. Dibaca untuk prioritas Phase berikutnya.</p></div>
+<p class="page-desc">Saran, bug, atau kepuasan. Satu form simpel — riwayatmu di bawah. Kamu juga bisa buka dari <a href="profile.php#feedback">Profil</a>.</p></div>
 <section class="card p-4 mb-3"><form method="POST" class="row g-2"><?= csrf_field() ?>
 <div class="col-md-3"><select name="kind" class="form-select"><option value="saran">Saran</option><option value="bug">Bug</option><option value="kepuasan">Kepuasan</option></select></div>
 <div class="col-md-7"><input name="message" class="form-control" maxlength="1000" placeholder="Contoh: hint lvl2 membantu, tambah soal K8s…" required></div>

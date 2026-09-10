@@ -113,9 +113,9 @@ class Tracks {
                 'title' => 'Brief Kreatif & Karya',
                 'desc'  => 'Kerjakan brief desain, kumpulkan karya & minta critique',
                 'icon'  => 'fas fa-palette',
-                'href'  => 'brief.php',
+                'href'  => 'quests.php',
                 'badge' => 'DKV',
-                'cta'   => 'Lihat Brief'
+                'cta'   => 'Lihat Roadmap'
             ],
             'devops' => [
                 'title' => 'Incident Simulator',
@@ -154,8 +154,7 @@ class Tracks {
         }
         if ($t === 'dkv') {
             return [
-                ['href' => 'brief.php', 'icon' => 'fas fa-pen-nib', 'title' => 'Brief Kreatif', 'desc' => 'proyek desain'],
-                ['href' => 'quests.php', 'icon' => 'fas fa-cloud-arrow-up', 'title' => 'Upload Karya', 'desc' => 'di roadmap'],
+                ['href' => 'quests.php', 'icon' => 'fas fa-cloud-arrow-up', 'title' => 'Roadmap & Karya', 'desc' => 'brief + upload'],
                 ['href' => 'lab.php', 'icon' => 'fas fa-flask', 'title' => 'Lab DKV', 'desc' => 'tantangan desain'],
             ];
         }

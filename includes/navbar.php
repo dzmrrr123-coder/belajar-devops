@@ -55,36 +55,29 @@ if (is_logged_in() && $hud_user):
 <div class="app-layout">
     <!-- Desktop Sidebar -->
     <aside class="app-sidebar">
-        <a class="sidebar-brand" href="index.php">
+        <a class="sidebar-brand" href="hub.php">
             <span class="brand-mark" aria-hidden="true">LT</span>
             <span class="brand-text">Learn Tracker</span>
         </a>
         <div class="sidebar-nav">
-            <div class="sidebar-section">Workspace</div>
+            <div class="sidebar-section">Belajar</div>
             <a class="sidebar-link <?= $current_script === 'hub.php' ? 'active' : '' ?>" href="hub.php"><i class="fas fa-desktop"></i>Hub Jurusan</a>
-            <a class="sidebar-link <?= $current_script === 'index.php' ? 'active' : '' ?>" href="index.php"><i class="fas fa-chart-line"></i>Statistik &amp; XP</a>
-            <div class="sidebar-section"><i class="<?= htmlspecialchars($nav_track_info['icon']) ?> me-1"></i><?= htmlspecialchars($nav_track_info['name']) ?></div>
-            <?php foreach ($nav_track_features as $nf): ?>
-            <a class="sidebar-link <?= $current_script === $nf['href'] ? 'active' : '' ?>" href="<?= htmlspecialchars($nf['href']) ?>"><i class="<?= htmlspecialchars($nf['icon']) ?>"></i><?= htmlspecialchars($nf['title']) ?></a>
-            <?php endforeach; ?>
-
-            <div class="sidebar-section">Aktivitas</div>
             <a class="sidebar-link <?= $current_script === 'quests.php' ? 'active' : '' ?>" href="quests.php"><i class="fas fa-map"></i>Roadmap</a>
             <a class="sidebar-link <?= $current_script === 'timer.php' ? 'active' : '' ?>" href="timer.php"><i class="fas fa-clock"></i>Fokus</a>
             <a class="sidebar-link <?= $current_script === 'review.php' ? 'active' : '' ?>" href="review.php"><i class="fas fa-rotate-right"></i>Review</a>
             <a class="sidebar-link <?= $current_script === 'errors.php' ? 'active' : '' ?>" href="errors.php"><i class="fas fa-note-sticky"></i>Catatan Error</a>
-            
-            <div class="sidebar-section">Latihan &amp; Materi</div>
-            <a class="sidebar-link <?= $current_script === 'mentor.php' ? 'active' : '' ?>" href="mentor.php"><i class="fas fa-robot"></i>Mentor</a>
+            <?php foreach ($nav_track_features as $nf): ?>
+            <a class="sidebar-link <?= $current_script === $nf['href'] ? 'active' : '' ?>" href="<?= htmlspecialchars($nf['href']) ?>"><i class="<?= htmlspecialchars($nf['icon']) ?>"></i><?= htmlspecialchars($nf['title']) ?></a>
+            <?php endforeach; ?>
+
+            <div class="sidebar-section">Latihan</div>
             <a class="sidebar-link <?= $current_script === 'quiz.php' ? 'active' : '' ?>" href="quiz.php"><i class="fas fa-brain"></i>Kuis Kilat</a>
+            <a class="sidebar-link <?= $current_script === 'mentor.php' ? 'active' : '' ?>" href="mentor.php"><i class="fas fa-robot"></i>Mentor</a>
             <a class="sidebar-link <?= $current_script === 'resources.php' ? 'active' : '' ?>" href="resources.php"><i class="fas fa-book-open"></i>Resources</a>
-            
-            <div class="sidebar-section">Komunitas &amp; Hasil</div>
+
+            <div class="sidebar-section">Kamu</div>
             <a class="sidebar-link <?= $current_script === 'leaderboard.php' ? 'active' : '' ?>" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a>
             <a class="sidebar-link <?= $current_script === 'squad.php' ? 'active' : '' ?>" href="squad.php"><i class="fas fa-users"></i>Squad</a>
-            <a class="sidebar-link <?= $current_script === 'duels.php' ? 'active' : '' ?>" href="duels.php"><i class="fas fa-hand-fist"></i>Duel 1v1</a>
-            
-            <div class="sidebar-section">Lainnya</div>
             <a class="sidebar-link <?= $current_script === 'shop.php' ? 'active' : '' ?>" href="shop.php"><i class="fas fa-store"></i>Toko XP</a>
         </div>
         <div class="sidebar-footer">
@@ -96,9 +89,6 @@ if (is_logged_in() && $hud_user):
                 </div>
             </a>
             <div class="d-flex align-items-center gap-2 mt-2">
-                <button class="theme-toggle ltThemeToggle flex-grow-0" type="button" title="Mode gelap / terang" aria-label="Ganti tema gelap atau terang">
-                    <i class="fas fa-moon" aria-hidden="true"></i>
-                </button>
                 <a href="logout.php" class="btn btn-cyber-outline btn-sm flex-grow-1">Keluar</a>
             </div>
         </div>
@@ -107,14 +97,11 @@ if (is_logged_in() && $hud_user):
     <div class="app-content">
         <!-- Mobile Topbar -->
         <header class="app-topbar">
-            <a class="app-topbar-brand" href="index.php">
+            <a class="app-topbar-brand" href="hub.php">
                 <span class="brand-mark" aria-hidden="true">LT</span>
                 Learn Tracker
             </a>
             <div class="d-flex align-items-center gap-2">
-                <button class="theme-toggle ltThemeToggle me-1" type="button" title="Mode gelap / terang" aria-label="Ganti tema gelap atau terang" style="padding:4px; font-size:1.2rem;">
-                    <i class="fas fa-moon" aria-hidden="true"></i>
-                </button>
                 <span class="hud-streak" title="Streak belajar">
                     <i class="fas fa-fire" aria-hidden="true"></i>
                     <span id="hudStreak"><?= (int)$hud_user['streak'] ?></span>
@@ -129,14 +116,11 @@ if (is_logged_in() && $hud_user):
 <!-- Fallback for non-logged-in users -->
 <nav class="lt-navbar navbar navbar-expand-lg" aria-label="Navigasi Utama">
     <div class="container lt-navbar-inner">
-        <a class="navbar-brand" href="index.php">
+        <a class="navbar-brand" href="hub.php">
             <span class="brand-mark" aria-hidden="true">LT</span>
             <span class="brand-text">Learn Tracker</span>
         </a>
         <div class="ms-auto d-flex align-items-center gap-2">
-            <button class="theme-toggle ltThemeToggle" type="button" title="Mode gelap / terang" aria-label="Ganti tema gelap atau terang">
-                <i class="fas fa-moon" aria-hidden="true"></i>
-            </button>
             <a href="pricing.php" class="btn btn-cyber-outline btn-sm">Harga</a>
             <a href="login.php" class="btn btn-cyber-outline btn-sm">Masuk</a>
             <a href="register.php" class="btn btn-cyber btn-sm">Daftar</a>

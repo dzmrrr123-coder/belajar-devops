@@ -18,7 +18,7 @@
 .bolt-say{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:8px 12px}
 .bolt-say p{margin:0;font-size:.85rem;color:var(--muted)}
 .bolt-say strong{color:var(--ink)}
-.bolt-overlay{position:fixed;inset:0;z-index:4000;display:flex;align-items:center;justify-content:center;background:rgba(10,14,12,.82);backdrop-filter:blur(4px);padding:20px}
+.bolt-overlay{position:fixed;inset:0;z-index:4000;display:flex;align-items:center;justify-content:center;background:rgba(28,36,32,.45);backdrop-filter:blur(4px);padding:20px}
 .bolt-overlay[hidden]{display:none}
 .bolt-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px 32px;text-align:center;max-width:min(420px,calc(100vw - 40px));box-shadow:var(--shadow-md)}
 .bolt-card .bolt{width:110px;height:110px}

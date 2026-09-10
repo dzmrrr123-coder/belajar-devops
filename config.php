@@ -18,8 +18,8 @@ set_exception_handler(function(Throwable $e) {
         <title>Application Error - Learn Tracker</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
         <style>
-            body { background-color: #0b0f19; color: #cbd5e1; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-            .card { background-color: #131b2e; border: 1px solid #1e293b; border-radius: 14px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+            body { background-color: #fafbfa; color: #1c2420; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+            .card { background-color: #fff; border: 1px solid #e3e9e4; border-radius: 14px; box-shadow: 0 12px 32px rgba(28,36,32,.08); }
             .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
         </style>
     </head>
@@ -56,7 +56,7 @@ register_shutdown_function(function() {
         if (!headers_sent()) {
             http_response_code(500);
         }
-        echo "<pre style='color:#f87171;background:#0f172a;padding:20px;border-radius:8px;font-family:monospace;'>FATAL ERROR: " . htmlspecialchars($err['message'] ?? '') . " in " . htmlspecialchars(basename($err['file'] ?? '')) . ":" . ($err['line'] ?? '') . "</pre>";
+        echo "<pre style='color:#9f1d1d;background:#fef2f2;padding:20px;border-radius:8px;font-family:monospace;border:1px solid #fecaca;'>FATAL ERROR: " . htmlspecialchars($err['message'] ?? '') . " in " . htmlspecialchars(basename($err['file'] ?? '')) . ":" . ($err['line'] ?? '') . "</pre>";
     }
 });
 
@@ -481,8 +481,8 @@ function render_db_error_page($error_msg, $host, $port, $user, $db) {
         <title>Database Connection Issue - Learn Tracker</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
         <style>
-            body { background-color: #0b0f19; color: #cbd5e1; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-            .card { background-color: #131b2e; border: 1px solid #1e293b; border-radius: 14px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+            body { background-color: #fafbfa; color: #1c2420; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+            .card { background-color: #fff; border: 1px solid #e3e9e4; border-radius: 14px; box-shadow: 0 12px 32px rgba(28,36,32,.08); }
             .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
         </style>
     </head>
@@ -502,8 +502,8 @@ function render_db_error_page($error_msg, $host, $port, $user, $db) {
                     <span class="font-mono small"><?= htmlspecialchars($error_msg) ?></span>
                 </div>
 
-                <h6 class="fw-bold text-white mb-2">Parameter Koneksi yang Terdeteksi:</h6>
-                <div class="bg-black bg-opacity-50 p-3 rounded-3 mb-4 border border-secondary border-opacity-25 small font-mono">
+                <h6 class="fw-bold mb-2">Parameter Koneksi yang Terdeteksi:</h6>
+                <div class="p-3 rounded-3 mb-4 border small font-mono" style="background:var(--surface-2, #f1f4f0)">
                     <div>DB_HOST : <span class="text-warning"><?= htmlspecialchars($host) ?></span></div>
                     <div>DB_PORT : <span class="text-warning"><?= htmlspecialchars((string)$port) ?></span></div>
                     <div>DB_USER : <span class="text-warning"><?= htmlspecialchars($user) ?></span></div>

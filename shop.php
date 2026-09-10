@@ -7,7 +7,6 @@ $user_id = (int)$_SESSION['user_id'];
 define('SHOP_FREEZE_PRICE', 100);
 define('SHOP_FLAIR_PRICE', 150);
 define('SHOP_FLAIR_EDIT_PRICE', 50);
-define('SHOP_REROLL_PRICE', 20);
 define('SHOP_FREEZE_MAX', 3);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -38,17 +37,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $up->bind_param("si", $flair, $user_id); $up->execute(); $up->close();
             award_xp($conn, $user_id, -$price, 'shop_flair');
             $msg = 'Flair dipasang: ' . $flair;
-        } elseif ($action === 'buy_reroll') {
-            if (rate_limit_hit('shop_reroll', 10, 60)) throw new Exception('Pelan-pelan. Maks 10 kocokan per menit.');
-            if ($balance < SHOP_REROLL_PRICE) throw new Exception('XP kurang. Butuh ' . SHOP_REROLL_PRICE . ' XP.');
-            try { $r = random_int(1, 100); } catch (Throwable $e) { $r = 50; }
-            if ($r <= 60) { try { $w = random_int(5, 10); } catch (Throwable $e) { $w = 7; } }
-            elseif ($r <= 90) { try { $w = random_int(11, 20); } catch (Throwable $e) { $w = 15; } }
-            else { try { $w = random_int(21, 30); } catch (Throwable $e) { $w = 25; } }
-            $win = shop_reroll_win($r, $w);
-            award_xp($conn, $user_id, -SHOP_REROLL_PRICE, 'shop_reroll');
-            award_xp($conn, $user_id, $win, 'shop_reroll_win');
-            $msg = 'Kocokan: +' . $win . ' XP! (modal ' . SHOP_REROLL_PRICE . ' XP)';
+        } elseif ($action === 'redeem') {
+            if (rate_limit_hit('redeem', 10, 3600)) throw new Exception('Terlalu sering. Coba lagi nanti.');
+            $code = trim($_POST['code'] ?? '');
+            if ($code === '') throw new Exception('Isi kode voucher dulu.');
+            \App\Domain\ProVoucher::ensureTables($conn);
+            $r = \App\Domain\ProVoucher::redeem($conn, $user_id, $code);
+            if (empty($r['ok'])) throw new Exception($r['msg'] ?? 'Voucher tidak valid.');
+            $msg = $r['msg'];
         } elseif ($action === 'buy_frame') {
             $frame = (string)($_POST['frame'] ?? '');
             $item = \App\Domain\Shop::lootByFrame($frame);
@@ -82,6 +78,7 @@ $loot_items = \App\Domain\Shop::lootFrames();
 $loot_owned = \App\Domain\Shop::ownedFrames($conn, $user_id);
 $conn->close();
 
+$tab = ($_GET['tab'] ?? 'hadiah') === 'voucher' ? 'voucher' : 'hadiah';
 $page_title = 'Toko XP';
 require_once 'includes/header.php';
 require_once 'includes/navbar.php';
@@ -91,8 +88,23 @@ require_once 'includes/navbar.php';
         <div class="page-kicker eyebrow">Toko XP · freeze <?= (int)$me['freeze_tokens'] ?>/<?= SHOP_FREEZE_MAX ?></div>
         <h1 class="page-title">Toko XP</h1>
         <div class="hero-num"><?= number_format((int)$me['xp']) ?> <small>XP saldo</small></div>
-        <p class="page-desc">Belanjakan XP: freeze penyelamat streak, flair nama, atau kocokan untung-untungan.</p>
+        <p class="page-desc">Belanjakan XP untuk freeze dan flair. Tukar kode voucher Pro di tab Voucher.</p>
+        <div class="segmented mt-2" role="group" aria-label="Tab toko">
+            <a href="shop.php?tab=hadiah" class="filter-pill <?= $tab === 'hadiah' ? 'active' : '' ?>">Hadiah</a>
+            <a href="shop.php?tab=voucher" class="filter-pill <?= $tab === 'voucher' ? 'active' : '' ?>">Voucher</a>
+        </div>
     </div>
+    <?php if ($tab === 'voucher'): ?>
+    <section class="card p-4" aria-label="Tukar voucher">
+        <h2 class="h5 fw-bold mb-1">Tukar voucher Pro</h2>
+        <p class="text-secondary small mb-3">Punya kode dari admin atau sekolah? Tukarkan di sini. Satu kode satu akun.</p>
+        <form method="POST" action="shop.php?tab=voucher" class="d-flex gap-2 m-0"><?= csrf_field() ?>
+            <input type="hidden" name="shop_action" value="redeem">
+            <input name="code" class="form-control" placeholder="VQ-XXXXXXXX" maxlength="16" required aria-label="Kode voucher" style="text-transform:uppercase">
+            <button class="btn btn-cyber btn-sm flex-shrink-0" type="submit">Tukar</button>
+        </form>
+    </section>
+    <?php else: ?>
 
     <div class="skill-grid showcase">
         <section class="card skill-card showcase-item rar rar-rare" aria-label="Beli freeze">
@@ -114,16 +126,6 @@ require_once 'includes/navbar.php';
                 <input type="hidden" name="shop_action" value="buy_flair">
                 <input name="flair" class="form-control form-control-sm" maxlength="24" placeholder="cth: Begadang enjoyer" value="<?= htmlspecialchars($me['flair'] ?? '') ?>" aria-label="Teks flair">
                 <button class="btn btn-cyber w-100 btn-sm" type="submit">Pasang</button>
-            </form>
-        </section>
-        <section class="card skill-card showcase-item rar rar-epic" aria-label="Kocok untung">
-            <div class="showcase-art" aria-hidden="true"></div>
-            <div class="skill-top"><span class="skill-icon" aria-hidden="true"><i class="fas fa-dice"></i></span><div class="skill-id"><strong>Kocok untung</strong><small>20 XP → 5–30 XP acak · bandar selalu menang</small></div></div>
-            <div class="showcase-price"><?= SHOP_REROLL_PRICE ?> <small>XP</small></div>
-            <form method="POST" action="shop.php" class="m-0 mt-2">
-                <?= csrf_field() ?>
-                <input type="hidden" name="shop_action" value="buy_reroll">
-                <button class="btn btn-cyber w-100 btn-sm" type="submit">Kocok</button>
             </form>
         </section>
     </div>
@@ -148,5 +150,6 @@ require_once 'includes/navbar.php';
         </section>
         <?php endforeach; ?>
     </div>
+    <?php endif; ?>
 </main>
 <?php require_once 'includes/footer.php'; ?>

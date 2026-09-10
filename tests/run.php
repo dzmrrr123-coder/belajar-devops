@@ -377,7 +377,7 @@ check('guard general quests open', \App\Domain\Track\Tracks::isPageAllowed('ques
 // Test Primary Features per track
 check('feat rpl', \App\Domain\Track\Tracks::primaryFeature('rpl')['href'], 'playground.php');
 check('feat tkj', \App\Domain\Track\Tracks::primaryFeature('tkj')['href'], 'topologi.php');
-check('feat dkv', \App\Domain\Track\Tracks::primaryFeature('dkv')['href'], 'brief.php');
+check('feat dkv', \App\Domain\Track\Tracks::primaryFeature('dkv')['href'], 'quests.php');
 check('feat devops', \App\Domain\Track\Tracks::primaryFeature('devops')['href'], 'incident.php');
 
 // Test Track Curated Resources

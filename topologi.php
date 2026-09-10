@@ -30,8 +30,8 @@ require_once 'includes/header.php';
 require_once 'includes/navbar.php';
 ?>
 <main class="container py-4" role="main">
-<div class="page-head"><div class="page-kicker eyebrow">TKJ · kalkulator + kanvas</div>
-<h1 class="page-title">Topologi & subnet</h1><p class="page-desc">Hitung network/broadcast/host, rancang topologi drag, simpan ke akun.</p></div>
+<div class="page-head"><div class="page-kicker eyebrow">TKJ · kalkulator subnet</div>
+<h1 class="page-title">Topologi & subnet</h1><p class="page-desc">Hitung network/broadcast/host dulu. Kanvas drag opsional di bawah.</p></div>
 <div class="row g-4 align-items-start">
     <div class="col-lg-3">
         <section class="card p-3 mb-3 border-0 shadow-sm">
@@ -69,7 +69,10 @@ require_once 'includes/navbar.php';
     </div>
 
     <div class="col-lg-9">
-        <section class="card border-0 shadow-sm overflow-hidden p-0">
+        <details class="card border-0 shadow-sm overflow-hidden p-3">
+            <summary class="h6 fw-bold mb-0" style="cursor:pointer"><i class="fas fa-network-wired me-2"></i>Kanvas topologi (opsional) — klik untuk buka</summary>
+            <div class="mt-3">
+        <section class="card border shadow-sm overflow-hidden p-0">
             <!-- Toolbar -->
             <div class="bg-body-tertiary p-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-3">
@@ -86,7 +89,7 @@ require_once 'includes/navbar.php';
             </div>
             
             <!-- Sandbox Canvas -->
-            <div class="position-relative bg-dark topo-canvas-wrapper w-100" style="height: 400px; border-radius: 0;">
+            <div class="position-relative topo-canvas-wrapper w-100" style="height: 400px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line);">
                 <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="position: absolute; top:0; left:0; pointer-events: none;">
                     <defs>
                         <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -111,6 +114,8 @@ require_once 'includes/navbar.php';
                 </form>
             </div>
         </section>
+            </div>
+        </details>
     </div>
 </div>
 </main>

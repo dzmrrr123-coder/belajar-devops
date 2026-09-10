@@ -192,7 +192,7 @@ require_once 'includes/navbar.php';
         <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="tab-overview" tabindex="0">
             <div class="row g-4 align-items-start">
                 <div class="col-lg-8">
-                    <section class="card p-4" aria-label="Aktivitas 12 minggu">
+                    <section class="card p-4" aria-label="Aktivitas 12 minggu" id="skills">
                         <h2 class="h5 fw-bold mb-1">Konsistensi 12 minggu</h2>
                         <p class="text-secondary small mb-3">Semakin gelap, semakin aktif. Ketuk kotak untuk detail.</p>
                         <div class="heatmap" role="img" aria-label="Heatmap aktivitas">
@@ -299,6 +299,11 @@ require_once 'includes/navbar.php';
                         </form>
                         <?php if (!empty($user['public_profile'])): ?><p class="small mt-2 mb-0">Link publik: <a href="u.php?u=<?= urlencode($user['username']) ?>">u.php?u=<?= htmlspecialchars($user['username']) ?></a></p><?php endif; ?>
                     </section>
+                    <section class="card p-4 mt-4" aria-label="Bantuan dan feedback" id="feedback">
+                        <h2 class="h5 fw-bold mb-1">Butuh bantuan?</h2>
+                        <p class="text-secondary small mb-3">Lapor bug atau usul fitur simpel.</p>
+                        <a href="feedback.php" class="btn btn-cyber-outline btn-sm w-100">Beri feedback</a>
+                    </section>
                 </div>
                 
                 <div class="col-lg-6">
@@ -316,7 +321,7 @@ require_once 'includes/navbar.php';
 
                     <section class="card p-4 border-danger" aria-label="Zona berbahaya">
                         <h2 class="h5 fw-bold mb-1 text-danger">Hapus akun</h2>
-                        <p class="text-secondary small mb-3">Menghapus permanen semua quest, catatan, dan XP. Unduh dulu via <a href="export.php?format=json">JSON</a> bila perlu.</p>
+                        <p class="text-secondary small mb-3">Menghapus permanen semua quest, catatan, dan XP. Tindakan ini tidak bisa dibatalkan.</p>
                         <form method="POST" action="profile.php" onsubmit="return confirm('Hapus akun permanen? Tindakan ini tidak bisa dibatalkan.')">
                             <?= csrf_field() ?>
                             <input type="hidden" name="action" value="delete_account">

@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
     $question = mb_substr(trim(clean($_POST['question'] ?? '')), 0, 255);
     $answer = mb_substr(trim(clean($_POST['answer'] ?? '')), 0, 2000);
     $qtopic = in_array($_POST['topic'] ?? '', quiz_topics(user_track($conn, $user_id)), true) ? $_POST['topic'] : 'General';
-    $back = ($_POST['back'] ?? '') === 'questions.php' ? 'questions.php' : 'errors.php';
+    $back = 'errors.php';
     if ($question === '' || $answer === '' || $source_id <= 0) {
         set_flash('warning', 'Pertanyaan, jawaban, dan sumber wajib diisi.');
     } else {
@@ -139,8 +139,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
     redirect('quiz.php?mode=' . $mode . '&ids=' . implode(',', $ids) . '&i=' . $next_i);
 }
 
-// Daftar kartu sesi ini
+// Daftar kartu sesi ini — mode latihan/review digabung ke review.php, kuis hanya blitz
 $mode = in_array(($_GET['mode'] ?? ''), ['review', 'blitz'], true) ? $_GET['mode'] : 'latihan';
+if (in_array($mode, ['latihan', 'review'], true) && empty($_GET['ids']) && empty($_GET['done'])) {
+    redirect('review.php');
+}
 $is_blitz = $mode === 'blitz';
 $quiz_topics = quiz_topics(user_track($conn, $user_id));
 $topic = in_array($_GET['topic'] ?? 'all', $quiz_topics, true) ? $_GET['topic'] : 'all';
@@ -235,15 +238,14 @@ require_once 'includes/navbar.php';
 ?>
 <main class="container py-4 quiz-page" role="main">
     <div class="page-head arena-banner">
-        <div class="page-kicker eyebrow"><?= $total_cards ?> kartu · <?= $due_count ?> jatuh tempo</div>
-        <h1 class="page-title">Kuis</h1>
+        <div class="page-kicker eyebrow">Kilat 60 detik · <?= $total_cards ?> kartu</div>
+        <h1 class="page-title">Kuis kilat</h1>
         <div class="hero-num">+<?= $quiz_quota_left ?> <small>XP kuota hari ini</small></div>
-        <p class="page-desc">Hafalan kilat satu kartu satu waktu. Tahu = +2 XP (maks +<?= QUIZ_DAILY_XP_CAP ?>/hari).</p>
+        <p class="page-desc">Jawab cepat 60 detik. Tahu = +2 XP (maks +<?= QUIZ_DAILY_XP_CAP ?>/hari). Butuh latihan santai? <a href="review.php">Buka Review</a>.</p>
         <div class="page-actions leaderboard-actions">
             <div class="segmented" role="group" aria-label="Mode kuis">
-                <a href="quiz.php?mode=latihan<?= $topic !== 'all' ? '&topic=' . urlencode($topic) : '' ?>" class="filter-pill <?= $mode === 'latihan' ? 'active' : '' ?>">Latihan acak</a>
-                <a href="quiz.php?mode=review<?= $topic !== 'all' ? '&topic=' . urlencode($topic) : '' ?>" class="filter-pill <?= $mode === 'review' ? 'active' : '' ?>">Review (<?= $due_count ?>)</a>
-                <a href="quiz.php?mode=blitz" class="filter-pill <?= $mode === 'blitz' ? 'active' : '' ?>">Kilat 60 dtk</a>
+                <a href="quiz.php?mode=blitz" class="filter-pill active">Kilat 60 dtk</a>
+                <a href="review.php" class="filter-pill">Review (<?= $due_count ?>)</a>
             </div>
             <div class="segmented" role="group" aria-label="Topik kuis">
                 <a href="quiz.php?mode=<?= $mode ?>" class="filter-pill <?= $topic === 'all' ? 'active' : '' ?>">Semua</a>
@@ -258,10 +260,10 @@ require_once 'includes/navbar.php';
     <div class="empty-state card p-4 p-md-5">
         <div class="empty-state-icon"><i class="fas fa-brain" aria-hidden="true"></i></div>
         <h2 class="h5 fw-bold">Belum ada kartu kuis</h2>
-        <p class="text-secondary small mb-3">Buat dari catatan error atau pertanyaanmu — cukup sekali ketuk.</p>
+        <p class="text-secondary small mb-3">Buat dari catatan errormu — cukup sekali ketuk.</p>
         <div class="d-flex gap-2 justify-content-center flex-wrap">
             <a href="errors.php" class="btn btn-cyber-outline btn-sm">Ke Notes</a>
-            <a href="questions.php" class="btn btn-cyber-outline btn-sm">Ke Questions</a>
+            <a href="review.php" class="btn btn-cyber-outline btn-sm">Ke Review</a>
         </div>
     </div>
     <?php elseif ($done): ?>
@@ -270,7 +272,7 @@ require_once 'includes/navbar.php';
         <h2 class="h5 fw-bold"><?= $is_blitz ? 'Waktu habis!' : 'Sesi selesai!' ?></h2>
         <p class="text-secondary small mb-3">Tahu <?= (int)($run['tahu'] ?? 0) ?> · Lupa <?= (int)($run['lupa'] ?? 0) ?> · +<?= (int)($run['xp'] ?? 0) ?> XP sesi ini.<?= $is_blitz && $blitz_best !== null ? ' · Terbaik hari ini: ' . (int)$blitz_best : '' ?></p>
         <div class="d-flex gap-2 justify-content-center flex-wrap">
-            <a href="quiz.php?mode=<?= $is_blitz ? 'blitz' : 'latihan' ?>" class="btn btn-cyber btn-sm">Main lagi</a>
+            <a href="quiz.php?mode=blitz" class="btn btn-cyber btn-sm">Main lagi</a>
             <a href="review.php" class="btn btn-cyber-outline btn-sm">Ke Review</a>
         </div>
     </div>

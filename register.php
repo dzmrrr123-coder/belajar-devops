@@ -3,7 +3,7 @@ require_once 'config.php';
 
 // Redirect if already logged in
 if (is_logged_in()) {
-    redirect('index.php');
+    redirect('hub.php');
 }
 
 $error = '';

@@ -7,6 +7,15 @@ $user_id = (int)$_SESSION['user_id'];
 $track = user_track($conn, $user_id);
 $trackInfo = \App\Domain\Track\Tracks::all()[$track] ?? ['name' => strtoupper($track), 'icon' => 'fas fa-graduation-cap', 'desc' => ''];
 $widgetData = \App\Domain\Track\Hub::getWidgetData($conn, $user_id, $track);
+$today_streak = 0; $today_chest_opened = false; $today_due = 0;
+try {
+    $hq = $conn->prepare("SELECT streak FROM users WHERE id = ?");
+    if ($hq) { $hq->bind_param("i", $user_id); $hq->execute(); $today_streak = (int)($hq->get_result()->fetch_assoc()['streak'] ?? 0); $hq->close(); }
+    $hq = $conn->prepare("SELECT 1 FROM daily_chests WHERE user_id = ? AND chest_date = CURDATE()");
+    if ($hq) { $hq->bind_param("i", $user_id); $hq->execute(); $today_chest_opened = (bool)$hq->get_result()->fetch_assoc(); $hq->close(); }
+    $hq = $conn->prepare("SELECT COUNT(*) c FROM reviews WHERE user_id = ? AND next_due <= CURDATE()");
+    if ($hq) { $hq->bind_param("i", $user_id); $hq->execute(); $today_due = (int)($hq->get_result()->fetch_assoc()['c'] ?? 0); $hq->close(); }
+} catch (Throwable $e) {}
 $conn->close();
 
 $page_title = 'Hub Jurusan ' . $trackInfo['name'];
@@ -27,30 +36,36 @@ require_once 'includes/navbar.php';
             </div>
             <span class="small font-monospace text-muted"><?= $widgetData['track_progress']['percent'] ?>% Selesai (<?= $widgetData['track_progress']['done'] ?>/<?= $widgetData['track_progress']['total'] ?>)</span>
         </div>
+        <div class="d-flex gap-2 flex-wrap mt-3">
+            <span class="filter-pill"><i class="fas fa-fire me-1"></i><?= (int)$today_streak ?> hari</span>
+            <?php if (!$today_chest_opened): ?><a href="quests.php" class="filter-pill">Peti harian: klaim di Roadmap</a><?php endif; ?>
+            <?php if ($today_due > 0): ?><a href="review.php" class="filter-pill"><?= (int)$today_due ?> review jatuh tempo</a><?php endif; ?>
+            <a href="quests.php" class="filter-pill">Target minggu ini <i class="fas fa-arrow-right ms-1"></i></a>
+        </div>
     </div>
 
     <!-- Track Specific Content -->
     <?php if ($track === 'rpl'): ?>
     <div class="row g-4">
         <div class="col-lg-8 d-flex flex-column gap-4">
-            <section class="card border-0 shadow-sm p-4 bg-dark text-light">
+            <section class="card border-0 shadow-sm p-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2 class="h5 fw-bold mb-0 text-info"><i class="fas fa-terminal me-2"></i>Code Studio</h2>
-                    <a href="playground.php" class="btn btn-sm btn-outline-info">Buka Playground <i class="fas fa-arrow-right ms-1"></i></a>
+                    <h2 class="h5 fw-bold mb-0"><i class="fas fa-terminal me-2 text-primary"></i>Code Studio</h2>
+                    <a href="playground.php" class="btn btn-sm btn-cyber-outline">Buka Playground <i class="fas fa-arrow-right ms-1"></i></a>
                 </div>
                 <div class="row g-3">
                     <div class="col-sm-6">
                         <a href="lab.php" class="text-decoration-none">
-                            <div class="p-3 rounded border border-secondary border-opacity-25 bg-black bg-opacity-25 h-100 dash-hover">
-                                <h3 class="h6 text-light mb-1"><i class="fas fa-flask text-warning me-2"></i>Algorithmic Labs</h3>
+                            <div class="p-3 rounded border h-100 dash-hover" style="background:var(--surface-2)">
+                                <h3 class="h6 mb-1"><i class="fas fa-flask text-warning me-2"></i>Algorithmic Labs</h3>
                                 <p class="small text-secondary mb-0">Tantangan koding harian</p>
                             </div>
                         </a>
                     </div>
                     <div class="col-sm-6">
                         <a href="quests.php" class="text-decoration-none">
-                            <div class="p-3 rounded border border-secondary border-opacity-25 bg-black bg-opacity-25 h-100 dash-hover">
-                                <h3 class="h6 text-light mb-1"><i class="fas fa-code-branch text-success me-2"></i>Project Roadmap</h3>
+                            <div class="p-3 rounded border h-100 dash-hover" style="background:var(--surface-2)">
+                                <h3 class="h6 mb-1"><i class="fas fa-code-branch text-success me-2"></i>Project Roadmap</h3>
                                 <p class="small text-secondary mb-0">Lanjutkan sprint mingguanmu</p>
                             </div>
                         </a>
@@ -93,21 +108,21 @@ require_once 'includes/navbar.php';
     <?php elseif ($track === 'tkj'): ?>
     <div class="row g-4">
         <div class="col-lg-8 d-flex flex-column gap-4">
-            <section class="card border-0 shadow-sm overflow-hidden bg-dark text-light">
-                <div class="p-4 border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
-                    <h2 class="h5 fw-bold mb-0 text-success"><i class="fas fa-server me-2"></i>Network Operations Center</h2>
-                    <span class="badge bg-success bg-opacity-25 text-success"><i class="fas fa-circle-check me-1"></i>All Systems Operational</span>
+            <section class="card border-0 shadow-sm overflow-hidden">
+                <div class="p-4 border-bottom d-flex justify-content-between align-items-center" style="background:var(--surface-2)">
+                    <h2 class="h5 fw-bold mb-0"><i class="fas fa-server me-2 text-success"></i>Network Operations Center</h2>
+                    <span class="badge bg-success-subtle text-success"><i class="fas fa-circle-check me-1"></i>All Systems Operational</span>
                 </div>
                 <div class="p-0 row g-0">
-                    <div class="col-sm-6 border-end border-secondary border-opacity-25 p-4">
-                        <h3 class="h6 text-secondary mb-3"><i class="fas fa-network-wired me-2"></i>Topology Canvas</h3>
-                        <p class="small text-light text-opacity-75 mb-3">Rancang topologi jaringan interaktif dengan router, switch, dan PC.</p>
-                        <a href="topologi.php" class="btn btn-sm btn-outline-success w-100">Buka Kanvas</a>
+                    <div class="col-sm-6 border-end p-4">
+                        <h3 class="h6 mb-3"><i class="fas fa-network-wired me-2 text-primary"></i>Topology Canvas</h3>
+                        <p class="small text-secondary mb-3">Rancang topologi jaringan interaktif dengan router, switch, dan PC.</p>
+                        <a href="topologi.php" class="btn btn-sm btn-cyber-outline w-100">Buka Kanvas</a>
                     </div>
                     <div class="col-sm-6 p-4">
-                        <h3 class="h6 text-secondary mb-3"><i class="fas fa-fire-extinguisher me-2"></i>Incident Simulator</h3>
-                        <p class="small text-light text-opacity-75 mb-3">Simulasikan server down dan pelajari cara memperbaikinya.</p>
-                        <a href="incident.php" class="btn btn-sm btn-outline-warning w-100">Simulasi Sekarang</a>
+                        <h3 class="h6 mb-3"><i class="fas fa-fire-extinguisher me-2 text-warning"></i>Incident Simulator</h3>
+                        <p class="small text-secondary mb-3">Simulasikan server down dan pelajari cara memperbaikinya.</p>
+                        <a href="incident.php" class="btn btn-sm btn-cyber w-100">Simulasi Sekarang</a>
                     </div>
                 </div>
             </section>
@@ -154,14 +169,14 @@ require_once 'includes/navbar.php';
     <?php elseif ($track === 'dkv'): ?>
     <div class="row g-4">
         <div class="col-lg-12">
-            <section class="card border-0 shadow-sm overflow-hidden" style="background: linear-gradient(45deg, #1e1e1e, #2d2d2d); color: #fff;">
+            <section class="card border-0 shadow-sm overflow-hidden arena-banner">
                 <div class="row g-0">
                     <div class="col-md-8 p-5 d-flex flex-column justify-content-center">
                         <h2 class="display-6 fw-bold mb-2">Creative Atelier</h2>
-                        <p class="lead text-white-50 mb-4">Selesaikan design brief mingguan, kumpulkan portofolio, dan asah skill visualmu.</p>
+                        <p class="lead text-secondary mb-4">Selesaikan design brief mingguan, kumpulkan portofolio, dan asah skill visualmu.</p>
                         <div class="d-flex gap-3">
-                            <a href="brief.php" class="btn btn-light text-dark fw-bold px-4">Lihat Design Brief</a>
-                            <a href="lab.php" class="btn btn-outline-light px-4">Tantangan Cepat</a>
+                            <a href="quests.php" class="btn btn-cyber px-4">Lihat Design Brief</a>
+                            <a href="lab.php" class="btn btn-cyber-outline px-4">Tantangan Cepat</a>
                         </div>
                     </div>
                     <div class="col-md-4 d-none d-md-flex align-items-center justify-content-center p-4">
@@ -199,28 +214,28 @@ require_once 'includes/navbar.php';
     <?php elseif ($track === 'devops'): ?>
     <div class="row g-4">
         <div class="col-lg-8 d-flex flex-column gap-4">
-            <section class="card border-0 shadow-sm overflow-hidden bg-dark text-light">
-                <div class="p-4 border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
-                    <h2 class="h5 fw-bold mb-0 text-primary"><i class="fas fa-rocket me-2"></i>DevOps Command Center</h2>
-                    <span class="badge bg-primary bg-opacity-25 text-primary"><i class="fas fa-circle-check me-1"></i>Pipelines Ready</span>
+            <section class="card border-0 shadow-sm overflow-hidden">
+                <div class="p-4 border-bottom d-flex justify-content-between align-items-center" style="background:var(--surface-2)">
+                    <h2 class="h5 fw-bold mb-0"><i class="fas fa-rocket me-2 text-primary"></i>DevOps Command Center</h2>
+                    <span class="badge bg-primary-subtle text-primary"><i class="fas fa-circle-check me-1"></i>Pipelines Ready</span>
                 </div>
                 <div class="p-0 row g-0">
-                    <div class="col-sm-4 border-end border-secondary border-opacity-25 p-4 text-center hover-bg-secondary-opacity">
-                        <a href="incident.php" class="text-decoration-none text-light d-block h-100">
+                    <div class="col-sm-4 border-end p-4 text-center">
+                        <a href="incident.php" class="text-decoration-none d-block h-100 text-body">
                             <i class="fas fa-fire-extinguisher fs-2 text-danger mb-3"></i>
                             <h3 class="h6 fw-bold mb-1">Incident Sim</h3>
                             <p class="small text-secondary mb-0">Latih penanganan error</p>
                         </a>
                     </div>
-                    <div class="col-sm-4 border-end border-secondary border-opacity-25 p-4 text-center hover-bg-secondary-opacity">
-                        <a href="terminal.php" class="text-decoration-none text-light d-block h-100">
+                    <div class="col-sm-4 border-end p-4 text-center">
+                        <a href="terminal.php" class="text-decoration-none d-block h-100 text-body">
                             <i class="fas fa-terminal fs-2 text-success mb-3"></i>
                             <h3 class="h6 fw-bold mb-1">Terminal</h3>
                             <p class="small text-secondary mb-0">Linux & Git cli</p>
                         </a>
                     </div>
-                    <div class="col-sm-4 p-4 text-center hover-bg-secondary-opacity">
-                        <a href="playground.php" class="text-decoration-none text-light d-block h-100">
+                    <div class="col-sm-4 p-4 text-center">
+                        <a href="playground.php" class="text-decoration-none d-block h-100 text-body">
                             <i class="fas fa-code fs-2 text-info mb-3"></i>
                             <h3 class="h6 fw-bold mb-1">Playground</h3>
                             <p class="small text-secondary mb-0">Test scripts</p>

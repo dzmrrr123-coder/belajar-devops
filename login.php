@@ -132,7 +132,7 @@ require_once 'includes/navbar.php';
                 <input class="form-check-input" type="checkbox" name="remember" id="remember-me">
                 <label class="form-check-label small text-secondary" for="remember-me">Ingat saya di perangkat pribadi ini (30 hari). Jangan centang di komputer sekolah/warnet.</label>
             </div>
-            <p class="small text-secondary mb-3">Lupa kata sandi? <a href="feedback.php">Minta bantuan</a>.</p>
+            <p class="small text-secondary mb-3">Lupa kata sandi? Hubungi guru/admin sekolahmu untuk reset.</p>
 
             <button type="submit" class="btn btn-cyber w-100 py-2 mt-1">
                 <i class="fas fa-sign-in-alt me-2" aria-hidden="true"></i> Masuk

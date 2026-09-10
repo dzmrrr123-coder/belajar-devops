@@ -50,7 +50,7 @@ require_once 'includes/navbar.php';
 <div class="d-flex gap-2 mt-2">
 <?php if (($task['lang'] ?? '') === 'js'): ?><button type="button" class="btn btn-cyber-outline btn-sm" id="pgRun">Jalankan di browser</button><?php endif; ?>
 <button class="btn btn-cyber btn-sm" type="submit">Kumpulkan</button></div></form>
-<?php if (($task['lang'] ?? '') === 'js'): ?><pre id="pgOut" class="small p-2 bg-dark text-light rounded mt-2">output browser muncul di sini…</pre>
+<?php if (($task['lang'] ?? '') === 'js'): ?><pre id="pgOut" class="small p-2 rounded mt-2 border" style="background:var(--surface-2)">output browser muncul di sini…</pre>
 <script>
 document.getElementById('pgRun').onclick = () => {
   const code = document.getElementById('pgCode').value;

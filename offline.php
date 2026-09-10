@@ -21,7 +21,7 @@
         <p>Progres belajarmu aman. Antrean di bawah terkirim otomatis saat online, bahkan saat aplikasi tertutup.</p>
         <div class="queue" id="queueInfo">0 antrean</div>
         <div class="links">
-            <a href="index.php">Overview</a>
+            <a href="hub.php">Hub</a>
             <a href="quests.php">Roadmap</a>
             <a href="timer.php">Fokus</a>
             <a href="errors.php">Catatan</a>

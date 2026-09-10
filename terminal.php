@@ -43,11 +43,11 @@ require_once 'includes/navbar.php';
 <h1 class="page-title">Terminal lab</h1><p class="page-desc">Misi: <?= htmlspecialchars($mission['title']) ?> — <?= htmlspecialchars($mission['goal']) ?></p></div>
 <div class="d-flex flex-wrap gap-2 mb-3"><?php foreach ($missions as $m): ?><a class="btn btn-cyber-outline btn-sm<?= $m['slug'] === $mission['slug'] ? ' active' : '' ?>" href="terminal.php?m=<?= urlencode($m['slug']) ?>"><?= htmlspecialchars($m['title']) ?></a><?php endforeach; ?></div>
 <?php if (!empty($st['claimed'])): ?><div class="card p-3 mb-3"><div class="page-kicker">Misi selesai · klaim XP harian otomatis</div></div><?php endif; ?>
-<section class="card p-3 mb-3 bg-dark text-light"><div class="small font-monospace" style="min-height:180px" aria-live="polite">
+<section class="card p-3 mb-3"><div class="small font-monospace rounded p-3" style="min-height:180px; background:var(--surface-2)" aria-live="polite">
 <?php foreach (($st['log'] ?? []) as $ln): ?><div><?= htmlspecialchars($ln[0]) ?></div><div class="text-secondary"><?= htmlspecialchars($ln[1]) ?></div><?php endforeach; ?>
 <?php if (empty($st['log'])): ?><div class="text-secondary">ketik help lalu mulai misi…</div><?php endif; ?>
 </div>
-<form method="POST" class="d-flex gap-2 mt-2"><?= csrf_field() ?><input type="hidden" name="m" value="<?= htmlspecialchars($mission['slug']) ?>"><span class="text-success font-monospace">$</span><input name="cmd" class="form-control form-control-sm font-monospace bg-dark text-light" autocomplete="off" placeholder="help" aria-label="Perintah terminal"><button class="btn btn-cyber btn-sm" type="submit">Run</button></form>
+<form method="POST" class="d-flex gap-2 mt-2"><?= csrf_field() ?><input type="hidden" name="m" value="<?= htmlspecialchars($mission['slug']) ?>"><span class="text-success font-monospace">$</span><input name="cmd" class="form-control form-control-sm font-monospace" autocomplete="off" placeholder="help" aria-label="Perintah terminal"><button class="btn btn-cyber btn-sm" type="submit">Run</button></form>
 <form method="POST" class="mt-2"><?= csrf_field() ?><input type="hidden" name="m" value="<?= htmlspecialchars($mission['slug']) ?>"><input type="hidden" name="action" value="reset"><button class="btn btn-cyber-outline btn-sm" type="submit">Reset sesi</button></form></section>
 </main>
 <?php require_once 'includes/footer.php'; ?>

@@ -54,8 +54,8 @@ function enforce_track_access(\mysqli $conn, int $user_id, array $allowed_tracks
                         <a href="quests.php" class="btn btn-cyber-outline">
                             <i class="fas fa-map me-1" aria-hidden="true"></i> Buka Roadmap <?= htmlspecialchars($myTrackInfo['name']) ?>
                         </a>
-                        <a href="index.php" class="btn btn-cyber-outline">
-                            <i class="fas fa-house me-1" aria-hidden="true"></i> Dashboard Overview
+                        <a href="hub.php" class="btn btn-cyber-outline">
+                            <i class="fas fa-house me-1" aria-hidden="true"></i> Hub Jurusan
                         </a>
                     </div>
 

@@ -19,6 +19,8 @@ $flash = get_flash();
                 <span aria-hidden="true">•</span>
                 <span>Level up setiap hari</span>
                 <span aria-hidden="true">•</span>
+                <a href="feedback.php" class="text-muted text-decoration-none">Beri feedback</a>
+                <span aria-hidden="true">•</span>
                 <button type="button" class="btn btn-link btn-sm text-muted p-0" data-motion-toggle aria-pressed="false" aria-label="Kurangi animasi"><i class="fas fa-person-running" aria-hidden="true"></i> <span>Animasi: aktif</span></button>
             </div>
         </div>
@@ -32,10 +34,10 @@ $flash = get_flash();
     <?php if (is_logged_in()):
         $current_page = $current_page ?? basename($_SERVER['PHP_SELF'] ?? '');
         $tabs = [
-            ['hub.php', 'fas fa-desktop', 'Workspace'],
-            ['index.php', 'fas fa-chart-line', 'Overview'],
+            ['hub.php', 'fas fa-desktop', 'Hub'],
             ['quests.php', 'fas fa-map', 'Roadmap'],
             ['timer.php', 'fas fa-clock', 'Fokus'],
+            ['review.php', 'fas fa-rotate-right', 'Review'],
             ['profile.php', 'fas fa-user', 'Profil'],
         ];
     ?>
@@ -65,10 +67,10 @@ $flash = get_flash();
     <?php
     $page_js = ['core.js', 'site.js', 'sync.js', 'ambience.js'];
     if ($logged) $page_js[] = 'lofi.js';
-    if (in_array($pg, ['index.php', 'quests.php'], true)) $page_js[] = 'quests.js';
+    if (in_array($pg, ['hub.php', 'quests.php'], true)) $page_js[] = 'quests.js';
     if ($pg === 'review.php') $page_js[] = 'cards.js';
-    if (in_array($pg, ['index.php', 'quests.php', 'onboarding.php'], true)) $page_js[] = 'mascot.js';
-    if (in_array($pg, ['index.php', 'profile.php'], true)) $page_js[] = 'share-card.js';
+    if (in_array($pg, ['hub.php', 'quests.php', 'onboarding.php'], true)) $page_js[] = 'mascot.js';
+    if (in_array($pg, ['hub.php', 'profile.php'], true)) $page_js[] = 'share-card.js';
     if (in_array($pg, ['leaderboard.php', 'u.php'], true)) $page_js[] = 'reactions.js';
     foreach ($page_js as $js):
         $jsp = __DIR__ . '/../assets/js/' . $js;

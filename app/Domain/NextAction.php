@@ -23,7 +23,7 @@ class NextAction {
         if ((int)($s['pomo_today'] ?? 0) === 0) {
             return ['type' => 'focus', 'title' => 'Mulai sesi fokus', 'desc' => '25 menit · +10 XP · lanjutkan quest minggu ini', 'href' => 'timer.php', 'cta' => 'Fokus'];
         }
-        return ['type' => 'digest', 'title' => 'Minggu ini beres!', 'desc' => 'lihat ringkasan & rencanakan berikutnya', 'href' => 'digest.php', 'cta' => 'Ringkasan'];
+        return ['type' => 'digest', 'title' => 'Minggu ini beres!', 'desc' => 'lihat progres & rencanakan berikutnya', 'href' => 'hub.php', 'cta' => 'Hub'];
     }
     public static function signals(\mysqli $conn, int $uid): array {
         $out = ['claimable_n' => 0, 'claimable_xp' => 0, 'due_reviews' => 0, 'pomo_today' => 0, 'next_quest' => null, 'streak_broken' => false];

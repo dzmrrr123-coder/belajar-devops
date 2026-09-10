@@ -124,7 +124,6 @@ require_once 'includes/navbar.php';
                 <a href="leaderboard.php?scope=week" class="filter-pill <?= $scope === 'week' ? 'active' : '' ?>">Minggu ini</a>
                 <a href="leaderboard.php?scope=improve" class="filter-pill <?= $scope === 'improve' ? 'active' : '' ?>">Improvement</a>
             </div>
-            <a href="duels.php" class="page-actions-link">Duel 1v1 <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
             <a href="squad.php" class="page-actions-link">Squad <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
             <a href="profile.php" class="page-actions-link">Visibilitas <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>
         </div>
@@ -179,9 +178,6 @@ require_once 'includes/navbar.php';
             </div>
             <?php endif; ?>
             </div>
-            <?php if ($rid > 0 && $rid !== $user_id): ?>
-            <a class="btn btn-cyber-outline btn-sm flex-shrink-0 align-self-center" href="duels.php?vs=<?= urlencode($r['username']) ?>" aria-label="Tantang <?= htmlspecialchars($r['username']) ?> duel"><i class="fas fa-hand-fist" aria-hidden="true"></i></a>
-            <?php endif; ?>
         </div>
         <?php endforeach; ?>
     </div>
