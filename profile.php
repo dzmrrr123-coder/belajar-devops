@@ -424,6 +424,15 @@ document.getElementById('flexDownload')?.addEventListener('click', function() {
     a.href = flexCanvas.toDataURL('image/png');
     a.click();
 });
+(function() {
+    var h = (location.hash || '').replace('#', '');
+    if (h === 'trophies' || h === 'skills' || h === 'feedback') {
+        var btn = document.getElementById(h === 'trophies' ? 'tab-trophies' : h === 'feedback' ? 'tab-settings' : 'tab-overview');
+        if (btn) btn.click();
+        var el = document.getElementById(h);
+        if (el) setTimeout(function() { el.scrollIntoView({ block: 'start' }); }, 300);
+    }
+})();
 document.getElementById('flexShare')?.addEventListener('click', function() {
     if (!flexCanvas) return;
     flexCanvas.toBlob(async function(blob) {

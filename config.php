@@ -554,9 +554,15 @@ function db_connect() {
     try {
         $conn = \App\Db::connectWrite();
         try {
-            $chk = \App\Db\Migrator::check($conn);
-            if (!empty($chk['needsUpgrade']) && \App\Db\Schema::autoMigrateEnabled()) {
-                \App\Db\Migrator::run($conn);
+            $marker = __DIR__ . '/storage/schema_ok.cache';
+            $skipCheck = is_file($marker) && (time() - (int)@filemtime($marker) < 300);
+            if (!$skipCheck) {
+                $chk = \App\Db\Migrator::check($conn);
+                if (!empty($chk['needsUpgrade']) && \App\Db\Schema::autoMigrateEnabled()) {
+                    \App\Db\Migrator::run($conn);
+                } else {
+                    @file_put_contents($marker, (string)time(), LOCK_EX);
+                }
             }
         } catch (Throwable $e) {
             if (\App\Db\Schema::needsUpgrade($conn) && \App\Db\Schema::autoMigrateEnabled()) {

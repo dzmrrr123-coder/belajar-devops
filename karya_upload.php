@@ -14,6 +14,7 @@ if (user_track($conn, $uid) !== 'dkv' && !is_admin($conn, $uid) && !\App\Domain\
 $qid = (int)($_POST['quest_id'] ?? 0);
 $r = ['ok' => false, 'msg' => 'Pilih file gambar dulu (JPG/PNG/WebP/GIF, maks 3 MB).'];
 if ($qid > 0 && !empty($_FILES['karya'])) $r = \App\Domain\Dkv\Karya::store($conn, $uid, $qid, $_FILES['karya']);
+\App\Domain\Track\Hub::forget($conn, $uid);
 $conn->close();
 set_flash($r['ok'] ? 'success' : 'warning', $r['ok'] ? 'Karya terupload. Lihat di passport.' : (string)$r['msg']);
 redirect('quests.php');

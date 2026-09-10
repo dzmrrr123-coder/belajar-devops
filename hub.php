@@ -37,11 +37,33 @@ require_once 'includes/navbar.php';
             <span class="small font-monospace text-muted"><?= $widgetData['track_progress']['percent'] ?>% Selesai (<?= $widgetData['track_progress']['done'] ?>/<?= $widgetData['track_progress']['total'] ?>)</span>
         </div>
         <div class="d-flex gap-2 flex-wrap mt-3">
-            <span class="filter-pill"><i class="fas fa-fire me-1"></i><?= (int)$today_streak ?> hari</span>
-            <?php if (!$today_chest_opened): ?><a href="quests.php" class="filter-pill">Peti harian: klaim di Roadmap</a><?php endif; ?>
-            <?php if ($today_due > 0): ?><a href="review.php" class="filter-pill"><?= (int)$today_due ?> review jatuh tempo</a><?php endif; ?>
-            <a href="quests.php" class="filter-pill">Target minggu ini <i class="fas fa-arrow-right ms-1"></i></a>
+            <a href="quests.php#next" class="btn btn-cyber btn-sm"><i class="fas fa-play me-1"></i>Lanjut quest</a>
+            <a href="timer.php" class="btn btn-cyber-outline btn-sm"><i class="fas fa-clock me-1"></i>Fokus 25m</a>
+            <a href="review.php" class="btn btn-cyber-outline btn-sm"><i class="fas fa-rotate-right me-1"></i>Review<?= $today_due > 0 ? ' (' . (int)$today_due . ')' : '' ?></a>
         </div>
+        <div class="d-flex gap-2 flex-wrap mt-2 align-items-center">
+            <span class="filter-pill"><i class="fas fa-fire me-1"></i><?= (int)$today_streak ?> hari</span>
+            <?php if (!$today_chest_opened): ?>
+            <form method="POST" action="claim_chest.php" class="m-0" id="chestForm"><?= csrf_field() ?>
+                <button class="filter-pill" type="submit" id="chestBtn" style="cursor:pointer;border:1px solid var(--line)">Peti harian: buka +8 XP</button>
+            </form>
+            <?php else: ?><span class="filter-pill">Peti hari ini dibuka</span><?php endif; ?>
+        </div>
+        <script>
+        document.getElementById('chestForm')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('chestBtn');
+            const fd = new FormData(this);
+            btn.disabled = true; btn.textContent = 'Membuka…';
+            try {
+                const r = await fetch('claim_chest.php', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                const d = await r.json();
+                showToast(d.message || 'Peti dibuka!', d.status === 'success' ? 'success' : 'info');
+                if (d.status === 'success') btn.parentElement.innerHTML = '<span class="filter-pill">Peti hari ini dibuka</span>';
+                else { btn.disabled = false; btn.textContent = 'Peti harian: buka +8 XP'; }
+            } catch (err) { this.submit(); }
+        });
+        </script>
     </div>
 
     <!-- Track Specific Content -->
@@ -193,7 +215,7 @@ require_once 'includes/navbar.php';
                     <?php foreach ($widgetData['recent_karya'] as $karya): ?>
                     <div class="col-6 col-md-4 col-lg-3">
                         <div class="card border-0 shadow-sm overflow-hidden h-100">
-                            <img src="<?= htmlspecialchars($karya['url']) ?>" class="card-img-top" alt="Karya" style="height: 140px; object-fit: cover;" onerror="this.src='https://placehold.co/400x300/e2e8f0/64748b?text=Karya'">
+                            <img src="<?= htmlspecialchars($karya['url']) ?>" class="card-img-top" alt="Karya" loading="lazy" decoding="async" width="400" height="140" style="height: 140px; object-fit: cover;" onerror="this.src='https://placehold.co/400x300/e2e8f0/64748b?text=Karya'">
                             <div class="card-body p-2">
                                 <h3 class="h6 mb-0 small text-truncate" title="<?= htmlspecialchars($karya['title']) ?>"><?= htmlspecialchars($karya['title']) ?></h3>
                                 <small class="text-muted" style="font-size: 0.65rem;"><?= date('d M Y', strtotime($karya['created_at'])) ?></small>

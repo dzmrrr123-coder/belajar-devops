@@ -10,7 +10,8 @@
         el.textContent = greet;
     });
 
-    /* Partikel ember: ringan, pause saat tab sembunyi */
+    /* Partikel ember: ringan, pause saat tab sembunyi; mati total saat hemat-data / RAM kecil */
+    const liteMode = (navigator.connection && navigator.connection.saveData) || (navigator.deviceMemory && navigator.deviceMemory <= 2);
     const MAX = 36;
     let canvas = null, ctx = null, parts = [], running = false, raf = 0;
     function sizeCanvas() {
@@ -81,7 +82,8 @@
             start();
         }
     }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    if (liteMode) { /* hemat-data: tanpa kanvas partikel */ }
+    else if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();
 
     /* Tilt 3D halus: desktop berpointer presisi saja */

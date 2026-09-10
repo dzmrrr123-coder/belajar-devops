@@ -24,67 +24,70 @@ $trackLabel = \App\Domain\Track\Tracks::all()[$userTrack]['name'] ?? 'DevOps';
 $owned = user_badges($conn, $uid);
 $defs = badge_defs();
 
-// Ringkasan angka (1 roundtrip)
-$qd = 0; $qt = 0; $pomo = 0; $notes = 0;
-try {
-    $q = $conn->prepare("SELECT 
-        (SELECT COUNT(*) FROM quests WHERE (user_id IS NULL AND (track = ? OR track = 'all' OR track IS NULL OR track = '')) OR (user_id = ? AND (track = ? OR track IS NULL OR track = ''))) AS qt, 
-        (SELECT COUNT(*) FROM user_quests uq JOIN quests q2 ON q2.id = uq.quest_id WHERE uq.user_id = ? AND ((q2.user_id IS NULL AND (q2.track = ? OR q2.track = 'all' OR q2.track IS NULL OR q2.track = '')) OR (q2.user_id = ? AND (q2.track = ? OR q2.track IS NULL OR q2.track = '')))) AS qd, 
-        (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ?) AS pomo, 
-        (SELECT COUNT(*) FROM errors WHERE user_id = ?) AS notes");
-    if ($q) {
-        $q->bind_param("sisissisii", $userTrack, $uid, $userTrack, $uid, $userTrack, $uid, $userTrack, $uid, $uid, $uid);
-        $q->execute();
-        $r = $q->get_result()->fetch_assoc() ?: [];
-        $q->close();
-    } else {
-        $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS qt, (SELECT COUNT(*) FROM user_quests uq JOIN quests q2 ON q2.id = uq.quest_id WHERE uq.user_id = ? AND (q2.user_id IS NULL OR q2.user_id = ?)) AS qd, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ?) AS pomo, (SELECT COUNT(*) FROM errors WHERE user_id = ?) AS notes");
-        $q->bind_param("iiiii", $uid, $uid, $uid, $uid, $uid);
-        $q->execute();
-        $r = $q->get_result()->fetch_assoc() ?: [];
-        $q->close();
-    }
-    $qt = (int)($r['qt'] ?? 0); $qd = (int)($r['qd'] ?? 0);
-    $pomo = (int)($r['pomo'] ?? 0); $notes = (int)($r['notes'] ?? 0);
-} catch (Throwable $e) {}
+// Ringkasan angka + 3 skill teratas (cache 5 menit, halaman publik)
+$pub = \App\Cache\Store::remember("upub:{$uid}", 300, function () use ($conn, $uid, $userTrack) {
+    $out = ['qt' => 0, 'qd' => 0, 'pomo' => 0, 'notes' => 0, 'top_skills' => []];
+    try {
+        $q = $conn->prepare("SELECT
+            (SELECT COUNT(*) FROM quests WHERE (user_id IS NULL AND (track = ? OR track = 'all' OR track IS NULL OR track = '')) OR (user_id = ? AND (track = ? OR track IS NULL OR track = ''))) AS qt,
+            (SELECT COUNT(*) FROM user_quests uq JOIN quests q2 ON q2.id = uq.quest_id WHERE uq.user_id = ? AND ((q2.user_id IS NULL AND (q2.track = ? OR q2.track = 'all' OR q2.track IS NULL OR q2.track = '')) OR (q2.user_id = ? AND (q2.track = ? OR q2.track IS NULL OR q2.track = '')))) AS qd,
+            (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ?) AS pomo,
+            (SELECT COUNT(*) FROM errors WHERE user_id = ?) AS notes");
+        if ($q) {
+            $q->bind_param("sisissisii", $userTrack, $uid, $userTrack, $uid, $userTrack, $uid, $userTrack, $uid, $uid, $uid);
+            $q->execute();
+            $r = $q->get_result()->fetch_assoc() ?: [];
+            $q->close();
+        } else {
+            $q = $conn->prepare("SELECT (SELECT COUNT(*) FROM quests WHERE user_id IS NULL OR user_id = ?) AS qt, (SELECT COUNT(*) FROM user_quests uq JOIN quests q2 ON q2.id = uq.quest_id WHERE uq.user_id = ? AND (q2.user_id IS NULL OR q2.user_id = ?)) AS qd, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ?) AS pomo, (SELECT COUNT(*) FROM errors WHERE user_id = ?) AS notes");
+            $q->bind_param("iiiii", $uid, $uid, $uid, $uid, $uid);
+            $q->execute();
+            $r = $q->get_result()->fetch_assoc() ?: [];
+            $q->close();
+        }
+        $out['qt'] = (int)($r['qt'] ?? 0); $out['qd'] = (int)($r['qd'] ?? 0);
+        $out['pomo'] = (int)($r['pomo'] ?? 0); $out['notes'] = (int)($r['notes'] ?? 0);
+    } catch (Throwable $e) {}
+    try {
+        $agg = [];
+        $s = $conn->prepare("SELECT q.week, q.xp_reward, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE ((q.user_id IS NULL AND (q.track = ? OR q.track = 'all' OR q.track IS NULL OR q.track = '')) OR (q.user_id = ? AND (q.track = ? OR q.track IS NULL OR q.track = '')))");
+        if (!$s) {
+            $s = $conn->prepare("SELECT q.week, q.xp_reward, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE (q.user_id IS NULL OR q.user_id = ?)");
+            $s->bind_param("ii", $uid, $uid);
+        } else $s->bind_param("isis", $uid, $userTrack, $uid, $userTrack);
+        $s->execute();
+        foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+            $sk = skill_for_week((int)$row['week'], $userTrack);
+            $agg[$sk] = ($agg[$sk] ?? 0) + (!empty($row['done']) ? (int)$row['xp_reward'] : 0);
+        }
+        $s->close();
+        $s = $conn->prepare("SELECT category, COUNT(*) n FROM errors WHERE user_id = ? GROUP BY category");
+        $s->bind_param("i", $uid); $s->execute();
+        $tdefs = skill_defs($userTrack);
+        foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+            $cat = $row['category'] ?? 'General';
+            $sk = isset($tdefs[$cat]) ? $cat : 'General';
+            $agg[$sk] = ($agg[$sk] ?? 0) + (int)$row['n'] * 5;
+        }
+        $s->close();
+        $s = $conn->prepare("SELECT topic, COUNT(*) n FROM questions WHERE user_id = ? GROUP BY topic");
+        $s->bind_param("i", $uid); $s->execute();
+        foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
+            $raw = normalize_skill($row['topic'] ?? '');
+            if ($raw === '') continue;
+            $sk = isset($tdefs[$raw]) ? $raw : 'General';
+            $agg[$sk] = ($agg[$sk] ?? 0) + (int)$row['n'] * 3;
+        }
+        $s->close();
+        arsort($agg);
+        $out['top_skills'] = array_slice($agg, 0, 3, true);
+    } catch (Throwable $e) {}
+    return $out;
+});
+$qt = (int)($pub['qt'] ?? 0); $qd = (int)($pub['qd'] ?? 0);
+$pomo = (int)($pub['pomo'] ?? 0); $notes = (int)($pub['notes'] ?? 0);
+$top_skills = $pub['top_skills'] ?? [];
 $qpct = $qt > 0 ? (int)round($qd / $qt * 100) : 0;
-
-// 3 skill teratas (3 roundtrip ringan, halaman publik jarang dibuka)
-$top_skills = [];
-try {
-    $agg = [];
-    $s = $conn->prepare("SELECT q.week, q.xp_reward, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE ((q.user_id IS NULL AND (q.track = ? OR q.track = 'all' OR q.track IS NULL OR q.track = '')) OR (q.user_id = ? AND (q.track = ? OR q.track IS NULL OR q.track = '')))");
-    if (!$s) {
-        $s = $conn->prepare("SELECT q.week, q.xp_reward, (uq.quest_id IS NOT NULL) AS done FROM quests q LEFT JOIN user_quests uq ON uq.quest_id = q.id AND uq.user_id = ? WHERE (q.user_id IS NULL OR q.user_id = ?)");
-        $s->bind_param("ii", $uid, $uid);
-    } else $s->bind_param("isis", $uid, $userTrack, $uid, $userTrack);
-    $s->execute();
-    foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
-        $sk = skill_for_week((int)$row['week'], $userTrack);
-        $agg[$sk] = ($agg[$sk] ?? 0) + (!empty($row['done']) ? (int)$row['xp_reward'] : 0);
-    }
-    $s->close();
-    $s = $conn->prepare("SELECT category, COUNT(*) n FROM errors WHERE user_id = ? GROUP BY category");
-    $s->bind_param("i", $uid); $s->execute();
-    $tdefs = skill_defs($userTrack);
-    foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
-        $cat = $row['category'] ?? 'General';
-        $sk = isset($tdefs[$cat]) ? $cat : 'General';
-        $agg[$sk] = ($agg[$sk] ?? 0) + (int)$row['n'] * 5;
-    }
-    $s->close();
-    $s = $conn->prepare("SELECT topic, COUNT(*) n FROM questions WHERE user_id = ? GROUP BY topic");
-    $s->bind_param("i", $uid); $s->execute();
-    foreach ($s->get_result()->fetch_all(MYSQLI_ASSOC) as $row) {
-        $raw = normalize_skill($row['topic'] ?? '');
-        if ($raw === '') continue;
-        $sk = isset($tdefs[$raw]) ? $raw : 'General';
-        $agg[$sk] = ($agg[$sk] ?? 0) + (int)$row['n'] * 3;
-    }
-    $s->close();
-    arsort($agg);
-    $top_skills = array_slice($agg, 0, 3, true);
-} catch (Throwable $e) {}
 $cheers = [];
 try {
     $s = $conn->prepare("SELECT c.id, c.body, c.created_at, c.from_id, u.username FROM cheers c JOIN users u ON u.id = c.from_id WHERE c.profile_id = ? ORDER BY c.id DESC LIMIT 8");

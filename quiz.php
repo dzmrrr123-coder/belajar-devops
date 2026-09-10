@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'answe
         || (strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false);
     $card_id = (int)($_POST['card_id'] ?? 0);
     $result = ($_POST['result'] ?? '') === 'know' ? 'know' : 'forgot';
-    $mode = in_array(($_POST['mode'] ?? ''), ['review', 'blitz'], true) ? $_POST['mode'] : 'latihan';
+    $mode = 'blitz';
     $ids = array_values(array_filter(array_map('intval', explode(',', (string)($_POST['ids'] ?? '')))));
     $i = max(0, (int)($_POST['i'] ?? 0));
     $run = $_SESSION['quiz_run'] ?? ['tahu' => 0, 'lupa' => 0, 'xp' => 0];
@@ -269,7 +269,7 @@ require_once 'includes/navbar.php';
     <?php elseif ($done): ?>
     <div class="empty-state card p-4 p-md-5">
         <div class="empty-state-icon"><i class="fas fa-flag-checkered" aria-hidden="true"></i></div>
-        <h2 class="h5 fw-bold"><?= $is_blitz ? 'Waktu habis!' : 'Sesi selesai!' ?></h2>
+        <h2 class="h5 fw-bold">Waktu habis!</h2>
         <p class="text-secondary small mb-3">Tahu <?= (int)($run['tahu'] ?? 0) ?> · Lupa <?= (int)($run['lupa'] ?? 0) ?> · +<?= (int)($run['xp'] ?? 0) ?> XP sesi ini.<?= $is_blitz && $blitz_best !== null ? ' · Terbaik hari ini: ' . (int)$blitz_best : '' ?></p>
         <div class="d-flex gap-2 justify-content-center flex-wrap">
             <a href="quiz.php?mode=blitz" class="btn btn-cyber btn-sm">Main lagi</a>

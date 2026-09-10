@@ -27,7 +27,9 @@ function boltSay(el, mood, html) {
         boltSay(el, mood, el.dataset.msg || 'Gas!');
     });
     try {
-        if (!reduced && !sessionStorage.getItem('lt_splash')) {
+        const saveData = navigator.connection && navigator.connection.saveData;
+        const smallScreen = window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches;
+        if (!reduced && !saveData && !smallScreen && !sessionStorage.getItem('lt_splash')) {
             sessionStorage.setItem('lt_splash', '1');
             const prevFocus = document.activeElement;
             const ov = document.createElement('div');

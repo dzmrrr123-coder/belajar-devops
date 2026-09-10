@@ -191,14 +191,17 @@ require_once 'includes/navbar.php';
         </div>
 
         <div class="mt-3 filter-pills" role="group" aria-label="Filter minggu">
-            <button type="button" class="filter-pill active" onclick="filterByWeek('all', this)">Semua minggu</button>
+            <button type="button" class="filter-pill <?= $preselect_week === 0 ? 'active' : '' ?>" onclick="filterByWeek('all', this)">Semua minggu</button>
             <?php for ($w = 1; $w <= 12; $w++): ?>
-                <button type="button" class="filter-pill" onclick="filterByWeek(<?= $w ?>, this)">M-<?= $w ?></button>
+                <button type="button" class="filter-pill <?= $preselect_week === $w ? 'active' : '' ?>" onclick="filterByWeek(<?= $w ?>, this)">M-<?= $w ?></button>
             <?php endfor; ?>
         </div>
+        <?php if ($preselect_week > 0): ?>
+        <script>document.addEventListener('DOMContentLoaded', function() { if (typeof filterByWeek === 'function') filterByWeek(<?= $preselect_week ?>, document.querySelector('.filter-pills [onclick*="filterByWeek(<?= $preselect_week ?>"]')); });</script>
+        <?php endif; ?>
     </div>
 
-<?php 
+<?php
 $current_active_week = 1;
 foreach ($quests_by_week as $w_num => $w_quests) {
     $w_st = quest_week_stats($w_quests);
@@ -207,6 +210,8 @@ foreach ($quests_by_week as $w_num => $w_quests) {
         break;
     }
 }
+$preselect_week = isset($_GET['week']) ? max(1, min(12, (int)$_GET['week'])) : 0;
+if ($preselect_week > 0) $current_active_week = $preselect_week;
 ?>
     <div id="questsContainer">
         <?php foreach ($quests_by_week as $week_num => $week_quests): $wstat = quest_week_stats($week_quests); $is_active_week = $week_num === $current_active_week; ?>
@@ -231,7 +236,7 @@ foreach ($quests_by_week as $w_num => $w_quests) {
                             $blocker_title = $blocker ? ($titles_by_id[$blocker] ?? 'quest sebelumnya') : '';
                             $is_next = ($qid === $next_up_id && !$is_done);
                         ?>
-                            <div class="quest-item <?= $is_done ? 'completed' : ($blocker ? 'locked' : '') ?>" data-status="<?= $is_done ? 'done' : 'todo' ?>">
+                            <div class="quest-item <?= $is_done ? 'completed' : ($blocker ? 'locked' : '') ?>" data-status="<?= $is_done ? 'done' : 'todo' ?>"<?= $is_next ? ' id="next"' : '' ?>>
                                 <div class="d-flex align-items-start gap-3">
                                     <!-- Interactive Checkbox Form -->
                                     <form method="POST" action="complete_quest.php" class="quest-toggle-form m-0" id="qt-<?= $qid ?>">
@@ -293,17 +298,19 @@ foreach ($quests_by_week as $w_num => $w_quests) {
                                             </summary>
                                             <div class="collapsible-body">
                                                 <div class="d-flex flex-column gap-2 mt-2">
-                                                    <input name="evidence_url" form="qt-<?= $qid ?>" class="form-control form-control-sm" placeholder="Link repo / output…" maxlength="500" inputmode="url" aria-label="Link bukti quest">
-                                                    <input name="evidence_note" form="qt-<?= $qid ?>" class="form-control form-control-sm" placeholder="Catatan singkat…" maxlength="500" aria-label="Catatan bukti quest">
+                                                    <input name="evidence_url" form="qt-<?= $qid ?>" class="form-control form-control-sm" placeholder="Link repo / output / catatan singkat…" maxlength="500" aria-label="Bukti quest: link atau catatan">
                                                     <?php $kw = $karya_map[$qid] ?? null; if ($kw): ?>
                                                     <a href="karya.php?id=<?= (int)$kw['id'] ?>" target="_blank" rel="noopener"><img src="karya.php?id=<?= (int)$kw['id'] ?>" alt="Karya quest" loading="lazy" style="max-width:120px;border-radius:8px"></a>
                                                     <?php endif; ?>
-                                                    <form method="POST" action="karya_upload.php" enctype="multipart/form-data" class="d-flex gap-2 m-0">
-                                                        <?= csrf_field() ?>
-                                                        <input type="hidden" name="quest_id" value="<?= $qid ?>">
-                                                        <input type="file" name="karya" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.webp,.gif" aria-label="Upload karya">
-                                                        <button class="btn btn-cyber-outline btn-sm flex-shrink-0" type="submit">Upload Gambar</button>
-                                                    </form>
+                                                    <details class="mt-1">
+                                                        <summary class="small text-secondary" style="cursor:pointer">Punya gambar? Upload</summary>
+                                                        <form method="POST" action="karya_upload.php" enctype="multipart/form-data" class="d-flex gap-2 m-0 mt-2">
+                                                            <?= csrf_field() ?>
+                                                            <input type="hidden" name="quest_id" value="<?= $qid ?>">
+                                                            <input type="file" name="karya" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.webp,.gif" aria-label="Upload karya">
+                                                            <button class="btn btn-cyber-outline btn-sm flex-shrink-0" type="submit">Upload</button>
+                                                        </form>
+                                                    </details>
                                                 </div>
                                             </div>
                                         </details>

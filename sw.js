@@ -1,6 +1,13 @@
-const CACHE = 'lt-static-v6';
+const CACHE = 'lt-static-v7';
 const PRECACHE = ['assets/css/app.css', 'assets/js/core.js', 'assets/js/site.js', 'assets/js/sync.js', 'offline.php', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png'];
 const PAGE_CACHE_LIMIT = 10;
+const STATIC_CACHE_LIMIT = 40;
+// Abaikan ?v=filemtime agar 1 file = 1 entri cache, bukan duplikat tiap deploy
+function cacheKey(request) {
+  const url = new URL(request.url);
+  if (url.origin === self.location.origin && /\.(css|js|png|webp|ico|woff2?)$/i.test(url.pathname)) url.search = '';
+  return new Request(url.toString(), { headers: request.headers });
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -24,6 +31,14 @@ function trimPages(cache) {
     return Promise.all(extra.map((r) => cache.delete(r)));
   });
 }
+function trimStatic(cache) {
+  return cache.keys().then((keys) => {
+    const statics = keys.filter((r) => !r.url.includes('.php'));
+    if (statics.length <= STATIC_CACHE_LIMIT) return;
+    const extra = statics.slice(0, statics.length - STATIC_CACHE_LIMIT);
+    return Promise.all(extra.map((r) => cache.delete(r)));
+  });
+}
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
@@ -40,14 +55,15 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
+  const key = cacheKey(event.request);
   event.respondWith(
-    caches.match(event.request).then((hit) => hit || fetch(event.request).then((res) => {
+    caches.match(key).then((hit) => hit || fetch(event.request).then((res) => {
       if (res.ok) {
         const copy = res.clone();
-        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        caches.open(CACHE).then((cache) => cache.put(key, copy).then(() => trimStatic(cache)).catch(() => {}));
       }
       return res;
-    }).catch(() => caches.match(event.request)))
+    }).catch(() => caches.match(key)))
   );
 });
 

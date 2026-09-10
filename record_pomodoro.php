@@ -44,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Update streak
     $new_streak = update_user_streak($conn, $user_id);
+    \App\Cache\Store::forget("upub:{$user_id}");
 
     // Fetch updated user info + today's stats dalam 1 roundtrip
     $stmt = $conn->prepare("SELECT (SELECT xp FROM users WHERE id = ?) AS xp, (SELECT streak FROM users WHERE id = ?) AS streak, (SELECT COUNT(*) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS today_sessions, (SELECT COALESCE(SUM(duration_minutes),0) FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) AS today_minutes");

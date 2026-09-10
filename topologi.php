@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save'
     if ($name === '' || $payload === '') set_flash('warning', 'Nama + payload wajib.');
     else {
         $s = $conn->prepare("INSERT INTO topo_saves (user_id, name, payload) VALUES (?, ?, ?)");
-        if ($s) { $s->bind_param("iss", $uid, $name, $payload); $s->execute(); $s->close(); set_flash('success', 'Topologi tersimpan.'); }
+        if ($s) { $s->bind_param("iss", $uid, $name, $payload); $s->execute(); $s->close(); \App\Domain\Track\Hub::forget($conn, $uid); set_flash('success', 'Topologi tersimpan.'); }
     }
     redirect('topologi.php?cidr=' . urlencode($cidr));
 }

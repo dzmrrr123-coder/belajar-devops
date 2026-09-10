@@ -30,6 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_error']) || (iss
             $nb = check_and_unlock_badges($conn, $user_id);
 
             $msg = $xp_gain > 0 ? "Catatan berhasil disimpan. +{$xp_gain} XP." : "Catatan tersimpan. Kuota XP catatan harian (+" . NOTE_DAILY_XP_CAP . ") tercapai.";
+            \App\Domain\Track\Hub::forget($conn, $user_id);
+            \App\Cache\Store::forget("upub:{$user_id}");
             set_flash('success', $msg . (!empty($nb) ? ' Badge: ' . implode(', ', $nb) . '!' : ''));
         } else {
             set_flash('danger', "Gagal menyimpan error ke database.");

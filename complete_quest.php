@@ -147,11 +147,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         }
 
         schedule_review($conn, $user_id, 'quest', $quest_id, $quest['title'] ?? 'Quest', '');
-        $ev_saved = \App\Domain\Quest\Evidence::save($conn, $user_id, $quest_id, (string)($_POST['evidence_url'] ?? ''), (string)($_POST['evidence_note'] ?? ''));
+        $ev_raw = mb_substr(trim((string)($_POST['evidence_url'] ?? '')), 0, 500);
+        $ev_note_legacy = mb_substr(trim((string)($_POST['evidence_note'] ?? '')), 0, 500);
+        if ($ev_raw !== '' && \App\Support\Sanitize::validUrl($ev_raw) === '') $ev_note_legacy = $ev_raw !== '' ? trim($ev_note_legacy . ' ' . $ev_raw) : $ev_note_legacy;
+        $ev_saved = \App\Domain\Quest\Evidence::save($conn, $user_id, $quest_id, $ev_raw, $ev_note_legacy);
         $msg = "Quest diselesaikan! +{$xp_reward} XP." . ($ev_saved ? " Bukti tersimpan." : "");
         if ($leveled_up) {
             $msg .= " Naik ke Level {$new_level} (" . get_user_rank($new_level) . ")!";
         }
+        \App\Domain\Track\Hub::forget($conn, $user_id);
+        \App\Cache\Store::forgetPrefix("dash:{$user_id}:");
+        \App\Cache\Store::forget("upub:{$user_id}");
         if (!$is_ajax) set_flash('success', $msg);
     } else {
         // Undo Quest completion
@@ -173,6 +179,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quest_id'])) {
         $action = 'uncompleted';
 
         $msg = "Quest ditandai belum selesai. -{$deduct} XP disesuaikan.";
+        \App\Domain\Track\Hub::forget($conn, $user_id);
+        \App\Cache\Store::forgetPrefix("dash:{$user_id}:");
+        \App\Cache\Store::forget("upub:{$user_id}");
         if (!$is_ajax) set_flash('info', $msg);
     }
 

@@ -27,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $j->close();
                 set_flash('info', 'Keluar dari tantangan minggu ini.');
             }
+            \App\Cache\Store::forget(\App\Cache\Keys::racers($cid));
         }
         redirect('leaderboard.php?scope=' . urlencode($_POST['scope'] ?? 'total'));
     }
@@ -69,14 +70,17 @@ $react_emojis = \App\Domain\Social\Reactions::emojis();
 $my_rank = null;
 $on_board = false;
 try {
-    if ($scope === 'week') {
-        $c = $conn->prepare("SELECT show_on_board, (SELECT COUNT(*) FROM users WHERE show_on_board = 1 AND GREATEST(0, COALESCE((SELECT SUM(amount) FROM xp_events WHERE user_id = users.id AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0)) > (SELECT GREATEST(0, COALESCE(SUM(amount),0)) FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))) + 1 AS r FROM users WHERE id = ?");
-    } else {
-        $c = $conn->prepare("SELECT show_on_board, (SELECT COUNT(*) FROM users WHERE show_on_board = 1 AND xp > (SELECT xp FROM users WHERE id = ?)) + 1 AS r FROM users WHERE id = ?");
-    }
-    $c->bind_param("ii", $user_id, $user_id); $c->execute();
-    $me = $c->get_result()->fetch_assoc() ?: [];
-    $c->close();
+    $me = \App\Cache\Store::remember(\App\Cache\Keys::boardRank($scope, $user_id), 60, function () use ($conn, $scope, $user_id) {
+        if ($scope === 'week') {
+            $c = $conn->prepare("SELECT show_on_board, (SELECT COUNT(*) FROM users WHERE show_on_board = 1 AND GREATEST(0, COALESCE((SELECT SUM(amount) FROM xp_events WHERE user_id = users.id AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)), 0)) > (SELECT GREATEST(0, COALESCE(SUM(amount),0)) FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY))) + 1 AS r FROM users WHERE id = ?");
+        } else {
+            $c = $conn->prepare("SELECT show_on_board, (SELECT COUNT(*) FROM users WHERE show_on_board = 1 AND xp > (SELECT xp FROM users WHERE id = ?)) + 1 AS r FROM users WHERE id = ?");
+        }
+        $c->bind_param("ii", $user_id, $user_id); $c->execute();
+        $row = $c->get_result()->fetch_assoc() ?: [];
+        $c->close();
+        return $row;
+    });
     $on_board = !empty($me['show_on_board']);
     if ($on_board) $my_rank = (int)($me['r'] ?? 0);
 } catch (Throwable $e) {}
@@ -92,11 +96,14 @@ if ($challenge) {
         $j->execute();
         $joined = (bool)$j->get_result()->fetch_assoc();
         $j->close();
-        $r = $conn->prepare("SELECT u.id, u.username, u.avatar_frame, GREATEST(0, COALESCE(SUM(e.amount),0)) wxp FROM challenge_joins j JOIN users u ON u.id = j.user_id LEFT JOIN xp_events e ON e.user_id = u.id AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) WHERE j.challenge_id = ? GROUP BY u.id ORDER BY wxp DESC LIMIT 6");
-        $r->bind_param("i", $cid);
-        $r->execute();
-        $racers = $r->get_result()->fetch_all(MYSQLI_ASSOC);
-        $r->close();
+        $racers = \App\Cache\Store::remember(\App\Cache\Keys::racers($cid), 60, function () use ($conn, $cid) {
+            $r = $conn->prepare("SELECT u.id, u.username, u.avatar_frame, GREATEST(0, COALESCE(SUM(e.amount),0)) wxp FROM challenge_joins j JOIN users u ON u.id = j.user_id LEFT JOIN xp_events e ON e.user_id = u.id AND e.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) WHERE j.challenge_id = ? GROUP BY u.id ORDER BY wxp DESC LIMIT 6");
+            $r->bind_param("i", $cid);
+            $r->execute();
+            $rows = $r->get_result()->fetch_all(MYSQLI_ASSOC);
+            $r->close();
+            return $rows;
+        });
         if ($joined) {
             $m = $conn->prepare("SELECT GREATEST(0, COALESCE(SUM(amount),0)) wxp FROM xp_events WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
             $m->bind_param("i", $user_id);

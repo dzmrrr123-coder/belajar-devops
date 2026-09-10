@@ -10,6 +10,17 @@ class Hub {
      * @return array
      */
     public static function getWidgetData(\mysqli $conn, int $userId, string $track): array {
+        $t = Tracks::normalize($track);
+        return \App\Cache\Store::remember(\App\Cache\Keys::hub($userId, $t), 60, function () use ($conn, $userId, $t) {
+            return self::computeWidgetData($conn, $userId, $t);
+        });
+    }
+
+    public static function forget(\mysqli $conn, int $userId): void {
+        \App\Cache\Store::forgetPrefix(\App\Cache\Keys::hubPrefix($userId));
+    }
+
+    private static function computeWidgetData(\mysqli $conn, int $userId, string $track): array {
         $data = [];
         $t = Tracks::normalize($track);
 
@@ -29,14 +40,14 @@ class Hub {
         }
 
         if ($t === 'dkv') {
-            // Widget: Recent Uploaded Karya (using quest evidence as mock)
+            // Widget: Recent Uploaded Karya (evidence with link or note)
             $karya = [];
             try {
                 $q = $conn->prepare("
-                    SELECT q.title, e.url, e.created_at 
-                    FROM quest_evidence e
+                    SELECT q.title, e.url, e.created_at
+                    FROM evidence_submissions e
                     JOIN quests q ON e.quest_id = q.id
-                    WHERE e.user_id = ? AND e.url IS NOT NULL AND e.url != ''
+                    WHERE e.user_id = ? AND ((e.url IS NOT NULL AND e.url != '') OR (e.note IS NOT NULL AND e.note != ''))
                     ORDER BY e.created_at DESC LIMIT 6
                 ");
                 if ($q) {
