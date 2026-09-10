@@ -283,7 +283,7 @@ require_once 'includes/navbar.php';
                 <h2 class="modal-title h6 fw-bold mb-0" id="quizModalLabel"><i class="fas fa-brain text-primary me-2"></i>Jadikan kartu kuis</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
-            <form method="POST" action="quiz.php">
+            <form method="POST" action="lab.php?tab=kuis">
                 <div class="modal-body">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="create">

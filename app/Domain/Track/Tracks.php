@@ -97,7 +97,7 @@ class Tracks {
                 'title' => 'Coding Playground',
                 'desc'  => 'Tulis dan uji coba kode PHP, JS, dan SQL langsung',
                 'icon'  => 'fas fa-code',
-                'href'  => 'playground.php',
+                'href'  => 'lab.php?tab=praktik&alat=playground',
                 'badge' => 'RPL',
                 'cta'   => 'Buka Playground'
             ],
@@ -105,7 +105,7 @@ class Tracks {
                 'title' => 'Topologi & Subnet',
                 'desc'  => 'Kalkulator CIDR dan kanvas rancang jaringan interaktif',
                 'icon'  => 'fas fa-network-wired',
-                'href'  => 'topologi.php',
+                'href'  => 'lab.php?tab=praktik&alat=topologi',
                 'badge' => 'TKJ',
                 'cta'   => 'Buka Topologi'
             ],
@@ -121,7 +121,7 @@ class Tracks {
                 'title' => 'Incident Simulator',
                 'desc'  => 'Simulasi tangani deploy crash, drift migrasi & server 500',
                 'icon'  => 'fas fa-fire-extinguisher',
-                'href'  => 'incident.php',
+                'href'  => 'lab.php?tab=praktik&alat=incident',
                 'badge' => 'DevOps',
                 'cta'   => 'Coba Simulator'
             ],
@@ -140,29 +140,29 @@ class Tracks {
         $t = self::normalize($track);
         if ($t === 'rpl') {
             return [
-                ['href' => 'playground.php', 'icon' => 'fas fa-code', 'title' => 'Playground', 'desc' => 'eksekusi PHP/JS'],
-                ['href' => 'lab.php', 'icon' => 'fas fa-flask', 'title' => 'Lab RPL', 'desc' => 'tantangan kuis kode'],
+                ['href' => 'lab.php?tab=praktik&alat=playground', 'icon' => 'fas fa-code', 'title' => 'Playground', 'desc' => 'eksekusi PHP/JS'],
+                ['href' => 'lab.php?tab=kuis', 'icon' => 'fas fa-bolt', 'title' => 'Kuis Kilat', 'desc' => '60 detik'],
             ];
         }
         if ($t === 'tkj') {
             return [
-                ['href' => 'topologi.php', 'icon' => 'fas fa-network-wired', 'title' => 'Topologi', 'desc' => 'subnet & kanvas'],
-                ['href' => 'terminal.php', 'icon' => 'fas fa-terminal', 'title' => 'Terminal Linux', 'desc' => 'lab virtual'],
-                ['href' => 'incident.php', 'icon' => 'fas fa-fire-extinguisher', 'title' => 'Incident', 'desc' => 'simulator server'],
-                ['href' => 'lab.php', 'icon' => 'fas fa-flask', 'title' => 'Lab TKJ', 'desc' => 'tantangan jaringan'],
+                ['href' => 'lab.php?tab=praktik&alat=topologi', 'icon' => 'fas fa-network-wired', 'title' => 'Topologi', 'desc' => 'subnet & kanvas'],
+                ['href' => 'lab.php?tab=praktik&alat=terminal', 'icon' => 'fas fa-terminal', 'title' => 'Terminal Linux', 'desc' => 'lab virtual'],
+                ['href' => 'lab.php?tab=praktik&alat=incident', 'icon' => 'fas fa-fire-extinguisher', 'title' => 'Incident', 'desc' => 'simulator server'],
+                ['href' => 'lab.php?tab=kuis', 'icon' => 'fas fa-bolt', 'title' => 'Kuis Kilat', 'desc' => '60 detik'],
             ];
         }
         if ($t === 'dkv') {
             return [
                 ['href' => 'quests.php', 'icon' => 'fas fa-cloud-arrow-up', 'title' => 'Roadmap & Karya', 'desc' => 'brief + upload'],
-                ['href' => 'lab.php', 'icon' => 'fas fa-flask', 'title' => 'Lab DKV', 'desc' => 'tantangan desain'],
+                ['href' => 'lab.php?tab=kuis', 'icon' => 'fas fa-bolt', 'title' => 'Kuis Kilat', 'desc' => '60 detik'],
             ];
         }
         return [
-            ['href' => 'incident.php', 'icon' => 'fas fa-fire-extinguisher', 'title' => 'Incident', 'desc' => 'simulator deploy'],
-            ['href' => 'terminal.php', 'icon' => 'fas fa-terminal', 'title' => 'Terminal Linux', 'desc' => 'lab CLI'],
-            ['href' => 'playground.php', 'icon' => 'fas fa-code', 'title' => 'Playground', 'desc' => 'scripting'],
-            ['href' => 'lab.php', 'icon' => 'fas fa-flask', 'title' => 'Lab DevOps', 'desc' => 'tantangan praktik'],
+            ['href' => 'lab.php?tab=praktik&alat=incident', 'icon' => 'fas fa-fire-extinguisher', 'title' => 'Incident', 'desc' => 'simulator deploy'],
+            ['href' => 'lab.php?tab=praktik&alat=terminal', 'icon' => 'fas fa-terminal', 'title' => 'Terminal Linux', 'desc' => 'lab CLI'],
+            ['href' => 'lab.php?tab=praktik&alat=playground', 'icon' => 'fas fa-code', 'title' => 'Playground', 'desc' => 'scripting'],
+            ['href' => 'lab.php?tab=kuis', 'icon' => 'fas fa-bolt', 'title' => 'Kuis Kilat', 'desc' => '60 detik'],
         ];
     }
 }

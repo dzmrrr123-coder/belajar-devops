@@ -1,3 +1,3 @@
 <?php
 require_once 'config.php';
-redirect('shop.php?tab=voucher');
+redirect('profile.php?shoptab=voucher#shop');

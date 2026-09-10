@@ -21,7 +21,7 @@ if ($inClass && !$priv) {
 $track = \App\Domain\Track\Tracks::normalize((string)($_POST['track'] ?? 'devops'));
 $back = trim($_POST['back'] ?? 'quests.php');
 // Sanitize back redirect to internal safe paths
-$allowed_backs = ['quests.php', 'profile.php', 'hub.php', 'lab.php', 'brief.php', 'topologi.php', 'terminal.php', 'playground.php', 'incident.php'];
+$allowed_backs = ['quests.php', 'profile.php', 'hub.php', 'lab.php', 'review.php', 'errors.php', 'timer.php', 'leaderboard.php', 'squad.php'];
 $clean_back = 'quests.php';
 foreach ($allowed_backs as $ab) {
     if (str_contains($back, $ab)) { $clean_back = $ab; break; }

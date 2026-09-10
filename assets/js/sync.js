@@ -233,7 +233,7 @@ window.LTOutbox = (function() {
                 }).catch(() => 'retry');
         }
         if (entry.type === 'quiz_answer') {
-            return postForm('quiz.php', { csrf_token: freshCsrf(entry.csrf), action: 'answer', card_id: entry.card_id, mode: entry.mode || 'latihan', ids: entry.ids || '', i: entry.i || '0', result: entry.result || 'know' }, false)
+            return postForm('lab.php?tab=kuis', { csrf_token: freshCsrf(entry.csrf), action: 'answer', card_id: entry.card_id, mode: entry.mode || 'blitz', ids: entry.ids || '', i: entry.i || '0', result: entry.result || 'know' }, false)
                 .then((res) => {
                     if (res.status === 403) return 'auth';
                     if (res.ok) {

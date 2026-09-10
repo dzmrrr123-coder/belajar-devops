@@ -99,6 +99,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect('profile.php');
     }
+    // Toko XP (gabungan shop.php): freeze, flair, frame musiman, voucher
+    if (!empty($_POST['shop_action'])) {
+        $shop_action = $_POST['shop_action'];
+        $stmt = $conn->prepare("SELECT xp, freeze_tokens, flair FROM users WHERE id = ?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $shop_me = $stmt->get_result()->fetch_assoc() ?: ['xp' => 0, 'freeze_tokens' => 0, 'flair' => null];
+        $stmt->close();
+        $balance = (int)$shop_me['xp'];
+        $conn->begin_transaction();
+        try {
+            if ($shop_action === 'buy_freeze') {
+                if ((int)$shop_me['freeze_tokens'] >= 3) throw new Exception('Freeze sudah penuh (3).');
+                if ($balance < 100) throw new Exception('XP kurang. Butuh 100 XP.');
+                $up = $conn->prepare("UPDATE users SET freeze_tokens = freeze_tokens + 1 WHERE id = ?");
+                $up->bind_param("i", $user_id); $up->execute(); $up->close();
+                award_xp($conn, $user_id, -100, 'shop_freeze');
+                $msg = 'Freeze +1! Streak-mu lebih aman.';
+            } elseif ($shop_action === 'buy_flair') {
+                $flair = mb_substr(trim(strip_tags((string)($_POST['flair'] ?? ''))), 0, 24);
+                if ($flair === '') throw new Exception('Tulis dulu teks flair-nya.');
+                $price = !empty($shop_me['flair']) ? 50 : 150;
+                if ($balance < $price) throw new Exception('XP kurang. Butuh ' . $price . ' XP.');
+                $up = $conn->prepare("UPDATE users SET flair = ? WHERE id = ?");
+                $up->bind_param("si", $flair, $user_id); $up->execute(); $up->close();
+                award_xp($conn, $user_id, -$price, 'shop_flair');
+                $msg = 'Flair dipasang: ' . $flair;
+            } elseif ($shop_action === 'redeem') {
+                if (rate_limit_hit('redeem', 10, 3600)) throw new Exception('Terlalu sering. Coba lagi nanti.');
+                $code = trim($_POST['code'] ?? '');
+                if ($code === '') throw new Exception('Isi kode voucher dulu.');
+                \App\Domain\ProVoucher::ensureTables($conn);
+                $r = \App\Domain\ProVoucher::redeem($conn, $user_id, $code);
+                if (empty($r['ok'])) throw new Exception($r['msg'] ?? 'Voucher tidak valid.');
+                $msg = $r['msg'];
+            } elseif ($shop_action === 'buy_frame') {
+                $frame = (string)($_POST['frame'] ?? '');
+                $item = \App\Domain\Shop::lootByFrame($frame);
+                if (!$item) throw new Exception('Frame tidak dikenal.');
+                if (!\App\Domain\Shop::lootAvailable($item)) throw new Exception($item['name'] . ' hanya dijual bulan ' . $item['month_label'] . '.');
+                if (in_array($frame, \App\Domain\Shop::ownedFrames($conn, $user_id), true)) throw new Exception('Kamu sudah punya frame ini.');
+                if ($balance < $item['price']) throw new Exception('XP kurang. Butuh ' . $item['price'] . ' XP.');
+                if (!\App\Domain\Shop::grantFrame($conn, $user_id, $frame)) throw new Exception('Gagal memberi frame.');
+                award_xp($conn, $user_id, -(int)$item['price'], 'shop_frame');
+                $msg = 'Frame ' . $item['name'] . ' milikmu selamanya! Pasang di Pengaturan.';
+            } else {
+                throw new Exception('Aksi tidak dikenal.');
+            }
+            $conn->commit();
+            set_flash('success', $msg);
+        } catch (Throwable $e) {
+            $conn->rollback();
+            error_log("shop: " . $e->getMessage());
+            set_flash('warning', $e->getMessage());
+        }
+        redirect('profile.php' . ((($_POST['shop_action'] ?? '') === 'redeem') ? '?shoptab=voucher#shop' : '#shop'));
+    }
 }
 
 $stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, freeze_tokens, best_streak, show_on_board, public_profile, flair, avatar_frame, created_at FROM users WHERE id = ?");
@@ -148,6 +205,9 @@ $badges_owned = user_badges($conn, $user_id);
 $badge_list = badge_defs();
 $is_admin_me = is_admin($conn, $user_id);
 $frames_owned = \App\Domain\Shop::ownedFrames($conn, $user_id);
+$shop_tab = ($_GET['shoptab'] ?? 'hadiah') === 'voucher' ? 'voucher' : 'hadiah';
+$shop_flair_price = !empty($user['flair']) ? 50 : 150;
+$shop_loot = \App\Domain\Shop::lootFrames();
 $conn->close();
 $page_title = 'Profil & Statistik';
 require_once 'includes/header.php';
@@ -184,6 +244,9 @@ require_once 'includes/navbar.php';
         </li>
         <li class="nav-item" role="presentation">
             <button class="filter-pill" id="tab-settings" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab" aria-controls="settings" aria-selected="false"><i class="fas fa-gear me-1"></i>Pengaturan</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="filter-pill" id="tab-shop" data-bs-toggle="tab" data-bs-target="#shop" type="button" role="tab" aria-controls="shop" aria-selected="false"><i class="fas fa-store me-1"></i>Toko</button>
         </li>
     </ul>
 
@@ -332,6 +395,64 @@ require_once 'includes/navbar.php';
                 </div>
             </div>
         </div>
+        <div class="tab-pane fade" id="shop" role="tabpanel" aria-labelledby="tab-shop" tabindex="0">
+            <p class="text-secondary small mb-3">Saldo: <strong><?= number_format((int)$user['xp']) ?> XP</strong> · freeze <?= (int)($user['freeze_tokens'] ?? 0) ?>/3</p>
+            <div class="segmented mb-3" role="group" aria-label="Tab toko">
+                <a href="profile.php?shoptab=hadiah#shop" class="filter-pill <?= $shop_tab === 'hadiah' ? 'active' : '' ?>">Hadiah</a>
+                <a href="profile.php?shoptab=voucher#shop" class="filter-pill <?= $shop_tab === 'voucher' ? 'active' : '' ?>">Voucher</a>
+            </div>
+            <?php if ($shop_tab === 'voucher'): ?>
+            <section class="card p-4" aria-label="Tukar voucher">
+                <h2 class="h5 fw-bold mb-1">Tukar voucher Pro</h2>
+                <p class="text-secondary small mb-3">Punya kode dari admin atau sekolah? Satu kode satu akun.</p>
+                <form method="POST" action="profile.php?shoptab=voucher#shop" class="d-flex gap-2 m-0"><?= csrf_field() ?>
+                    <input type="hidden" name="shop_action" value="redeem">
+                    <input name="code" class="form-control" placeholder="VQ-XXXXXXXX" maxlength="16" required aria-label="Kode voucher" style="text-transform:uppercase">
+                    <button class="btn btn-cyber btn-sm flex-shrink-0" type="submit">Tukar</button>
+                </form>
+            </section>
+            <?php else: ?>
+            <div class="skill-grid showcase">
+                <section class="card skill-card showcase-item" aria-label="Beli freeze">
+                    <div class="skill-top"><span class="skill-icon" aria-hidden="true"><i class="fas fa-snowflake"></i></span><div class="skill-id"><strong>Freeze +1</strong><small>selamatkan streak 1 hari · maks 3</small></div></div>
+                    <div class="showcase-price">100 <small>XP</small></div>
+                    <form method="POST" action="profile.php#shop" class="m-0 mt-2">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="shop_action" value="buy_freeze">
+                        <button class="btn btn-cyber w-100 btn-sm" type="submit" <?= (int)($user['freeze_tokens'] ?? 0) >= 3 ? 'disabled' : '' ?>>Beli</button>
+                    </form>
+                </section>
+                <section class="card skill-card showcase-item" aria-label="Flair profil">
+                    <div class="skill-top"><span class="skill-icon" aria-hidden="true"><i class="fas fa-tag"></i></span><div class="skill-id"><strong>Flair profil</strong><small>tampil di leaderboard &amp; profil · maks 24 karakter</small></div></div>
+                    <div class="showcase-price"><?= $shop_flair_price ?> <small>XP</small></div>
+                    <form method="POST" action="profile.php#shop" class="m-0 d-flex flex-column gap-2 mt-2">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="shop_action" value="buy_flair">
+                        <input name="flair" class="form-control form-control-sm" maxlength="24" placeholder="cth: Begadang enjoyer" value="<?= htmlspecialchars($user['flair'] ?? '') ?>" aria-label="Teks flair">
+                        <button class="btn btn-cyber w-100 btn-sm" type="submit">Pasang</button>
+                    </form>
+                </section>
+            </div>
+            <div class="page-head mt-4">
+                <div class="page-kicker">Edisi terbatas · hanya bulan tertentu</div>
+                <h2 class="page-title h4">Loot musiman</h2>
+            </div>
+            <div class="skill-grid showcase">
+                <?php foreach ($shop_loot as $loot): $lopen = \App\Domain\Shop::lootAvailable($loot); $lowned = in_array($loot['frame'], $frames_owned, true); ?>
+                <section class="card skill-card showcase-item" aria-label="Frame <?= htmlspecialchars($loot['name']) ?>">
+                    <div class="skill-top"><span class="avatar-circle frame-<?= htmlspecialchars($loot['frame']) ?>" aria-hidden="true"><?= strtoupper(substr((string)$user['username'], 0, 1)) ?></span><div class="skill-id"><strong><?= htmlspecialchars($loot['name']) ?></strong><small><?= htmlspecialchars($loot['hint']) ?><?= $lowned ? ' · sudah milikmu' : '' ?></small></div></div>
+                    <div class="showcase-price"><?= $loot['price'] ?> <small>XP</small></div>
+                    <form method="POST" action="profile.php#shop" class="m-0">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="shop_action" value="buy_frame">
+                        <input type="hidden" name="frame" value="<?= htmlspecialchars($loot['frame']) ?>">
+                        <button class="btn <?= $lopen && !$lowned ? 'btn-cyber' : 'btn-cyber-outline' ?> w-100 btn-sm" type="submit" <?= ($lopen && !$lowned) ? '' : 'disabled' ?>><?= $lowned ? 'Milikmu' : ($lopen ? 'Beli · ' . $loot['price'] . ' XP' : 'Edisi ' . htmlspecialchars($loot['month_label'])) ?></button>
+                    </form>
+                </section>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
     </div>
 </main>
 <div class="modal fade" id="flexModal" tabindex="-1" aria-labelledby="flexModalLabel" aria-hidden="true">
@@ -426,8 +547,8 @@ document.getElementById('flexDownload')?.addEventListener('click', function() {
 });
 (function() {
     var h = (location.hash || '').replace('#', '');
-    if (h === 'trophies' || h === 'skills' || h === 'feedback') {
-        var btn = document.getElementById(h === 'trophies' ? 'tab-trophies' : h === 'feedback' ? 'tab-settings' : 'tab-overview');
+    if (h === 'trophies' || h === 'skills' || h === 'feedback' || h === 'shop') {
+        var btn = document.getElementById(h === 'trophies' ? 'tab-trophies' : h === 'shop' ? 'tab-shop' : h === 'feedback' ? 'tab-settings' : 'tab-overview');
         if (btn) btn.click();
         var el = document.getElementById(h);
         if (el) setTimeout(function() { el.scrollIntoView({ block: 'start' }); }, 300);

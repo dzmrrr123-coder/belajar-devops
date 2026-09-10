@@ -100,7 +100,7 @@ function applyQuizResponse(data, form) {
     const card = document.querySelector('.quiz-card');
     if (!data.next || !card) {
         if (card) {
-            card.outerHTML = '<div class="empty-state card p-4 p-md-5"><div class="empty-state-icon"><i class="fas fa-flag-checkered" aria-hidden="true"></i></div><h2 class="h5 fw-bold">Sesi selesai!</h2><p class="text-secondary small mb-3">Tahu ' + (run.tahu || 0) + ' · Lupa ' + (run.lupa || 0) + ' · +' + (run.xp || 0) + ' XP sesi ini.</p><div class="d-flex gap-2 justify-content-center flex-wrap"><a href="quiz.php?mode=latihan" class="btn btn-cyber btn-sm">Main lagi</a><a href="review.php" class="btn btn-cyber-outline btn-sm">Ke Review</a></div></div>';
+            card.outerHTML = '<div class="empty-state card p-4 p-md-5"><div class="empty-state-icon"><i class="fas fa-flag-checkered" aria-hidden="true"></i></div><h2 class="h5 fw-bold">Sesi selesai!</h2><p class="text-secondary small mb-3">Tahu ' + (run.tahu || 0) + ' · Lupa ' + (run.lupa || 0) + ' · +' + (run.xp || 0) + ' XP sesi ini.</p><div class="d-flex gap-2 justify-content-center flex-wrap"><a href="lab.php?tab=kuis&mode=blitz" class="btn btn-cyber btn-sm">Main lagi</a><a href="review.php" class="btn btn-cyber-outline btn-sm">Ke Review</a></div></div>';
         }
         return;
     }
@@ -187,7 +187,7 @@ document.querySelectorAll('form.review-actions').forEach(form => {
             orig = clicked.innerHTML;
             clicked.innerHTML = '<span class="spinner" aria-hidden="true"></span>';
         }
-            fetchJSON('quiz.php', submitterFormData(this, clicked))
+            fetchJSON('lab.php?tab=kuis', submitterFormData(this, clicked))
             .then(data => {
                 if (data.status !== 'success') {
                     showToast(data.message || 'Gagal menyimpan jawaban.', 'danger');

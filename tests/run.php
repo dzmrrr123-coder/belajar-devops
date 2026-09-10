@@ -375,19 +375,33 @@ check('guard playground dkv block', \App\Domain\Track\Tracks::isPageAllowed('pla
 check('guard general quests open', \App\Domain\Track\Tracks::isPageAllowed('quests.php', 'dkv'), true);
 
 // Test Primary Features per track
-check('feat rpl', \App\Domain\Track\Tracks::primaryFeature('rpl')['href'], 'playground.php');
-check('feat tkj', \App\Domain\Track\Tracks::primaryFeature('tkj')['href'], 'topologi.php');
+check('feat rpl', \App\Domain\Track\Tracks::primaryFeature('rpl')['href'], 'lab.php?tab=praktik&alat=playground');
+check('feat tkj', \App\Domain\Track\Tracks::primaryFeature('tkj')['href'], 'lab.php?tab=praktik&alat=topologi');
 check('feat dkv', \App\Domain\Track\Tracks::primaryFeature('dkv')['href'], 'quests.php');
-check('feat devops', \App\Domain\Track\Tracks::primaryFeature('devops')['href'], 'incident.php');
+check('feat devops', \App\Domain\Track\Tracks::primaryFeature('devops')['href'], 'lab.php?tab=praktik&alat=incident');
 
 // Test Track Curated Resources
 foreach (['rpl', 'tkj', 'dkv'] as $tr) {
     $res = \App\Domain\Track\Roadmap::resources($tr);
     check("resources $tr count", count($res), 36);
-    $types = array_unique(array_column($res, 2));
+    $types = array_unique(array_map(fn($r) => $r[2] ?? null, $res));
     sort($types);
     check("resources $tr types", $types, ['dokumentasi', 'praktek', 'video']);
 }
+
+// Test Lab dinamis: track features menunjuk ke tab lab
+foreach (['rpl', 'tkj', 'devops', 'dkv'] as $tr) {
+    $feats = \App\Domain\Track\Tracks::trackFeatures($tr);
+    $hrefs = array_column($feats, 'href');
+    $hasLab = false;
+    foreach ($hrefs as $h) if (strpos($h, 'lab.php') === 0) $hasLab = true;
+    check("trackfeatures $tr has lab", $hasLab, true);
+    foreach ($hrefs as $h) check("trackfeatures $tr no legacy $h", (int)preg_match('#^(quiz|mentor|resources|shop|playground|terminal|incident|topologi|brief)\.php$#', strtok($h, '?')), 0);
+}
+
+// Test Mentor menunjuk ke tab lab / halaman hidup
+$recs = \App\Domain\Mentor::recommend(['track' => 'rpl', 'due_reviews' => 0, 'incident_tries' => 0, 'incident_avg' => 0, 'skill_gap' => '', 'streak_broken' => false, 'quest_pct' => 50]);
+foreach ($recs as $r) check("mentor href alive " . $r['href'], (int)preg_match('#^(quiz|mentor|resources|shop|playground|terminal|incident|topologi|brief)\.php$#', strtok($r['href'], '?')), 0);
 
 echo "pass: {$pass}, fail: {$fail}" . PHP_EOL;
 exit($fail > 0 ? 1 : 0);

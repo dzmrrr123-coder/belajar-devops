@@ -48,9 +48,6 @@ if ($minimal_nav && is_logged_in()):
 <?php
 if (is_logged_in() && $hud_user):
     $layout_opened = true;
-    $nav_track = \App\Domain\Track\Tracks::normalize($hud_user['track'] ?? 'devops');
-    $nav_track_info = \App\Domain\Track\Tracks::all()[$nav_track] ?? ['name' => strtoupper($nav_track), 'icon' => 'fas fa-graduation-cap'];
-    $nav_track_features = \App\Domain\Track\Tracks::trackFeatures($nav_track);
 ?>
 <div class="app-layout">
     <!-- Desktop Sidebar -->
@@ -66,19 +63,12 @@ if (is_logged_in() && $hud_user):
             <a class="sidebar-link <?= $current_script === 'timer.php' ? 'active' : '' ?>" href="timer.php"><i class="fas fa-clock"></i>Fokus</a>
             <a class="sidebar-link <?= $current_script === 'review.php' ? 'active' : '' ?>" href="review.php"><i class="fas fa-rotate-right"></i>Review</a>
             <a class="sidebar-link <?= $current_script === 'errors.php' ? 'active' : '' ?>" href="errors.php"><i class="fas fa-note-sticky"></i>Catatan Error</a>
-            <?php foreach ($nav_track_features as $nf): ?>
-            <a class="sidebar-link <?= $current_script === $nf['href'] ? 'active' : '' ?>" href="<?= htmlspecialchars($nf['href']) ?>"><i class="<?= htmlspecialchars($nf['icon']) ?>"></i><?= htmlspecialchars($nf['title']) ?></a>
-            <?php endforeach; ?>
-
-            <div class="sidebar-section">Latihan</div>
-            <a class="sidebar-link <?= $current_script === 'quiz.php' ? 'active' : '' ?>" href="quiz.php"><i class="fas fa-brain"></i>Kuis Kilat</a>
-            <a class="sidebar-link <?= $current_script === 'mentor.php' ? 'active' : '' ?>" href="mentor.php"><i class="fas fa-robot"></i>Mentor</a>
-            <a class="sidebar-link <?= $current_script === 'resources.php' ? 'active' : '' ?>" href="resources.php"><i class="fas fa-book-open"></i>Resources</a>
+            <a class="sidebar-link <?= $current_script === 'lab.php' ? 'active' : '' ?>" href="lab.php"><i class="fas fa-flask"></i>Lab Praktik</a>
 
             <div class="sidebar-section">Kamu</div>
             <a class="sidebar-link <?= $current_script === 'leaderboard.php' ? 'active' : '' ?>" href="leaderboard.php"><i class="fas fa-trophy"></i>Leaderboard</a>
             <a class="sidebar-link <?= $current_script === 'squad.php' ? 'active' : '' ?>" href="squad.php"><i class="fas fa-users"></i>Squad</a>
-            <a class="sidebar-link <?= $current_script === 'shop.php' ? 'active' : '' ?>" href="shop.php"><i class="fas fa-store"></i>Toko XP</a>
+            <a class="sidebar-link <?= $current_script === 'profile.php' ? 'active' : '' ?>" href="profile.php"><i class="fas fa-user"></i>Profil &amp; Toko</a>
         </div>
         <div class="sidebar-footer">
             <a href="profile.php" class="sidebar-profile">

@@ -126,6 +126,33 @@ foreach ($all_quests as $q) {
 
 $completion_rate = $total_quests > 0 ? round(($completed_quests / $total_quests) * 100) : 0;
 
+// Tab Materi (gabungan resources.php): filter server-side via ?tab=materi&track=&mweek=
+$mat_tab = ($_GET['tab'] ?? 'quest') === 'materi' ? 'materi' : 'quest';
+$mat_track = $_GET['track'] ?? $myTrack;
+if ($mat_track !== 'all' && !in_array($mat_track, ['devops', 'rpl', 'tkj', 'dkv'], true)) $mat_track = $myTrack;
+$mat_week = max(0, min(12, (int)($_GET['mweek'] ?? 0)));
+$mat_resources = []; $mat_by_week = [];
+try {
+    \App\Domain\Track\Roadmap::ensureSeedResources($conn);
+    $msql = "SELECT id, week, title, type, url, track FROM resources WHERE 1=1";
+    $mparams = []; $mtypes = '';
+    if ($mat_track !== 'all') { $msql .= " AND (track = ? OR track = 'all' OR track IS NULL)"; $mparams[] = $mat_track; $mtypes .= 's'; }
+    if ($mat_week > 0) { $msql .= " AND week = ?"; $mparams[] = $mat_week; $mtypes .= 'i'; }
+    $msql .= " ORDER BY week ASC, type ASC, id ASC";
+    if ($mparams) {
+        $mst = $conn->prepare($msql);
+        $mst->bind_param($mtypes, ...$mparams);
+        $mst->execute();
+        $mat_resources = $mst->get_result()->fetch_all(MYSQLI_ASSOC);
+        $mst->close();
+    } else {
+        $mr = $conn->query($msql);
+        $mat_resources = $mr ? $mr->fetch_all(MYSQLI_ASSOC) : [];
+    }
+    foreach ($mat_resources as $r) $mat_by_week[$r['week']][] = $r;
+} catch (Throwable $e) {}
+$mat_track_label = $mat_track === 'all' ? 'Semua Jurusan' : (\App\Domain\Track\Tracks::all()[$mat_track]['name'] ?? strtoupper($mat_track));
+
 
 
 $page_title = 'Quest Board - Roadmap ' . $trackName . ' 12 Minggu';
@@ -165,12 +192,17 @@ require_once 'includes/navbar.php';
             <?php $primaryFeature = \App\Domain\Track\Tracks::primaryFeature($myTrack); ?>
             <div class="d-flex flex-column gap-2 mt-2">
                 <a class="btn btn-cyber btn-sm" href="<?= htmlspecialchars($primaryFeature['href']) ?>"><i class="<?= htmlspecialchars($primaryFeature['icon']) ?> me-1"></i><?= htmlspecialchars($primaryFeature['title']) ?></a>
-                <a class="btn btn-cyber-outline btn-sm" href="mentor.php"><i class="fas fa-robot me-1"></i>Tanya Mentor</a>
-                <a class="btn btn-cyber-outline btn-sm" href="lab.php"><i class="fas fa-flask me-1"></i>Lab Praktik</a>
+                <a class="btn btn-cyber-outline btn-sm" href="lab.php?tab=mentor"><i class="fas fa-robot me-1"></i>Tanya Mentor</a>
+                <a class="btn btn-cyber-outline btn-sm" href="lab.php?tab=kuis"><i class="fas fa-bolt me-1"></i>Kuis Kilat</a>
             </div>
         </div>
     </section>
 
+    <div class="segmented mb-3" role="group" aria-label="Tab roadmap">
+        <button type="button" class="filter-pill <?= $mat_tab === 'quest' ? 'active' : '' ?>" onclick="showRoadTab('quest', this)">Quest</button>
+        <button type="button" class="filter-pill <?= $mat_tab === 'materi' ? 'active' : '' ?>" onclick="showRoadTab('materi', this)">Materi (<?= count($mat_resources) ?>)</button>
+    </div>
+    <div id="questTab" <?= $mat_tab === 'materi' ? 'hidden' : '' ?>>
     <div class="mb-4">
         <div class="row g-3 align-items-center">
             <div class="col-md-5">
@@ -219,7 +251,7 @@ if ($preselect_week > 0) $current_active_week = $preselect_week;
                 <summary class="mission-summary bg-body-tertiary">
                     <div class="mission-summary-text">
                         <strong>Minggu <?= $week_num ?></strong>
-                        <small>Progres <?= $wstat['pct'] ?>% · <a href="resources.php?week=<?= $week_num ?>" class="text-primary text-decoration-none" onclick="event.stopPropagation()">Lihat Materi</a></small>
+                        <small>Progres <?= $wstat['pct'] ?>% · <a href="quests.php?tab=materi&mweek=<?= $week_num ?>" class="text-primary text-decoration-none" onclick="event.stopPropagation()">Lihat Materi</a></small>
                     </div>
                     <span class="mission-summary-count"><?= $wstat['done'] ?>/<?= $wstat['total'] ?></span>
                     <i class="fas fa-chevron-down mission-summary-chev" aria-hidden="true"></i>
@@ -418,6 +450,121 @@ if ($preselect_week > 0) $current_active_week = $preselect_week;
             </button>
         </div>
     </div>
+    </div><!-- /questTab -->
+    <div id="materiTab" <?= $mat_tab === 'quest' ? 'hidden' : '' ?>>
+        <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
+            <span class="small text-muted fw-bold me-1"><i class="fas fa-layer-group me-1" aria-hidden="true"></i><?= htmlspecialchars($mat_track_label) ?>:</span>
+            <?php foreach (['rpl' => 'RPL', 'tkj' => 'TKJ', 'dkv' => 'DKV', 'devops' => 'DevOps'] as $tkey => $tname): ?>
+                <a href="quests.php?tab=materi&track=<?= $tkey ?><?= $mat_week ? '&mweek=' . $mat_week : '' ?>" class="btn btn-sm <?= $mat_track === $tkey ? 'btn-cyber' : 'btn-cyber-outline' ?> py-1 px-3"><?= $tname ?><?= $tkey === $myTrack ? ' <span class="badge bg-success ms-1 small">Kamu</span>' : '' ?></a>
+            <?php endforeach; ?>
+            <a href="quests.php?tab=materi&track=all<?= $mat_week ? '&mweek=' . $mat_week : '' ?>" class="btn btn-sm <?= $mat_track === 'all' ? 'btn-cyber' : 'btn-cyber-outline' ?> py-1 px-3">Semua</a>
+        </div>
+        <div class="row g-3 align-items-center mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search" aria-hidden="true"></i></span>
+                    <input type="search" id="resourceSearch" class="form-control" placeholder="Cari materi…" aria-label="Cari materi" oninput="filterResources()">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="d-flex justify-content-md-end">
+                    <div class="segmented" role="group" aria-label="Filter tipe materi">
+                        <button type="button" class="filter-pill active" onclick="filterByType('all', this)">Semua</button>
+                        <button type="button" class="filter-pill" onclick="filterByType('video', this)">Video</button>
+                        <button type="button" class="filter-pill" onclick="filterByType('dokumentasi', this)">Dokumen</button>
+                        <button type="button" class="filter-pill" onclick="filterByType('praktek', this)">Praktek</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-3 filter-pills mb-3" role="group" aria-label="Filter minggu materi">
+            <a href="quests.php?tab=materi&track=<?= urlencode($mat_track) ?>" class="filter-pill <?= $mat_week === 0 ? 'active' : '' ?>">Semua minggu</a>
+            <?php for ($w = 1; $w <= 12; $w++): ?>
+                <a href="quests.php?tab=materi&track=<?= urlencode($mat_track) ?>&mweek=<?= $w ?>" class="filter-pill <?= $mat_week === $w ? 'active' : '' ?>">M-<?= $w ?></a>
+            <?php endfor; ?>
+        </div>
+        <div id="resourceContainer">
+            <?php if (!empty($mat_by_week)): ?>
+                <?php foreach ($mat_by_week as $w_num => $w_items): ?>
+                    <section class="week-block resource-week-group" data-week="<?= $w_num ?>" aria-label="Minggu <?= $w_num ?>">
+                        <div class="week-block-head">
+                            <span class="week-tag">Minggu <?= $w_num ?></span>
+                            <span class="week-count"><?= count($w_items) ?> materi</span>
+                            <span class="rule" aria-hidden="true"></span>
+                        </div>
+                        <div>
+                            <?php foreach ($w_items as $res): ?>
+                                <div class="resource-item" data-type="<?= htmlspecialchars($res['type']) ?>">
+                                    <a class="list-row" href="<?= htmlspecialchars($res['url']) ?>" target="_blank" rel="noopener noreferrer">
+                                        <div class="list-main">
+                                            <p class="list-title"><?= htmlspecialchars($res['title']) ?></p>
+                                            <p class="list-meta"><?= htmlspecialchars(ucfirst($res['type'])) ?> · Minggu <?= (int)$res['week'] ?></p>
+                                        </div>
+                                        <i class="fas fa-arrow-up-right-from-square list-chev" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="card p-4 p-md-5 text-center empty-state">
+                    <div class="empty-state-icon"><i class="fas fa-book-reader"></i></div>
+                    <h2 class="h5 fw-bold mb-2">Tidak ada materi untuk filter ini</h2>
+                    <p class="text-secondary small mb-3">Coba minggu atau jurusan lain.</p>
+                    <div><a href="quests.php?tab=materi" class="btn btn-cyber-outline btn-sm">Lihat semua</a></div>
+                </div>
+            <?php endif; ?>
+        </div>
+        <div id="noResourcesSearch" class="card p-4 p-md-5 text-center empty-state d-none">
+            <div class="empty-state-icon"><i class="fas fa-search-minus"></i></div>
+            <h2 class="h5 fw-bold mb-2">Tidak ada materi yang cocok</h2>
+            <p class="text-secondary small mb-0">Coba kata kunci yang lebih umum.</p>
+        </div>
+    </div>
+<script>
+function showRoadTab(which, btn) {
+    document.getElementById('questTab').hidden = which !== 'quest';
+    document.getElementById('materiTab').hidden = which !== 'materi';
+    btn.parentElement.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+let activeType = 'all';
+function filterByType(type, btn) {
+    activeType = type;
+    btn.parentElement.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyResourceFilters();
+}
+function filterResources() { applyResourceFilters(); }
+function applyResourceFilters() {
+    const input = document.getElementById('resourceSearch');
+    const query = ((input && input.value) || '').toLowerCase().trim();
+    const groups = document.querySelectorAll('.resource-week-group');
+    let visibleGroupCount = 0;
+    groups.forEach(group => {
+        const items = group.querySelectorAll('.resource-item');
+        let visibleItemsInGroup = 0;
+        items.forEach(item => {
+            const itemType = item.getAttribute('data-type');
+            const title = (item.querySelector('.list-title')?.textContent || '').toLowerCase();
+            if ((activeType === 'all' || activeType === itemType) && (!query || title.includes(query))) {
+                item.style.display = '';
+                visibleItemsInGroup++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        if (visibleItemsInGroup > 0) { group.style.display = ''; visibleGroupCount++; }
+        else { group.style.display = 'none'; }
+    });
+    const noResult = document.getElementById('noResourcesSearch');
+    if (groups.length > 0) {
+        if (visibleGroupCount === 0) noResult.classList.remove('d-none');
+        else noResult.classList.add('d-none');
+    }
+}
+</script>
 </main>
 
 <script>

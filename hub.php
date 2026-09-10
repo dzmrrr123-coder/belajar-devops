@@ -73,11 +73,11 @@ require_once 'includes/navbar.php';
             <section class="card border-0 shadow-sm p-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2 class="h5 fw-bold mb-0"><i class="fas fa-terminal me-2 text-primary"></i>Code Studio</h2>
-                    <a href="playground.php" class="btn btn-sm btn-cyber-outline">Buka Playground <i class="fas fa-arrow-right ms-1"></i></a>
+                    <a href="lab.php?tab=praktik&alat=playground" class="btn btn-sm btn-cyber-outline">Buka Playground <i class="fas fa-arrow-right ms-1"></i></a>
                 </div>
                 <div class="row g-3">
                     <div class="col-sm-6">
-                        <a href="lab.php" class="text-decoration-none">
+                        <a href="lab.php?tab=praktik" class="text-decoration-none">
                             <div class="p-3 rounded border h-100 dash-hover" style="background:var(--surface-2)">
                                 <h3 class="h6 mb-1"><i class="fas fa-flask text-warning me-2"></i>Algorithmic Labs</h3>
                                 <p class="small text-secondary mb-0">Tantangan koding harian</p>
@@ -122,7 +122,7 @@ require_once 'includes/navbar.php';
             <section class="card border-0 shadow-sm p-4 h-100 bg-body-tertiary">
                 <h2 class="h6 fw-bold mb-3"><i class="fas fa-robot text-primary me-2"></i>AI Code Reviewer</h2>
                 <p class="small text-muted mb-4">Tanyakan struktur database, refactoring kode, atau arsitektur Laravel ke mentormu.</p>
-                <a href="mentor.php" class="btn btn-cyber w-100 mt-auto"><i class="fas fa-message me-2"></i>Tanya Mentor</a>
+                <a href="lab.php?tab=mentor" class="btn btn-cyber w-100 mt-auto"><i class="fas fa-message me-2"></i>Tanya Mentor</a>
             </section>
         </div>
     </div>
@@ -139,12 +139,12 @@ require_once 'includes/navbar.php';
                     <div class="col-sm-6 border-end p-4">
                         <h3 class="h6 mb-3"><i class="fas fa-network-wired me-2 text-primary"></i>Topology Canvas</h3>
                         <p class="small text-secondary mb-3">Rancang topologi jaringan interaktif dengan router, switch, dan PC.</p>
-                        <a href="topologi.php" class="btn btn-sm btn-cyber-outline w-100">Buka Kanvas</a>
+                        <a href="lab.php?tab=praktik&alat=topologi" class="btn btn-sm btn-cyber-outline w-100">Buka Kanvas</a>
                     </div>
                     <div class="col-sm-6 p-4">
                         <h3 class="h6 mb-3"><i class="fas fa-fire-extinguisher me-2 text-warning"></i>Incident Simulator</h3>
                         <p class="small text-secondary mb-3">Simulasikan server down dan pelajari cara memperbaikinya.</p>
-                        <a href="incident.php" class="btn btn-sm btn-cyber w-100">Simulasi Sekarang</a>
+                        <a href="lab.php?tab=praktik&alat=incident" class="btn btn-sm btn-cyber w-100">Simulasi Sekarang</a>
                     </div>
                 </div>
             </section>
@@ -156,7 +156,7 @@ require_once 'includes/navbar.php';
                 <?php if (!empty($widgetData['recent_topologies'])): ?>
                     <div class="d-flex flex-column gap-2">
                         <?php foreach ($widgetData['recent_topologies'] as $topo): ?>
-                        <a href="topologi.php" class="p-3 rounded border border-secondary-subtle bg-surface text-decoration-none d-flex justify-content-between align-items-center hover-lift">
+                        <a href="lab.php?tab=praktik&alat=topologi" class="p-3 rounded border border-secondary-subtle bg-surface text-decoration-none d-flex justify-content-between align-items-center hover-lift">
                             <span class="fw-bold small text-body"><?= htmlspecialchars($topo['name']) ?></span>
                             <span class="small text-muted font-monospace"><?= date('d M Y', strtotime($topo['created_at'])) ?></span>
                         </a>
@@ -172,7 +172,9 @@ require_once 'includes/navbar.php';
         <div class="col-lg-4 d-flex flex-column gap-4">
             <section class="card border-0 shadow-sm p-4 bg-body-tertiary">
                 <h2 class="h6 fw-bold mb-3"><i class="fas fa-calculator text-info me-2"></i>Quick Subnet</h2>
-                <form action="topologi.php" method="GET" class="m-0">
+                <form action="lab.php" method="GET" class="m-0">
+                    <input type="hidden" name="tab" value="praktik">
+                    <input type="hidden" name="alat" value="topologi">
                     <div class="input-group input-group-sm mb-2">
                         <input type="text" name="cidr" class="form-control font-monospace" placeholder="192.168.1.0/24">
                         <button class="btn btn-cyber" type="submit">Hitung</button>
@@ -183,7 +185,7 @@ require_once 'includes/navbar.php';
             <section class="card border-0 shadow-sm p-4 flex-grow-1">
                 <h2 class="h6 fw-bold mb-3"><i class="fas fa-terminal text-secondary me-2"></i>Lab Linux</h2>
                 <p class="small text-muted mb-4">Akses terminal virtual untuk berlatih perintah dasar sysadmin.</p>
-                <a href="terminal.php" class="btn btn-cyber-outline w-100 mt-auto"><i class="fas fa-arrow-right me-2"></i>Akses Terminal</a>
+                <a href="lab.php?tab=praktik&alat=terminal" class="btn btn-cyber-outline w-100 mt-auto"><i class="fas fa-arrow-right me-2"></i>Akses Terminal</a>
             </section>
         </div>
     </div>
@@ -198,7 +200,7 @@ require_once 'includes/navbar.php';
                         <p class="lead text-secondary mb-4">Selesaikan design brief mingguan, kumpulkan portofolio, dan asah skill visualmu.</p>
                         <div class="d-flex gap-3">
                             <a href="quests.php" class="btn btn-cyber px-4">Lihat Design Brief</a>
-                            <a href="lab.php" class="btn btn-cyber-outline px-4">Tantangan Cepat</a>
+                            <a href="lab.php?tab=praktik" class="btn btn-cyber-outline px-4">Tantangan Cepat</a>
                         </div>
                     </div>
                     <div class="col-md-4 d-none d-md-flex align-items-center justify-content-center p-4">
@@ -243,21 +245,21 @@ require_once 'includes/navbar.php';
                 </div>
                 <div class="p-0 row g-0">
                     <div class="col-sm-4 border-end p-4 text-center">
-                        <a href="incident.php" class="text-decoration-none d-block h-100 text-body">
+                        <a href="lab.php?tab=praktik&alat=incident" class="text-decoration-none d-block h-100 text-body">
                             <i class="fas fa-fire-extinguisher fs-2 text-danger mb-3"></i>
                             <h3 class="h6 fw-bold mb-1">Incident Sim</h3>
                             <p class="small text-secondary mb-0">Latih penanganan error</p>
                         </a>
                     </div>
                     <div class="col-sm-4 border-end p-4 text-center">
-                        <a href="terminal.php" class="text-decoration-none d-block h-100 text-body">
+                        <a href="lab.php?tab=praktik&alat=terminal" class="text-decoration-none d-block h-100 text-body">
                             <i class="fas fa-terminal fs-2 text-success mb-3"></i>
                             <h3 class="h6 fw-bold mb-1">Terminal</h3>
                             <p class="small text-secondary mb-0">Linux & Git cli</p>
                         </a>
                     </div>
                     <div class="col-sm-4 p-4 text-center">
-                        <a href="playground.php" class="text-decoration-none d-block h-100 text-body">
+                        <a href="lab.php?tab=praktik&alat=playground" class="text-decoration-none d-block h-100 text-body">
                             <i class="fas fa-code fs-2 text-info mb-3"></i>
                             <h3 class="h6 fw-bold mb-1">Playground</h3>
                             <p class="small text-secondary mb-0">Test scripts</p>
@@ -294,7 +296,7 @@ require_once 'includes/navbar.php';
             <section class="card border-0 shadow-sm p-4 h-100 bg-body-tertiary">
                 <h2 class="h6 fw-bold mb-3"><i class="fas fa-robot text-primary me-2"></i>AI Ops Assistant</h2>
                 <p class="small text-muted mb-4">Tanyakan konfigurasi Nginx, Dockerfile, atau pipeline CI/CD ke asisten AI-mu.</p>
-                <a href="mentor.php" class="btn btn-cyber w-100 mt-auto"><i class="fas fa-message me-2"></i>Tanya Assistant</a>
+                <a href="lab.php?tab=mentor" class="btn btn-cyber w-100 mt-auto"><i class="fas fa-message me-2"></i>Tanya Assistant</a>
             </section>
         </div>
     </div>
