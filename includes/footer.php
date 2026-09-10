@@ -100,3 +100,13 @@ elseif (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
     <?php endif; ?>
 </body>
 </html>
+<?php
+if (defined('LT_PAGE_CACHE_KEY')) {
+    $lt_html = ob_get_clean();
+    if (http_response_code() === 200 && empty($_SESSION['flash'])) {
+        try { \App\Cache\Store::set(LT_PAGE_CACHE_KEY, (string)$lt_html, 25); } catch (Throwable $e) {}
+        header('X-LT-Page-Cache: MISS');
+    }
+    echo (string)$lt_html;
+}
+?>

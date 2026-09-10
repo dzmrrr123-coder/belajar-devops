@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (Squads::leave($conn, $user_id)) set_flash('info', 'Keluar dari squad.');
         else set_flash('warning', 'Gagal keluar squad.');
     }
+    lt_page_cache_bump($user_id);
     redirect('squad.php');
 }
 

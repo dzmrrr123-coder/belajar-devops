@@ -2,6 +2,7 @@
 if (!defined('DB_HOST')) {
     require_once __DIR__ . '/../config.php';
 }
+if (defined('LT_PAGE_CACHE_KEY')) ob_start();
 $page_title = $page_title ?? 'Skill-Building untuk Siswa Vokasi';
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
@@ -20,6 +21,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Learn Tracker">
+    <script type="speculationrules">
+    {"prerender": [{"source": "document", "where": {"href_matches": ["*/hub.php", "*/quests.php"]}, "eagerness": "moderate"}],
+     "prefetch": [{"source": "document", "where": {"and": [{"href_matches": ["*.php"]}, {"not": {"href_matches": ["*tab=kuis*", "*quiz.php*", "*logout.php*", "*switch_track.php*"]}}]}, "eagerness": "moderate"}]}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net">

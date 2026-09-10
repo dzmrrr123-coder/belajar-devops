@@ -57,6 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $up = $conn->prepare("UPDATE users SET show_on_board = ?, public_profile = ? WHERE id = ?");
         $up->bind_param("iii", $board, $pub, $user_id);
         $up->execute(); $up->close();
+        \App\Cache\Store::forget("upub:{$user_id}");
+        lt_page_cache_bump($user_id);
         set_flash('success', 'Visibilitas diperbarui.');
         redirect('profile.php');
     }

@@ -109,6 +109,50 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
 }
 
+// 2b. Full-page cache: sajikan halaman GET panas tanpa menyentuh DB sama sekali.
+// Aman karena: hanya GET non-AJAX, tanpa flash pending, key = user+path+query+versi.
+// Versi naik tiap award_xp() / ganti track, TTL 25 detik sebagai batas akhir.
+function lt_page_cache_key(): ?string {
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') return null;
+    $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+    $page = basename($path);
+    static $allow = ['hub.php','quests.php','lab.php','review.php','errors.php','timer.php','leaderboard.php','profile.php','squad.php','u.php'];
+    if (!in_array($page, $allow, true)) return null;
+    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') return null;
+    if (strpos((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json') !== false) return null;
+    if (!empty($_SESSION['flash']) || isset($_GET['nocache'])) return null;
+    if ($page === 'lab.php' && ($_GET['tab'] ?? '') === 'kuis') return null;
+    $uid = (int)($_SESSION['user_id'] ?? 0);
+    if ($uid <= 0 && $page !== 'u.php') return null;
+    try {
+        $vg = \App\Cache\Store::get('pgver:' . $uid);
+        $ver = !empty($vg['hit']) ? (int)$vg['value'] : 0;
+        return 'page:' . $uid . ':' . $page . ':' . md5((string)($_SERVER['QUERY_STRING'] ?? '')) . ':v' . $ver;
+    } catch (Throwable $e) { return null; }
+}
+function lt_page_cache_bump(int $uid): void {
+    if ($uid <= 0) return;
+    try {
+        $vg = \App\Cache\Store::get('pgver:' . $uid);
+        \App\Cache\Store::set('pgver:' . $uid, (!empty($vg['hit']) ? (int)$vg['value'] : 0) + 1, 86400);
+    } catch (Throwable $e) {}
+}
+if (PHP_SAPI !== 'cli' && !defined('LT_PAGE_CACHE_KEY')) {
+    $lt_pck = lt_page_cache_key();
+    if ($lt_pck !== null) {
+        try {
+            $lt_hit = \App\Cache\Store::get($lt_pck);
+            if (!empty($lt_hit['hit'])) {
+                if (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
+                header('X-LT-Page-Cache: HIT');
+                echo (string)$lt_hit['value'];
+                exit;
+            }
+            define('LT_PAGE_CACHE_KEY', $lt_pck);
+        } catch (Throwable $e) {}
+    }
+}
+
 function rate_limit_hit($key, $max, $window_sec) { return \App\Http\RateLimit::hit((string)$key, (int)$max, (int)$window_sec); }
 function shop_reroll_win($roll, $draw) { return \App\Domain\Shop::rerollWin((int)$roll, (int)$draw); }
 function shop_reroll_ev() { return \App\Domain\Shop::rerollEv(); }
@@ -617,7 +661,7 @@ function capped_xp_gain($wanted, $today_sum, $cap) { return \App\Domain\Gamifica
 
 function daily_reason_xp($c, $u, $r) { return \App\Domain\Gamification\Ledger::dailyReason($c, (int)$u, (string)$r); }
 function xp_events_has_ref($c) { return \App\Domain\Gamification\Ledger::hasRef($c); }
-function award_xp($c, $u, $a, $r = 'other', $t = null, $i = null) { \App\Domain\Gamification\Ledger::award($c, (int)$u, (int)$a, (string)$r, $t, $i); }
+function award_xp($c, $u, $a, $r = 'other', $t = null, $i = null) { \App\Domain\Gamification\Ledger::award($c, (int)$u, (int)$a, (string)$r, $t, $i); lt_page_cache_bump((int)$u); }
 function xp_ledger_sum($c, $u) { return \App\Domain\Gamification\Ledger::sum($c, (int)$u); }
 function sync_user_xp($c, $u) { return \App\Domain\Gamification\Ledger::sync($c, (int)$u); }
 function awarded_for_ref($c, $u, $t, $i) { return \App\Domain\Gamification\Ledger::awardedFor($c, (int)$u, (string)$t, (int)$i); }

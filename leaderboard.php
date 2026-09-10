@@ -28,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 set_flash('info', 'Keluar dari tantangan minggu ini.');
             }
             \App\Cache\Store::forget(\App\Cache\Keys::racers($cid));
+            lt_page_cache_bump($user_id);
         }
         redirect('leaderboard.php?scope=' . urlencode($_POST['scope'] ?? 'total'));
     }

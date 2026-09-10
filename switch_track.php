@@ -34,6 +34,7 @@ try {
     \App\Domain\Track\Roadmap::ensureSeed($conn);
 } catch (Throwable $e) {}
 $conn->close();
+lt_page_cache_bump($uid);
 $label = \App\Domain\Track\Tracks::all()[$track]['name'] ?? $track;
 set_flash($ok ? 'success' : 'danger', $ok ? "Jurusan aktif diubah ke: {$label}. Roadmap, materi, dan lab otomatis menyesuaikan!" : 'Gagal ganti jurusan. Coba lagi.');
 redirect($clean_back);
