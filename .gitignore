@@ -12,6 +12,7 @@ scratch/
 storage/cache/
 storage/migrate.lock
 storage/schema_ok.cache
+storage/asset_ver.cache
 .tmpdbg/
 app/storage/uploads/*
 !app/storage/uploads/.gitkeep

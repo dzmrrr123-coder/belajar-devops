@@ -192,7 +192,7 @@ require_once 'includes/header.php';
         <p class="text-secondary small mb-3">Bukti visual dari quest yang dikerjakan.</p>
         <div class="d-flex flex-wrap gap-2">
         <?php foreach ($galeri as $g): ?>
-            <a href="karya.php?id=<?= (int)$g['id'] ?>" target="_blank" rel="noopener" title="<?= htmlspecialchars($g['title']) ?>"><img src="karya.php?id=<?= (int)$g['id'] ?>" alt="<?= htmlspecialchars($g['title']) ?>" loading="lazy" style="width:120px;height:90px;object-fit:cover;border-radius:8px"></a>
+            <a href="karya.php?id=<?= (int)$g['id'] ?>" target="_blank" rel="noopener" title="<?= htmlspecialchars($g['title']) ?>"><img src="karya.php?id=<?= (int)$g['id'] ?>" alt="<?= htmlspecialchars($g['title']) ?>" loading="lazy" decoding="async" width="120" height="90" style="width:120px;height:90px;object-fit:cover;border-radius:8px"></a>
         <?php endforeach; ?>
         </div>
     </section>

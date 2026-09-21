@@ -1,0 +1,30 @@
+/* Brutal Light — terang, keras, memukau. Tetap 0 lib, 0 font, 0 gambar. Semua dekor absolute. */
+:root{--brutal-border:2px solid var(--ink);--brutal-shadow:6px 6px 0 var(--ink);--brutal-shadow-sm:4px 4px 0 var(--ink);--hero-size:clamp(44px,8vw,96px)}
+.brutal-hero{position:relative;overflow:hidden;background:var(--surface);border:var(--brutal-border);border-radius:18px;box-shadow:var(--brutal-shadow);padding:clamp(20px,4vw,40px)}
+.brutal-hero .grid-bg{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:24px 24px;opacity:.55}
+.brutal-hero .nebula{position:absolute;inset:0;pointer-events:none;background:radial-gradient(520px 240px at 85% -10%,rgba(201,161,59,.22),transparent 70%),radial-gradient(480px 260px at 0% 110%,rgba(99,179,155,.22),transparent 70%)}
+.brutal-hero .noise{position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='80' height='80' filter='url(%23n)'/%3E%3C/svg%3E")}
+.brutal-hero>*:not(.grid-bg):not(.nebula):not(.noise){position:relative}
+.brutal-kicker{font-family:var(--font-mono);font-size:.72rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--primary);margin-bottom:8px}
+.brutal-title{font-size:var(--hero-size);font-weight:800;letter-spacing:-.04em;line-height:.95;color:var(--ink);margin:0 0 10px;text-wrap:balance}
+.brutal-title .stroke{-webkit-text-stroke:2px var(--ink);color:transparent}
+.brutal-desc{font-size:.95rem;color:var(--muted);max-width:46ch;margin-bottom:16px}
+.brutal-xp{font-size:clamp(28px,5vw,56px);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;color:var(--ink)}
+.brutal-xp small{font-size:.85rem;font-weight:700;color:var(--muted);letter-spacing:0}
+.brutal-card{background:var(--surface);border:var(--brutal-border);border-radius:14px;box-shadow:var(--brutal-shadow-sm);padding:14px 16px}
+.brutal-card.hard:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--ink)}
+.sticker{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:2px solid var(--ink);border-radius:999px;padding:4px 12px;background:var(--gold-soft);color:var(--gold-ink);box-shadow:3px 3px 0 var(--ink);transform:rotate(-3deg)}
+.sticker.alt{background:var(--primary-soft);color:var(--primary);transform:rotate(2deg)}
+.sticker.flat{transform:none}
+.marquee-brutal{overflow:hidden;border:var(--brutal-border);border-radius:12px;background:var(--ink);color:#fff;box-shadow:var(--brutal-shadow-sm)}
+.marquee-brutal .track{display:flex;gap:0;white-space:nowrap;width:max-content;animation:brutal-marquee 22s linear infinite;font-family:var(--font-mono);font-size:.75rem;font-weight:700;letter-spacing:.18em;padding:8px 0}
+.marquee-brutal span{padding:0 18px}
+@keyframes brutal-marquee{to{transform:translateX(-50%)}}
+.brutal-bar{border:2px solid var(--ink);border-radius:99px;background:#fff;height:14px;overflow:hidden}
+.brutal-bar>div{background:repeating-linear-gradient(-45deg,var(--primary) 0 10px,var(--primary-hover) 10px 20px);height:100%;border-radius:99px;transition:width .4s ease}
+[data-reveal]{opacity:0;transform:translateY(24px) skewY(.5deg);transition:opacity .35s ease,transform .35s ease}
+[data-reveal].in{opacity:1;transform:none}
+[data-tilt]{transform-style:preserve-3d;will-change:transform}
+@media (prefers-reduced-motion:reduce){.marquee-brutal .track{animation:none}[data-reveal]{opacity:1;transform:none;transition:none}.brutal-card.hard:hover{transform:none}}
+html[data-motion="reduced"] .marquee-brutal .track{animation:none}
+@media (max-width:575.98px){.brutal-hero{border-radius:14px;box-shadow:4px 4px 0 var(--ink)}.brutal-title{letter-spacing:-.03em}}

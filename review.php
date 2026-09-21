@@ -5,7 +5,15 @@ $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
 $valid_grades = ['again', 'hard', 'good', 'easy', 'know', 'forgot'];
 $grade_map = ['know' => 'good', 'forgot' => 'again'];
-$deck_names = array_keys(skill_defs(user_track($conn, $user_id)));
+// Single user fetch untuk track + reuse navbar HUD (hemat 1 query per load).
+$user = null;
+try {
+    $us = $conn->prepare("SELECT id, username, email, xp, streak, last_login_at, avatar_frame, track FROM users WHERE id = ?");
+    if ($us) { $us->bind_param("i", $user_id); $us->execute(); $user = $us->get_result()->fetch_assoc() ?: null; $us->close(); }
+} catch (Throwable $e) {}
+$myTrack = \App\Domain\Track\Tracks::normalize((string)($user['track'] ?? user_track($conn, $user_id)));
+if (is_array($user) && !isset($user['track'])) $user['track'] = $myTrack;
+$deck_names = array_keys(skill_defs($myTrack));
 $deck = trim((string)($_GET['deck'] ?? $_POST['deck'] ?? 'Semua'));
 if ($deck !== 'Semua' && !in_array($deck, $deck_names, true)) $deck = 'Semua';
 

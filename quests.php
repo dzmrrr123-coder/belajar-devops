@@ -4,7 +4,14 @@ require_login();
 
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
-$myTrack = user_track($conn, $user_id);
+// Single user fetch: dipakai untuk track + reuse navbar HUD (hemat 2 query users per load).
+$user = null;
+try {
+    $us = $conn->prepare("SELECT id, username, email, xp, streak, freeze_tokens, last_login_at, avatar_frame, track FROM users WHERE id = ?");
+    if ($us) { $us->bind_param("i", $user_id); $us->execute(); $user = $us->get_result()->fetch_assoc() ?: null; $us->close(); }
+} catch (Throwable $e) {}
+$myTrack = \App\Domain\Track\Tracks::normalize((string)($user['track'] ?? user_track($conn, $user_id)));
+if (is_array($user) && !isset($user['track'])) $user['track'] = $myTrack;
 $trackName = \App\Domain\Track\Tracks::all()[$myTrack]['name'] ?? 'DevOps';
 try { \App\Domain\Track\Roadmap::ensureSeed($conn); } catch (Throwable $e) {}
 $inClass = false;
@@ -154,18 +161,17 @@ try {
 } catch (Throwable $e) {}
 $mat_track_label = $mat_track === 'all' ? 'Semua Jurusan' : (\App\Domain\Track\Tracks::all()[$mat_track]['name'] ?? strtoupper($mat_track));
 
-// Strip Hari ini (pindahan Hub): streak, peti, review jatuh tempo, progres track
-$today_streak = 0; $today_freeze = 0; $today_chest_opened = false; $today_due = 0;
-$track_progress = ['done' => 0, 'total' => 1, 'percent' => 0];
+// Strip Hari ini: streak/freeze reuse $user (tanpa query), progres reuse hitungan lokal (tanpa Hub double-COUNT).
+$today_streak = (int)($user['streak'] ?? 0); $today_freeze = (int)($user['freeze_tokens'] ?? 0);
+$today_chest_opened = false; $today_due = 0;
+$tp_total = max(1, (int)($total_quests ?? 0));
+$tp_done = (int)($completed_quests ?? 0);
+$track_progress = ['done' => $tp_done, 'total' => $tp_total, 'percent' => $tp_total > 0 ? (int)round(($tp_done / $tp_total) * 100) : 0];
 try {
-    $hq = $conn->prepare("SELECT streak, freeze_tokens FROM users WHERE id = ?");
-    if ($hq) { $hq->bind_param("i", $user_id); $hq->execute(); $urow = $hq->get_result()->fetch_assoc() ?: []; $hq->close(); $today_streak = (int)($urow['streak'] ?? 0); $today_freeze = (int)($urow['freeze_tokens'] ?? 0); }
     $hq = $conn->prepare("SELECT 1 FROM daily_chests WHERE user_id = ? AND chest_date = CURDATE()");
     if ($hq) { $hq->bind_param("i", $user_id); $hq->execute(); $today_chest_opened = (bool)$hq->get_result()->fetch_assoc(); $hq->close(); }
     $hq = $conn->prepare("SELECT COUNT(*) c FROM reviews WHERE user_id = ? AND next_due <= CURDATE()");
     if ($hq) { $hq->bind_param("i", $user_id); $hq->execute(); $today_due = (int)($hq->get_result()->fetch_assoc()['c'] ?? 0); $hq->close(); }
-    $wd = \App\Domain\Track\Hub::getWidgetData($conn, $user_id, $myTrack);
-    if (!empty($wd['track_progress'])) $track_progress = $wd['track_progress'];
 } catch (Throwable $e) {}
 
 
@@ -176,12 +182,20 @@ require_once 'includes/navbar.php';
 ?>
 
 <main class="container py-4" role="main">
-    <section class="overview-header progress-strip mb-4">
-        <div class="strip-main">
-            <div class="page-kicker eyebrow mb-1">Roadmap <?= htmlspecialchars($trackName) ?></div>
-            <h1 class="page-title mb-2">Roadmap 12 Minggu</h1>
-            <p class="page-desc mb-3">Centang quest yang selesai untuk mendapatkan XP.</p>
-            
+    <section class="brutal-hero mb-3" data-reveal aria-label="Roadmap hero">
+        <div class="grid-bg" aria-hidden="true" data-parallax="0.25"></div>
+        <div class="nebula" aria-hidden="true" data-parallax="0.15"></div>
+        <div class="noise" aria-hidden="true"></div>
+        <div class="row g-3 align-items-start">
+        <div class="col-lg-7">
+            <div class="brutal-kicker">&gt; TERMINAL // ROADMAP <?= htmlspecialchars(strtoupper($trackName)) ?></div>
+            <h1 class="brutal-title">ROADMAP<br><span class="stroke">12 MINGGU</span></h1>
+            <p class="brutal-desc mb-3">Centang quest yang selesai untuk mendapatkan XP. Gas satu hari satu quest.</p>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="sticker"><i class="fas fa-bolt" aria-hidden="true"></i> <?= $xp_earned ?>/<?= $total_xp_possible ?> XP</span>
+                <span class="sticker alt"><i class="fas fa-fire" aria-hidden="true"></i> <?= (int)$today_streak ?> STREAK</span>
+                <span class="sticker flat"><?= (int)$completed_quests ?>/<?= (int)$total_quests ?> QUEST</span>
+            </div>
             <?php if ($canSwitchTrack): ?>
             <form method="POST" action="switch_track.php" class="d-flex align-items-center gap-2 mb-3" aria-label="Ganti jurusan">
                 <?= csrf_field() ?>
@@ -197,21 +211,27 @@ require_once 'includes/navbar.php';
             <?php else: ?>
             <p class="mb-3"><span class="quest-done"><i class="fas fa-lock me-1"></i>Jurusan: <?= htmlspecialchars($trackName) ?> · Terkunci oleh kelas</span></p>
             <?php endif; ?>
-
-            <div class="xp-progress-bar" id="roadmapBarWrap" role="progressbar" aria-valuenow="<?= $completion_rate ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres roadmap"><div class="xp-progress-fill" id="roadmapBar" style="width: <?= $completion_rate ?>%;"></div></div>
+            <div class="brutal-bar" id="roadmapBarWrap" role="progressbar" aria-valuenow="<?= $completion_rate ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres roadmap <?= $completion_rate ?> persen"><div id="roadmapBar" style="width: <?= $completion_rate ?>%;"></div></div>
+            <p class="small text-muted mt-2 mb-0"><strong><span id="roadmapDone"><?= $completed_quests ?></span>/<?= $total_quests ?></strong> quest · <strong><span id="roadmapPct"><?= $completion_rate ?></span>%</strong></p>
         </div>
-        <div class="strip-side">
-            <span><strong><span id="roadmapDone"><?= $completed_quests ?></span>/<?= $total_quests ?></strong> quest selesai</span>
-            <span><strong><?= $xp_earned ?>/<?= $total_xp_possible ?></strong> XP</span>
-            <span>Progres: <strong><span id="roadmapPct"><?= $completion_rate ?></span>%</strong></span>
-            <?php $primaryFeature = \App\Domain\Track\Tracks::primaryFeature($myTrack); ?>
-            <div class="d-flex flex-column gap-2 mt-2">
-                <a class="btn btn-cyber btn-sm" href="<?= htmlspecialchars($primaryFeature['href']) ?>"><i class="<?= htmlspecialchars($primaryFeature['icon']) ?> me-1"></i><?= htmlspecialchars($primaryFeature['title']) ?></a>
-                <a class="btn btn-cyber-outline btn-sm" href="lab.php?tab=mentor"><i class="fas fa-robot me-1"></i>Tanya Mentor</a>
-                <a class="btn btn-cyber-outline btn-sm" href="lab.php?tab=kuis"><i class="fas fa-bolt me-1"></i>Kuis Kilat</a>
+        <div class="col-lg-5">
+            <div class="brutal-card hard" data-tilt aria-label="Next up">
+                <div class="brutal-kicker mb-1">NEXT UP</div>
+                <div class="brutal-xp mb-1"><?= $xp_earned ?><small>/<?= $total_xp_possible ?> XP</small></div>
+                <p class="small text-muted mb-3">Track <?= (int)$track_progress['percent'] ?>% (<?= (int)$track_progress['done'] ?>/<?= (int)$track_progress['total'] ?>)</p>
+                <?php $primaryFeature = \App\Domain\Track\Tracks::primaryFeature($myTrack); ?>
+                <div class="d-flex flex-column gap-2">
+                    <a class="btn btn-cyber btn-sm" data-magnetic href="<?= htmlspecialchars($primaryFeature['href']) ?>"><i class="<?= htmlspecialchars($primaryFeature['icon']) ?> me-1"></i><?= htmlspecialchars($primaryFeature['title']) ?></a>
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-cyber-outline btn-sm flex-grow-1" href="lab.php?tab=mentor"><i class="fas fa-robot me-1"></i>Mentor</a>
+                        <a class="btn btn-cyber-outline btn-sm flex-grow-1" href="lab.php?tab=kuis"><i class="fas fa-bolt me-1"></i>Kuis</a>
+                    </div>
+                </div>
             </div>
         </div>
+        </div>
     </section>
+    <div class="marquee-brutal mb-4" aria-hidden="true"><div class="track"><span>QUEST</span><span>•</span><span>XP</span><span>•</span><span>STREAK</span><span>•</span><span><?= htmlspecialchars(strtoupper($trackName)) ?></span><span>•</span><span>QUEST</span><span>•</span><span>XP</span><span>•</span><span>STREAK</span><span>•</span><span><?= htmlspecialchars(strtoupper($trackName)) ?></span><span>•</span></div></div>
 
     <div class="d-flex gap-2 flex-wrap align-items-center mb-3 small" aria-label="Hari ini">
         <span class="stat-chip"><i class="fas fa-fire me-1"></i><?= (int)$today_streak ?> hari<?= $today_freeze > 0 ? ' · ' . (int)$today_freeze . ' freeze' : '' ?></span>
@@ -376,7 +396,7 @@ if ($preselect_week > 0) $current_active_week = $preselect_week;
                                                 <div class="d-flex flex-column gap-2 mt-2">
                                                     <input name="evidence_url" form="qt-<?= $qid ?>" class="form-control form-control-sm" placeholder="Link repo / output / catatan singkat…" maxlength="500" aria-label="Bukti quest: link atau catatan">
                                                     <?php $kw = $karya_map[$qid] ?? null; if ($kw): ?>
-                                                    <a href="karya.php?id=<?= (int)$kw['id'] ?>" target="_blank" rel="noopener"><img src="karya.php?id=<?= (int)$kw['id'] ?>" alt="Karya quest" loading="lazy" style="max-width:120px;border-radius:8px"></a>
+                                                    <a href="karya.php?id=<?= (int)$kw['id'] ?>" target="_blank" rel="noopener"><img src="karya.php?id=<?= (int)$kw['id'] ?>" alt="Karya quest" loading="lazy" decoding="async" width="120" height="90" style="max-width:120px;height:auto;aspect-ratio:4/3;border-radius:8px"></a>
                                                     <?php endif; ?>
                                                     <details class="mt-1">
                                                         <summary class="small text-secondary" style="cursor:pointer">Punya gambar? Upload</summary>

@@ -199,6 +199,47 @@ define('DB_PASS', $db_pass);
 define('DB_NAME', $db_name);
 
 define('SCHEMA_VERSION', 40);
+// Versi aset tunggal (hemat ~10x filemtime per request).
+// Anak sekolah umumnya pakai HP + internet seluler: 1 angka ?v=XXX untuk semua CSS/JS
+// bikin browser + Railway cache lebih akrab, TTFB lebih stabil.
+// Di-cache 5 menit di storage/asset_ver.cache agar request panas cuma 1x stat.
+function lt_asset_ver(): int {
+    static $v = null;
+    if ($v !== null) return $v;
+    $cache = __DIR__ . '/storage/asset_ver.cache';
+    try {
+        if (is_file($cache) && (time() - (int)@filemtime($cache) < 300)) {
+            $c = (int)@file_get_contents($cache);
+            if ($c > 0) { $v = $c; return $v; }
+        }
+        $files = [
+            __DIR__ . '/assets/css/tokens.css',
+            __DIR__ . '/assets/css/components/button.css',
+            __DIR__ . '/assets/css/components/brutal.css',
+            __DIR__ . '/assets/css/app.css',
+            __DIR__ . '/assets/css/sidebar.css',
+            __DIR__ . '/assets/css/mascot.css',
+            __DIR__ . '/assets/css/rarity.css',
+            __DIR__ . '/assets/js/core.js',
+            __DIR__ . '/assets/js/site.js',
+            __DIR__ . '/assets/js/sync.js',
+            __DIR__ . '/assets/js/ambience.js',
+            __DIR__ . '/assets/js/lofi.js',
+            __DIR__ . '/assets/js/quests.js',
+            __DIR__ . '/assets/js/brutal.js',
+            __DIR__ . '/assets/js/cards.js',
+            __DIR__ . '/assets/js/mascot.js',
+        ];
+        $m = 0;
+        foreach ($files as $f) {
+            if (is_file($f)) { $t = (int)@filemtime($f); if ($t > $m) $m = $t; }
+        }
+        if ($m <= 0) $m = time();
+        $v = $m;
+        @file_put_contents($cache, (string)$m, LOCK_EX);
+        return $v;
+    } catch (Throwable $e) { $v = time(); return $v; }
+}
 function is_pro(array $user): bool { return \App\Domain\Pro::isPro($user); }
 
 function quiz_topics($track = null) { return \App\Domain\Quiz\QuizBank::topics($track); }

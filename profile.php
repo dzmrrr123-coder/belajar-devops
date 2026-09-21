@@ -160,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, freeze_tokens, best_streak, show_on_board, public_profile, flair, avatar_frame, created_at FROM users WHERE id = ?");
+$stmt = $conn->prepare("SELECT id, username, email, xp, streak, last_active_date, last_login_at, freeze_tokens, best_streak, show_on_board, public_profile, flair, avatar_frame, track, created_at FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
@@ -170,7 +170,8 @@ $level = calculate_level($user['xp']);
 $rank = get_user_rank($level);
 $pct = level_progress_percent($user['xp']);
 
-$myTrack = user_track($conn, $user_id);
+// Reuse $user track tanpa query tambahan (hemat 1 query, $user sudah ada untuk navbar).
+$myTrack = \App\Domain\Track\Tracks::normalize((string)($user['track'] ?? user_track($conn, $user_id)));
 $myTrackInfo = \App\Domain\Track\Tracks::all()[$myTrack] ?? ['name' => strtoupper($myTrack), 'desc' => ''];
 $stats = ['quest_done' => 0, 'quest_total' => 0, 'pomodoro' => 0, 'notes' => 0, 'q_open' => 0];
 $stmt_qt = $conn->prepare("SELECT COUNT(*) AS c FROM quests WHERE (user_id IS NULL AND (track = ? OR track = 'all' OR track IS NULL OR track = '')) OR (user_id = ? AND (track = ? OR track IS NULL OR track = ''))");
@@ -466,7 +467,7 @@ require_once 'includes/navbar.php';
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
             <div class="modal-body text-center">
-                <img id="flexPreview" class="flex-preview" alt="Pratinjau kartu progres">
+                <img id="flexPreview" class="flex-preview" alt="Pratinjau kartu progres" width="1080" height="1920" decoding="async" style="width:100%;height:auto;aspect-ratio:9/16">
             </div>
             <div class="modal-footer border-top sticky-bottom-bar">
                 <button type="button" class="btn btn-cyber-outline" id="flexDownload"><i class="fas fa-download me-1" aria-hidden="true"></i>Unduh</button>

@@ -23,7 +23,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <meta name="apple-mobile-web-app-title" content="Learn Tracker">
     <script type="speculationrules">
     {"prerender": [{"source": "document", "where": {"href_matches": ["*/quests.php"]}, "eagerness": "moderate"}],
-     "prefetch": [{"source": "document", "where": {"and": [{"href_matches": ["*.php"]}, {"not": {"href_matches": ["*tab=kuis*", "*quiz.php*", "*logout.php*", "*switch_track.php*"]}}]}, "eagerness": "moderate"}]}
+     "prefetch": [{"source": "document", "where": {"href_matches": ["*/timer.php", "*/review.php", "*/errors.php"]}, "eagerness": "conservative"}]}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,11 +37,15 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" as="style">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet"></noscript>
-    <link rel="preload" href="assets/css/app.css?v=<?= filemtime(__DIR__ . '/../assets/css/app.css') ?>" as="style">
-    <link href="assets/css/app.css?v=<?= filemtime(__DIR__ . '/../assets/css/app.css') ?>" rel="stylesheet">
-    <link href="assets/css/sidebar.css?v=<?= is_file(__DIR__ . '/../assets/css/sidebar.css') ? filemtime(__DIR__ . '/../assets/css/sidebar.css') : 0 ?>" rel="stylesheet">
-    <link href="assets/css/mascot.css?v=<?= filemtime(__DIR__ . '/../assets/css/mascot.css') ?>" rel="stylesheet">
-    <link href="assets/css/rarity.css?v=<?= filemtime(__DIR__ . '/../assets/css/rarity.css') ?>" rel="stylesheet">
+    <?php $lt_av = function_exists('lt_asset_ver') ? lt_asset_ver() : (int)@filemtime(__DIR__ . '/../assets/css/app.css'); ?>
+    <link href="assets/css/tokens.css?v=<?= (int)$lt_av ?>" rel="stylesheet">
+    <link rel="preload" href="assets/css/app.css?v=<?= (int)$lt_av ?>" as="style">
+    <link href="assets/css/app.css?v=<?= (int)$lt_av ?>" rel="stylesheet">
+    <link href="assets/css/components/button.css?v=<?= (int)$lt_av ?>" rel="stylesheet">
+    <link href="assets/css/components/brutal.css?v=<?= (int)$lt_av ?>" rel="stylesheet">
+    <link href="assets/css/sidebar.css?v=<?= (int)$lt_av ?>" rel="stylesheet">
+    <link href="assets/css/mascot.css?v=<?= (int)$lt_av ?>" rel="stylesheet">
+    <link href="assets/css/rarity.css?v=<?= (int)$lt_av ?>" rel="stylesheet">
 </head>
 <body class="<?= is_logged_in() ? 'has-tabbar' : '' ?>">
 <a class="skip-link" href="#main">Lewati ke konten utama</a>

@@ -1,10 +1,12 @@
 <?php
 require_once 'config.php';
+require_once __DIR__ . '/includes/ui/empty-state.php';
 require_login();
 
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
-$err_cats = array_keys(skill_defs(user_track($conn, $user_id)));
+$myTrack = user_track($conn, $user_id);
+$err_cats = array_keys(skill_defs($myTrack));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['add_error']) || (isset($_POST['action']) && $_POST['action'] === 'add_error'))) {
     verify_csrf();
@@ -256,12 +258,7 @@ require_once 'includes/navbar.php';
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="card p-4 p-md-5 text-center empty-state">
-                        <div class="empty-state-icon"><i class="fas fa-shield-alt text-emerald"></i></div>
-                        <h2 class="h5 fw-bold mb-2">Belum Ada Catatan Error</h2>
-                        <p class="text-secondary small mb-3">Ketemu bug pertama? Catat sekarang, dapat +5 XP dan otomatis jadi kartu review besok.</p>
-                        <div><button type="button" class="btn btn-cyber btn-sm" onclick="openErrorForm()">Tambah catatan pertama</button></div>
-                    </div>
+                    <?php empty_state('fas fa-shield-alt text-emerald', 'Belum Ada Catatan Error', 'Ketemu bug pertama? Catat sekarang, dapat +5 XP dan otomatis jadi kartu review besok.', '<button type="button" class="btn btn-cyber btn-sm" onclick="openErrorForm()">Tambah catatan pertama</button>'); ?>
                 <?php endif; ?>
             </div>
 
@@ -299,7 +296,7 @@ function openErrorForm() {
                     <input type="hidden" name="source" value="error">
                     <input type="hidden" name="source_id" id="quizSourceId">
                     <input type="hidden" name="back" value="errors.php">
-                    <div class="mb-3"><label class="form-label" for="quizTopic">Topik</label><select name="topic" id="quizTopic" class="form-select"><?php foreach (quiz_topics(user_track($conn, $user_id)) as $t): ?><option value="<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($t) ?></option><?php endforeach; ?></select></div>
+                    <div class="mb-3"><label class="form-label" for="quizTopic">Topik</label><select name="topic" id="quizTopic" class="form-select"><?php foreach (quiz_topics($myTrack) as $t): ?><option value="<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($t) ?></option><?php endforeach; ?></select></div>
                     <div class="mb-3"><label class="form-label" for="quizQuestion">Pertanyaan</label><textarea name="question" id="quizQuestion" class="form-control" rows="2" required maxlength="255"></textarea></div>
                     <div class="mb-1"><label class="form-label" for="quizAnswer">Jawaban</label><textarea name="answer" id="quizAnswer" class="form-control" rows="3" required></textarea></div>
                 </div>
@@ -363,7 +360,7 @@ function openErrorForm() {
 let activeCat = 'all';
 let activeSolved = 'all';
 
-const QUIZ_TOPICS = <?= json_encode(quiz_topics(user_track($conn, $user_id))) ?>;
+const QUIZ_TOPICS = <?= json_encode(quiz_topics($myTrack)) ?>;
 function openQuizModal(id, question, answer, topic) {
     document.getElementById('quizSourceId').value = id;
     document.getElementById('quizQuestion').value = question || '';

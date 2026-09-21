@@ -5,7 +5,7 @@ if ($paction === 'create') {
     $source_id = (int)($_POST['source_id'] ?? 0);
     $question = mb_substr(trim(clean($_POST['question'] ?? '')), 0, 255);
     $answer = mb_substr(trim(clean($_POST['answer'] ?? '')), 0, 2000);
-    $qtopic = in_array($_POST['topic'] ?? '', quiz_topics(user_track($conn, $uid)), true) ? $_POST['topic'] : 'General';
+    $qtopic = in_array($_POST['topic'] ?? '', quiz_topics($track ?? user_track($conn, $uid)), true) ? $_POST['topic'] : 'General';
     if ($question === '' || $answer === '' || $source_id <= 0) {
         set_flash('warning', 'Pertanyaan, jawaban, dan sumber wajib diisi.');
     } else {

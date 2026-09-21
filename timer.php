@@ -4,12 +4,19 @@ require_login();
 
 $conn = db_connect();
 $user_id = (int)$_SESSION['user_id'];
+// Pre-fetch user untuk reuse navbar HUD (hemat 1 query per load, penting di seluler).
+$user = null;
+try {
+    $us = $conn->prepare("SELECT id, username, email, xp, streak, last_login_at, avatar_frame, track FROM users WHERE id = ?");
+    if ($us) { $us->bind_param("i", $user_id); $us->execute(); $user = $us->get_result()->fetch_assoc() ?: null; $us->close(); }
+} catch (Throwable $e) {}
 
-// Get today + lifetime Pomodoro stats dalam 1 roundtrip
+// Get today + lifetime Pomodoro stats + target dalam 1 roundtrip (hemat 1 query per load).
 $stmt = $conn->prepare("
     SELECT COUNT(*) as total_sessions, COALESCE(SUM(duration_minutes), 0) as total_minutes,
         SUM(completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY) as today_sessions,
-        COALESCE(SUM(IF(completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY, duration_minutes, 0)), 0) as today_minutes
+        COALESCE(SUM(IF(completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY, duration_minutes, 0)), 0) as today_minutes,
+        SUM(completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY AND duration_minutes >= 25 AND mode = 'focus') as target_done
     FROM pomodoro_sessions
     WHERE user_id = ?
 ");
@@ -33,13 +40,9 @@ $recent_sessions = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
 $daily_target = 2;
-$target_done = 0;
+$target_done = (int)($pomo_stats['target_done'] ?? 0);
 $weekly = [];
 try {
-    $q = $conn->prepare("SELECT COUNT(*) c FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= CURDATE() AND completed_at < CURDATE() + INTERVAL 1 DAY AND duration_minutes >= 25 AND mode = 'focus'");
-    $q->bind_param("i", $user_id); $q->execute();
-    $target_done = (int)($q->get_result()->fetch_assoc()['c'] ?? 0);
-    $q->close();
     $q = $conn->prepare("SELECT DATE(completed_at) d, COUNT(*) c, COALESCE(SUM(duration_minutes),0) m FROM pomodoro_sessions WHERE user_id = ? AND completed_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY DATE(completed_at)");
     $q->bind_param("i", $user_id); $q->execute();
     $rows = $q->get_result()->fetch_all(MYSQLI_ASSOC);

@@ -1,0 +1,14 @@
+/* Button — atoms. Nama class dipertahankan (btn-cyber/outline/danger) agar 100+ pemakaian tidak pecah. */
+.btn-cyber,.btn-cyber-outline,.btn-cyber-danger{border-radius:8px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background .15s,border-color .15s;min-height:44px}
+.btn-cyber{background:var(--primary);border:1px solid var(--primary);color:#fff!important}
+.btn-cyber:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
+.btn-cyber-outline{background:var(--surface);border:1px solid var(--line-strong);color:var(--ink)!important}
+.btn-cyber-outline:hover{background:var(--surface-2);border-color:var(--muted)}
+.btn-cyber-danger{background:var(--surface);border:1px solid var(--line-strong);color:var(--danger)!important}
+.btn-cyber-danger:hover{background:var(--danger-soft);border-color:var(--danger)}
+.btn:disabled,.btn.disabled{opacity:.55;cursor:not-allowed}
+.btn-cyber:focus-visible,.btn-cyber-outline:focus-visible,.btn-cyber-danger:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.btn-cyber[aria-busy="true"]{opacity:.75;pointer-events:none}
+.btn-cyber[aria-busy="true"]::after{content:"";width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;animation:btn-spin .7s linear infinite}
+@keyframes btn-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.btn-cyber,.btn-cyber-outline,.btn-cyber-danger{transition:none}.btn-cyber[aria-busy="true"]::after{animation:none}}

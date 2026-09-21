@@ -72,13 +72,13 @@ elseif (session_status() === PHP_SESSION_ACTIVE) @session_write_close();
     $page_js = ['core.js', 'site.js', 'sync.js', 'ambience.js'];
     if ($logged) $page_js[] = 'lofi.js';
     if ($pg === 'quests.php') $page_js[] = 'quests.js';
+    if ($pg === 'quests.php') $page_js[] = 'brutal.js';
     if ($pg === 'review.php') $page_js[] = 'cards.js';
     if (in_array($pg, ['quests.php', 'onboarding.php'], true)) $page_js[] = 'mascot.js';
     if ($pg === 'profile.php') $page_js[] = 'share-card.js';
     if (in_array($pg, ['leaderboard.php', 'u.php'], true)) $page_js[] = 'reactions.js';
+    $jsv = function_exists('lt_asset_ver') ? lt_asset_ver() : time();
     foreach ($page_js as $js):
-        $jsp = __DIR__ . '/../assets/js/' . $js;
-        $jsv = is_file($jsp) ? (int)@filemtime($jsp) : 0;
     ?>
     <script defer src="assets/js/<?= $js ?><?= $jsv ? '?v=' . $jsv : '' ?>"></script>
     <?php endforeach; ?>

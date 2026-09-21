@@ -4,8 +4,8 @@
  * Jika siswa membuka halaman jurusan lain, tampilkan halaman panduan ramah,
  * arahkan ke fitur jurusannya sendiri, atau beri opsi ganti jurusan.
  */
-function enforce_track_access(\mysqli $conn, int $user_id, array $allowed_tracks, string $feature_title): void {
-    $myTrack = user_track($conn, $user_id);
+function enforce_track_access(\mysqli $conn, int $user_id, array $allowed_tracks, string $feature_title, ?string $knownTrack = null): void {
+    $myTrack = $knownTrack !== null ? \App\Domain\Track\Tracks::normalize($knownTrack) : user_track($conn, $user_id);
     $isAdmin = is_admin($conn, $user_id) || \App\Domain\Auth\Roles::isGuru($conn, $user_id);
     if ($isAdmin || in_array($myTrack, $allowed_tracks, true)) {
         return; // Akses diizinkan

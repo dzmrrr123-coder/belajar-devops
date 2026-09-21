@@ -1,7 +1,7 @@
 <?php
 // Tab Kuis Kilat (blitz). Mode latihan/review digabung ke review.php.
 $mode = 'blitz';
-$quiz_topics = quiz_topics(user_track($conn, $uid));
+$quiz_topics = quiz_topics($track ?? user_track($conn, $uid));
 $topic = in_array($_GET['topic'] ?? 'all', $quiz_topics, true) ? $_GET['topic'] : 'all';
 $track_in = "'" . implode("','", array_map(fn($t) => str_replace("'", "''", $t), $quiz_topics)) . "'";
 $topic_sql = $topic === 'all' ? "AND c.topic IN ($track_in)" : 'AND c.topic = ?';

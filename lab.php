@@ -3,18 +3,29 @@ require_once 'config.php';
 require_login();
 $conn = db_connect();
 $uid = (int)$_SESSION['user_id'];
-$track = user_track($conn, $uid);
+// Single user fetch untuk track + reuse navbar HUD (hemat 1-2 query per load).
+$user = null;
+try {
+    $us = $conn->prepare("SELECT id, username, email, xp, streak, last_login_at, avatar_frame, track FROM users WHERE id = ?");
+    if ($us) { $us->bind_param("i", $uid); $us->execute(); $user = $us->get_result()->fetch_assoc() ?: null; $us->close(); }
+} catch (Throwable $e) {}
+$track = \App\Domain\Track\Tracks::normalize((string)($user['track'] ?? user_track($conn, $uid)));
+if (is_array($user) && !isset($user['track'])) $user['track'] = $track;
 
 define('LAB_SHARED_CAP', 50);
 define('QUIZ_DAILY_XP_CAP', 20);
 define('QUIZ_TODAY_DONE_SQL', "NOT EXISTS (SELECT 1 FROM xp_events e WHERE e.user_id = c.user_id AND e.ref_type = 'quiz' AND e.ref_id = c.id AND e.amount > 0 AND e.created_at >= CURDATE() AND e.created_at < CURDATE() + INTERVAL 1 DAY)");
 
 function lab_shared_left(\mysqli $conn, int $uid): int {
+    // Cache per-request: jawaban kuis AJAX memanggil 2x per request (hitung gain + quota_left).
+    static $cache = [];
+    if (isset($cache[$uid])) return $cache[$uid];
     try {
         $c = $conn->prepare("SELECT COALESCE(SUM(amount),0) n FROM xp_events WHERE user_id = ? AND ref_type IN ('quiz','lab','playground','terminal') AND amount > 0 AND created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY");
         $c->bind_param("i", $uid); $c->execute();
         $n = (int)($c->get_result()->fetch_assoc()['n'] ?? 0); $c->close();
-        return max(0, LAB_SHARED_CAP - $n);
+        $cache[$uid] = max(0, LAB_SHARED_CAP - $n);
+        return $cache[$uid];
     } catch (Throwable $e) { return LAB_SHARED_CAP; }
 }
 
@@ -42,7 +53,7 @@ function lab_url(string $tab, string $alat = '', array $extra = []): string {
 if ($tab === 'praktik' && !empty($LAB_ALATS[$alat]['tracks'])) {
     $need = $LAB_ALATS[$alat]['tracks'];
     $titles = ['playground' => 'Coding Playground', 'terminal' => 'Terminal Linux', 'incident' => 'Incident Simulator', 'topologi' => 'Topologi & Subnet'];
-    enforce_track_access($conn, $uid, $need, $titles[$alat] ?? 'Praktik');
+    enforce_track_access($conn, $uid, $need, $titles[$alat] ?? 'Praktik', $track ?? null);
 }
 
 // ---------- POST dispatcher ----------
