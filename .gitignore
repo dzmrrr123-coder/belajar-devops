@@ -11,6 +11,8 @@ scratch/
 .env
 storage/cache/
 storage/migrate.lock
+storage/schema_ok.cache
+.tmpdbg/
 app/storage/uploads/*
 !app/storage/uploads/.gitkeep
 .opencode/

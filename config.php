@@ -62,6 +62,10 @@ register_shutdown_function(function() {
 
 // 1. Native .env loader if .env file exists
 if (file_exists(__DIR__ . '/.env')) {
+    // Jika DB_HOST sudah diberikan environment nyata (mis. saat menjalankan lokal),
+    // jangan biarkan .env mencampur kredensial cloud (MYSQL*/DB_PASS) ke konfigurasi
+    // lokal — itu menghasilkan campuran host-lokal + password-railway yang gagal konek.
+    $env_db_explicit = getenv('DB_HOST') !== false;
     $env_lines = file(__DIR__ . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($env_lines as $line) {
         $line = trim($line);
@@ -70,6 +74,11 @@ if (file_exists(__DIR__ . '/.env')) {
             list($env_key, $env_val) = explode('=', $line, 2);
             $env_key = trim($env_key);
             $env_val = trim($env_val, " \t\n\r\0\x0B\"'");
+            // Lewati seluruh blok kredensial DB dari .env bila DB_HOST eksplisit,
+            // agar sumber konfigurasi DB tidak tercampur (satu sumber menang).
+            if ($env_db_explicit && (str_starts_with($env_key, 'DB_') || str_starts_with($env_key, 'MYSQL') || $env_key === 'DATABASE_URL')) {
+                continue;
+            }
             if (getenv($env_key) === false) {
                 putenv("$env_key=$env_val");
                 $_ENV[$env_key] = $env_val;

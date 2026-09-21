@@ -114,7 +114,11 @@ class Store {
         return $d;
     }
     private static function safe(string $key): string {
-        return preg_replace('/[^a-zA-Z0-9_\-:]/', '_', $key);
+        // ':' (dan karakter ilegal filesystem lain) tidak boleh dipakai di nama file —
+        // di Windows ':' menyebabkan file_put_contents gagal senyap, sehingga cache &
+        // rate-limit tidak pernah tersimpan. Ganti dengan '-' yang aman di semua OS.
+        // Key internal tidak memakai '-', jadi tidak menimbulkan tabrakan.
+        return preg_replace('/[^a-zA-Z0-9_\-]/', '-', $key);
     }
     private static function file(string $key): string {
         return self::dir() . '/' . self::safe($key) . '.cache';

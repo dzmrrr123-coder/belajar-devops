@@ -25,6 +25,8 @@ jobs:
         run: php tests/run.php
       - name: Cache smoke
         run: php tests/cache_smoke.php
+      - name: Store file smoke
+        run: php tests/store_file_smoke.php
       - name: Rate limit smoke
         run: php tests/ratelimit_smoke.php
   db:
