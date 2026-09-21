@@ -264,20 +264,20 @@ window.LTOutbox = (function() {
         }
         if (entry.type === 'question_add') {
             const f = entry.fields || {};
-            if (!String(f.title || '').trim()) return Promise.resolve('done');
-            return postForm('questions.php', {
+            const title = String(f.title || '').trim();
+            if (!title) return Promise.resolve('done');
+            const msg = 'Pertanyaan: ' + title + '\n\n' + String(f.description || '').trim();
+            return postForm('errors.php', {
                 csrf_token: freshCsrf(entry.csrf),
-                action: 'create',
-                title: f.title || '',
-                description: f.description || '',
-                topic: f.topic || '',
-                priority: f.priority || 'medium',
-                quest_id: f.quest_id || '0',
+                action: 'add_error',
+                category: f.topic || 'General',
+                error_message: msg,
+                solution: '',
                 reference_link: f.reference_link || ''
             }, false).then((res) => {
                 if (res.status === 403) return 'auth';
                 if (res.ok) {
-                    showToast('Pertanyaan offline terkirim.', 'success');
+                    showToast('Pertanyaan offline → catatan error tersimpan.', 'success');
                     return 'done';
                 }
                 return 'retry';
@@ -295,6 +295,35 @@ window.LTOutbox = (function() {
             }
         } catch (e) {}
     }
+
+    function migrateQuestionAdd() {
+        try {
+            const raw = localStorage.getItem('lt_outbox_v1') || '[]';
+            const outbox = JSON.parse(raw);
+            let changed = false;
+            for (const entry of outbox) {
+                if (entry.type === 'question_add') {
+                    const f = entry.fields || {};
+                    const title = String(f.title || '').trim();
+                    if (!title) continue;
+                    const msg = 'Pertanyaan: ' + title + '\n\n' + String(f.description || '').trim();
+                    entry.type = 'error_add';
+                    entry.fields = {
+                        category: f.topic || 'General',
+                        error_message: msg,
+                        solution: '',
+                        reference_link: f.reference_link || ''
+                    };
+                    changed = true;
+                }
+            }
+            if (changed) {
+                localStorage.setItem('lt_outbox_v1', JSON.stringify(outbox));
+                console.log('[Sync] Migrated question_add → error_add', changed);
+            }
+        } catch (e) {}
+    }
+    migrateQuestionAdd();
 
     function packFields(form, type) {
         const fd = new FormData(form);

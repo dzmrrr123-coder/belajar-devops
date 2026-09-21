@@ -16,6 +16,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $confirm = $_POST['confirm_password'] ?? '';
 
+    // Rate limit register (per IP, tak bisa di-bypass dengan hapus cookie sesi).
+    $reg_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    if (\App\Http\RateLimit::hit('register', 3, 3600, $reg_ip)) {
+        $error = 'Terlalu banyak pendaftaran. Coba lagi nanti.';
+    }
+
     if (empty($username)) $field_errors['username'] = 'Username wajib diisi.';
     elseif (strlen($username) < 3) $field_errors['username'] = 'Username minimal 3 karakter.';
     elseif (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) $field_errors['username'] = 'Hanya huruf, angka, dan underscore (_).';
@@ -30,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$has_field_error) {
         try {
             $conn = db_connect();
+            // Always check both to prevent enumeration
             $stmt = $conn->prepare("SELECT username, email FROM users WHERE username = ? OR email = ? LIMIT 2");
             if (!$stmt) {
                 throw new Exception("Gagal mempersiapkan verifikasi akun: " . $conn->error);
@@ -42,10 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (strcasecmp((string)$r['username'], $username) === 0) $user_taken = true;
                 if (strcasecmp((string)$r['email'], $email) === 0) $email_taken = true;
             }
+            // Same error message for both to prevent enumeration
             if ($user_taken || $email_taken) {
-                if ($user_taken) $field_errors['username'] = 'Username ini sudah dipakai. Coba variasi lain atau masuk.';
-                if ($email_taken) $field_errors['email'] = 'Email ini sudah terdaftar. Masuk atau gunakan email lain.';
-                $error = 'Username atau email sudah digunakan. Cek detail di bawah.';
+                $error = 'Akun sudah terdaftar. Silakan masuk.';
                 $stmt->close();
             } else {
                 $stmt->close();

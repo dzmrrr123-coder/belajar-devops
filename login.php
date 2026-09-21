@@ -9,22 +9,13 @@ if (is_logged_in()) {
 $error = '';
 $field_errors = ['username' => '', 'password' => ''];
 $retry_after = 0;
-$_SESSION['login_attempts'] = $_SESSION['login_attempts'] ?? ['count' => 0, 'first' => time()];
-if (time() - $_SESSION['login_attempts']['first'] > 300) $_SESSION['login_attempts'] = ['count' => 0, 'first' => time()];
-if ($_SESSION['login_attempts']['count'] >= 5) {
-    $retry_after = max(0, 300 - (time() - $_SESSION['login_attempts']['first']));
-    $mins = (int)ceil($retry_after / 60);
-    $error = "Terlalu banyak percobaan. Coba lagi dalam ±{$mins} menit.";
-}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
-    $_SESSION['login_attempts'] = $_SESSION['login_attempts'] ?? ['count' => 0, 'first' => time()];
-    if (time() - $_SESSION['login_attempts']['first'] > 300) $_SESSION['login_attempts'] = ['count' => 0, 'first' => time()];
-    if ($_SESSION['login_attempts']['count'] >= 5) {
-        $retry_after = max(0, 300 - (time() - $_SESSION['login_attempts']['first']));
-        $mins = (int)ceil($retry_after / 60);
-        $error = "Terlalu banyak percobaan. Coba lagi dalam ±{$mins} menit.";
+    $login_username = clean($_POST['username'] ?? '');
+    // Batasi per IP + username: cegah brute-force satu akun & penyebaran percobaan dari satu IP.
+    if (\App\Http\RateLimit::hit('login', 5, 900, $login_username)) {
+        $error = "Terlalu banyak percobaan login. Coba lagi dalam 15 menit.";
     } else {
     $username = clean($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -59,18 +50,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     set_flash('success', "Selamat datang kembali, {$user['username']}!");
-                    $_SESSION['login_attempts'] = ['count' => 0, 'first' => time()];
                     session_regenerate_id(true);
                     redirect(empty($user['onboarded']) ? 'onboarding.php' : 'quests.php');
                 } else {
-                    $_SESSION['login_attempts']['count']++;
-                    $field_errors['password'] = 'Kata sandi salah. Coba lagi.';
-                    $error = 'Kata sandi salah. Coba lagi.';
+                    $error = 'Username atau kata sandi salah.';
                 }
             } else {
-                $_SESSION['login_attempts']['count']++;
-                $field_errors['username'] = 'Akun tidak ditemukan. Cek ejaan atau daftar baru.';
-                $error = 'Akun tidak ditemukan. Cek ejaan atau daftar baru.';
+                // User tidak ada: tetap jalankan password_verify dengan hash bcrypt VALID
+                // supaya waktu respons setara (anti user-enumeration timing attack).
+                password_verify($password, '$2y$10$oWQgsSO7frb/ZbMR9sP/Z.ij4AdsUU99vV4Iv7dMVUkNT9odImtEq');
+                $error = 'Username atau kata sandi salah.';
             }
             $stmt->close();
             $conn->close();

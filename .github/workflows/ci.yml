@@ -25,6 +25,8 @@ jobs:
         run: php tests/run.php
       - name: Cache smoke
         run: php tests/cache_smoke.php
+      - name: Rate limit smoke
+        run: php tests/ratelimit_smoke.php
   db:
     runs-on: ubuntu-latest
     services:
